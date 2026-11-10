@@ -15,7 +15,7 @@ public sealed class LineupPlanner
     /// <summary>Covenants without a level II.</summary>
     public static readonly IReadOnlySet<string> NoSecond = new HashSet<string> { "独行", "调和", "协防干员" };
     /// <summary>These covenants apply in the preparation area and are not counted as lineup bonuses.</summary>
-    public static readonly IReadOnlySet<string> NoAdditionalScore = new HashSet<string> { "奇迹" };
+    public static readonly IReadOnlySet<string> NoAdditionalScore = new HashSet<string> { "奇迹", "投资人", "远见" };
     public const string SoloCovenant = "独行";
     public const int MaxLockedOperators = 9;
     private const int MaxBranches = 48;

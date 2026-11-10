@@ -104,15 +104,17 @@ public class LineupPlannerTests
     }
 
     [Fact]
-    public void Solve_MiracleDoesNotContributeToAdditionalScore()
+    public void Solve_PreparationAreaCovenantsDoNotContributeToAdditionalScore()
     {
         var operators = new[]
         {
             Op("炎甲", ["炎"]), Op("炎乙", ["炎"]), Op("炎丙", ["炎"]),
             Op("奇迹甲", extra: ["奇迹"]), Op("奇迹乙", extra: ["奇迹"]),
-            Op("空甲"), Op("空乙"), Op("空丙")
+            Op("投资人甲", extra: ["投资人"]), Op("投资人乙", extra: ["投资人"]),
+            Op("远见甲", extra: ["远见"]),
+            Op("空甲"), Op("空乙")
         };
-        var planner = new LineupPlanner(operators, [Core("炎"), Extra("奇迹")]);
+        var planner = new LineupPlanner(operators, [Core("炎"), Extra("奇迹"), Extra("投资人"), Extra("远见")]);
 
         var result = planner.Plan(new PlannerRequest
         {
@@ -120,7 +122,7 @@ public class LineupPlannerTests
             PeopleOptions = [8], TransformOptions = [0]
         });
 
-        result.AllLineups.Should().ContainSingle().Which.AdditionalScore.Should().Be(0);
+        result.AllLineups.First().AdditionalScore.Should().Be(0);
     }
 
     [Fact]
