@@ -201,4 +201,30 @@ public class LineupPlannerViewModelTests
         ops.Single(o => o.Name == "维3").ExtraInfo.Should().Contain("必带");
         vm.LockedOperators.Single().Operator.Name.Should().Be("维3");
     }
+
+    [Fact]
+    public async Task ResultsShowAllActuallyActivatedCovenantLevels()
+    {
+        var operators = new List<Operator>
+        {
+            Op("炎1", "炎"), Op("炎2", "炎"), Op("炎3", "炎"),
+            new() { Name = "精准1", AdditionalCovenants = ["精准"], IconPath = "icons/operators/精准1.png" },
+            new() { Name = "精准2", AdditionalCovenants = ["精准"], IconPath = "icons/operators/精准2.png" },
+            new() { Name = "精准3", AdditionalCovenants = ["精准"], IconPath = "icons/operators/精准3.png" },
+            Op("空1"), Op("空2")
+        };
+        var covenants = new[]
+        {
+            new CovenantInfo { Name = "炎", BondType = "SEASON", ActivateCount = 3 },
+            new CovenantInfo { Name = "精准", BondType = "REGULAR", ActivateCount = 2 }
+        };
+        var vm = new LineupPlannerViewModel(
+            new LineupPlanner(operators, covenants), operators, new BanViewModel()) { DebounceMilliseconds = 0 };
+        vm.IsActive = true;
+        vm.AllCovenants.Single(c => c.Name == "炎").ToggleLevel1Command.Execute(null);
+        await vm.PendingSearch!;
+
+        vm.VisibleLineups[0].Goals.Select(g => g.Text)
+            .Should().Contain(["炎Ⅰ 3人", "精准Ⅱ 3人"]);
+    }
 }

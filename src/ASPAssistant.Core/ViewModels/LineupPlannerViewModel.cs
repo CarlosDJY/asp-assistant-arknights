@@ -666,14 +666,7 @@ public partial class LineupPlannerViewModel : ObservableObject
         for (var i = 0; i < lineup.FreeSlots; i++)
             ops.Add(new PlannerOperatorItem { Name = "空位", Sub = "任选", IsFree = true, ToolTip = "目标已满足，这个位置可以放任意干员" });
 
-        var goals = lineup.Goals.Select(g =>
-        {
-            lineup.Counts.TryGetValue(g.Name, out var count);
-            var text = $"{g.Name} {count}/{g.Count} ✓";
-            if (lineup.HarmonyBonus.TryGetValue(g.Name, out var bonus) && bonus > 0) text += $" 含调和+{bonus}";
-            if (g.Manual) text += " · Ⅱ待核";
-            return new PlannerGoalPill(text, g.Manual);
-        }).ToList();
+        var goals = BuildActivatedCovenantPills(lineup);
 
         var subtitle = $"{lineup.People} 人 · {lineup.Transforms} 转 · 附加盟约 {lineup.AdditionalScore} 分";
         if (lineup.FreeSlots > 0) subtitle += $" · 空 {lineup.FreeSlots}";
@@ -688,5 +681,31 @@ public partial class LineupPlannerViewModel : ObservableObject
             Goals = goals,
             LineupName = $"规划 {goalText} {lineup.People}人{lineup.Transforms}转"
         };
+    }
+
+    private IReadOnlyList<PlannerGoalPill> BuildActivatedCovenantPills(PlannedLineup lineup)
+    {
+        var pills = new List<PlannerGoalPill>();
+        foreach (var covenant in _planner.Covenants)
+        {
+            var count = lineup.Counts.GetValueOrDefault(covenant.Name);
+            var first = LineupPlanner.CreateGoal(covenant, 1);
+            if (count < first.Count) continue;
+
+            var level = 1;
+            if (LineupPlanner.HasSecondLevel(covenant))
+            {
+                var second = LineupPlanner.CreateGoal(covenant, 2);
+                if (!second.Manual && count >= second.Count)
+                    level = 2;
+            }
+
+            var manualSecond = LineupPlanner.IsSecondLevelManual(covenant)
+                && count >= first.Count;
+            var text = $"{covenant.Name}{(level == 2 ? "Ⅱ" : "Ⅰ")} {count}人";
+            if (manualSecond) text += " · Ⅱ待核";
+            pills.Add(new PlannerGoalPill(text, manualSecond));
+        }
+        return pills;
     }
 }
