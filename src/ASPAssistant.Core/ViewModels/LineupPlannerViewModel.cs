@@ -172,11 +172,12 @@ public sealed partial class PlannerVariantCell : ObservableObject
     public int People { get; init; }
     public int Transforms { get; init; }
     public int Count { get; init; }
+    public int BestScore { get; init; }
     public bool IsLimited { get; init; }
     public bool HasResults => Count > 0;
     public string Text => Count > 0 ? Count.ToString() : "—";
     public string ToolTip => Count > 0
-        ? $"{People} 人 · {Transforms} 转：{Count} 套" + (IsLimited ? "（达到搜索上限，可能还有其他组合）" : "")
+        ? $"{People} 人 · {Transforms} 转：{Count} 套，最高附加分 {BestScore}" + (IsLimited ? "（达到搜索上限，可能还有其他组合）" : "")
         : IsLimited ? $"{People} 人 · {Transforms} 转：达到搜索上限仍未找到" : $"{People} 人 · {Transforms} 转：无解";
 
     [ObservableProperty]
@@ -571,14 +572,20 @@ public partial class LineupPlannerViewModel : ObservableObject
                 var v = result?.Variants.FirstOrDefault(x => x.People == p && x.Transforms == t);
                 VariantCells.Add(new PlannerVariantCell
                 {
-                    People = p, Transforms = t, Count = v?.Lineups.Count ?? 0, IsLimited = v?.SearchLimited ?? false
+                    People = p, Transforms = t, Count = v?.Lineups.Count ?? 0,
+                    BestScore = v?.Lineups.FirstOrDefault()?.AdditionalScore ?? 0,
+                    IsLimited = v?.SearchLimited ?? false
                 });
             }
         TotalResults = VariantCells.Sum(c => c.Count);
 
         SelectedVariant =
             VariantCells.FirstOrDefault(c => previous is not null && c.People == previous.People && c.Transforms == previous.Transforms && c.HasResults)
-            ?? VariantCells.FirstOrDefault(c => c.HasResults)
+            ?? VariantCells.Where(c => c.HasResults)
+                .OrderByDescending(c => c.BestScore)
+                .ThenByDescending(c => c.People)
+                .ThenBy(c => c.Transforms)
+                .FirstOrDefault()
             ?? VariantCells.FirstOrDefault();
         UpdateStatus(result, elapsed);
     }
@@ -668,7 +675,7 @@ public partial class LineupPlannerViewModel : ObservableObject
             return new PlannerGoalPill(text, g.Manual);
         }).ToList();
 
-        var subtitle = $"{lineup.People} 人 · {lineup.Transforms} 转";
+        var subtitle = $"{lineup.People} 人 · {lineup.Transforms} 转 · 附加盟约 {lineup.AdditionalScore} 分";
         if (lineup.FreeSlots > 0) subtitle += $" · 空 {lineup.FreeSlots}";
         var goalText = string.Join(" ", lineup.Goals.Select(g => g.Name + (g.Level == 2 ? "Ⅱ" : "Ⅰ")));
         return new PlannerLineupItem

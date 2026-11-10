@@ -28,15 +28,79 @@ public class LineupPlannerTests
     }
 
     [Fact]
-    public void Solve_OnlyPicksOperatorsTheTargetsNeed()
+    public void Solve_FillsTheRequestedPeopleCount()
     {
         var operators = Enumerable.Range(1, 9).Select(i => Op($"干员{i}", ["炎"]));
         var planner = new LineupPlanner(operators, [Core("炎")]);
 
         var results = planner.Solve(new PlannerRequest { Goals = [new PlannerGoal("炎", 1, 3, false, true)] });
 
-        results.Should().OnlyContain(r => r.Operators.Count == 3);
-        results.Where(r => r.People == 8).Should().OnlyContain(r => r.FreeSlots == 5);
+        results.Should().OnlyContain(r => r.Operators.Count == r.People);
+        results.Where(r => r.People == 8).Should().OnlyContain(r => r.FreeSlots == 0);
+    }
+
+    [Fact]
+    public void Solve_RanksCompleteLineupsByAdditionalCovenantScore()
+    {
+        var operators = new List<Operator>
+        {
+            Op("炎甲", ["炎"]), Op("炎乙", ["炎"]), Op("炎丙", ["炎"]),
+            Op("精准甲", extra: ["精准"]), Op("精准乙", extra: ["精准"]),
+            Op("空甲"), Op("空乙"), Op("空丙"), Op("空丁"), Op("空戊")
+        };
+        var planner = new LineupPlanner(operators, [Core("炎"), Extra("精准")]);
+
+        var result = planner.Plan(new PlannerRequest
+        {
+            Goals = [new PlannerGoal("炎", 1, 3, false, true)],
+            PeopleOptions = [8], TransformOptions = [0]
+        }, maxResultsPerVariant: 3);
+
+        var best = result.AllLineups.First();
+        best.Operators.Should().HaveCount(8);
+        best.AdditionalScore.Should().Be(1);
+        best.AdditionalCovenants.Should().ContainKey("精准");
+    }
+
+    [Fact]
+    public void Solve_ManualSecondLevelCountsOnlyLevelOneScore()
+    {
+        var operators = new[]
+        {
+            Op("炎甲", ["炎"]), Op("炎乙", ["炎"]), Op("炎丙", ["炎"]),
+            Op("突袭甲", extra: ["突袭"]), Op("突袭乙", extra: ["突袭"]), Op("突袭丙", extra: ["突袭"]),
+            Op("空甲"), Op("空乙")
+        };
+        var planner = new LineupPlanner(operators, [Core("炎"), Extra("突袭")]);
+
+        var result = planner.Plan(new PlannerRequest
+        {
+            Goals = [new PlannerGoal("炎", 1, 3, false, true)],
+            PeopleOptions = [8], TransformOptions = [0]
+        });
+
+        result.AllLineups.Should().ContainSingle().Which.AdditionalScore.Should().Be(1);
+    }
+
+    [Fact]
+    public void Solve_BannedAdditionalCovenantStillContributesToScore()
+    {
+        var operators = new[]
+        {
+            Op("炎甲", ["炎"]), Op("炎乙", ["炎"]), Op("炎丙", ["炎"]),
+            Op("坚守甲", ["炎"], ["坚守"]), Op("坚守乙", ["炎"], ["坚守"]), Op("坚守丙", ["炎"], ["坚守"]),
+            Op("空甲"), Op("空乙")
+        };
+        var planner = new LineupPlanner(operators, [Core("炎"), Extra("坚守")]);
+
+        var result = planner.Plan(new PlannerRequest
+        {
+            Goals = [new PlannerGoal("炎", 1, 3, false, true)],
+            BannedCovenants = new HashSet<string> { "坚守" },
+            PeopleOptions = [8], TransformOptions = [0]
+        });
+
+        result.AllLineups.Should().ContainSingle().Which.AdditionalScore.Should().Be(2);
     }
 
     [Fact]

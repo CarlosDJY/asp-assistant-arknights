@@ -3,8 +3,8 @@ using ASPAssistant.Core.Models;
 namespace ASPAssistant.Core.Services;
 
 /// <summary>
-/// Searches compact lineups (8/9 people × 0/1/2 transforms) that reach the selected covenant targets.
-/// Only operators the targets actually need are picked; the rest of the lineup is reported as free slots.
+/// Searches complete lineups (8/9 people × 0/1/2 transforms) that reach the selected covenant targets.
+/// Feasible lineups are ranked by the number and level of additional covenants they activate.
 /// </summary>
 public sealed class LineupPlanner
 {
@@ -100,7 +100,7 @@ public sealed class LineupPlanner
         // Transform targets that are not in covenant data (tests, custom data) still count.
         allowed.AddRange(request.TransformAllowed.Where(n => !allowed.Contains(n) && !request.BannedCovenants.Contains(n) && !NoTransform.Contains(n) && _covenants.All(c => c.Name != n)));
 
-        var ctx = new SearchContext(request, candidates, allowed,
+        var ctx = new SearchContext(request, candidates, allowed, _covenants,
             [.. request.LockedOperators.Select(n => indexByName[n])], maxResultsPerVariant, maxNodes, cancellationToken);
         var variants = new List<PlannerVariantResult>();
         foreach (var transforms in request.TransformOptions)
@@ -118,6 +118,8 @@ public sealed class LineupPlanner
     {
         private readonly PlannerRequest _request;
         private readonly List<Operator> _ops;
+        private readonly IReadOnlyList<CovenantInfo> _covenants;
+        private readonly HashSet<string> _coreNames;
         private readonly HashSet<string>[] _native;
         private readonly bool[] _harmony;
         private readonly List<string> _allowedOrdered;
@@ -130,10 +132,11 @@ public sealed class LineupPlanner
         private readonly Dictionary<string, int> _rarity;
         private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
         private readonly HashSet<string> _goalNames;
+        private readonly HashSet<string> _additionalNames;
         private readonly bool _hasSoloGoal;
 
         // per-variant state
-        private int _people, _transforms, _nodes;
+        private int _people, _teamSize, _transforms, _nodes;
         private bool _limited;
         private List<PlannedLineup> _found = [];
         private readonly List<int> _picked = [];
@@ -142,22 +145,30 @@ public sealed class LineupPlanner
         private static readonly IReadOnlyDictionary<int, string> NoTransforms = new Dictionary<int, string>();
 
         public SearchContext(PlannerRequest request, List<Operator> ops, List<string> allowed,
+            IReadOnlyList<CovenantInfo> covenants,
             List<int> locked, int maxResults, int maxNodes, CancellationToken ct)
         {
-            _request = request; _ops = ops; _allowedOrdered = allowed; _allowed = [.. allowed];
+            _request = request; _ops = ops; _covenants = covenants; _coreNames = covenants
+                .Where(c => c.BondType == "SEASON").Select(c => c.Name).ToHashSet(StringComparer.Ordinal);
+            _allowedOrdered = allowed; _allowed = [.. allowed];
             _locked = locked; _lockedSet = [.. locked]; _maxResults = maxResults; _maxNodes = maxNodes; _ct = ct;
             _native = ops.Select(o => o.CoreCovenants.Concat(o.AdditionalCovenants).ToHashSet(StringComparer.Ordinal)).ToArray();
             _harmony = ops.Select(o => o.CoreCovenants.Contains(CovenantCalculator.HarmonyCovenant)).ToArray();
             _used = new bool[ops.Count];
             _rarity = request.Goals.ToDictionary(g => g.Name, g => _native.Count(n => n.Contains(g.Name)));
             _goalNames = request.Goals.Select(g => g.Name).ToHashSet(StringComparer.Ordinal);
+            _additionalNames = _covenantNames.Where(n => !_goalNames.Contains(n)
+                && !_coreNames.Contains(n)).ToHashSet(StringComparer.Ordinal);
             _hasSoloGoal = request.Goals.Any(g => g.Name == SoloCovenant);
         }
+
+        private IReadOnlyList<string> _covenantNames => _covenants.Select(c => c.Name).ToList();
 
         public PlannerVariantResult SolveVariant(int people, int transforms)
         {
             _ct.ThrowIfCancellationRequested();
-            _people = people; _transforms = transforms; _nodes = 0; _limited = false; _found = [];
+            _people = people; _teamSize = Math.Min(people, _ops.Count); _transforms = transforms;
+            _nodes = 0; _limited = false; _found = [];
             _picked.Clear(); _visited.Clear(); Array.Clear(_used);
             if (_locked.Count > people) return new PlannerVariantResult(people, transforms, [], false);
             foreach (var i in _locked) { _picked.Add(i); _used[i] = true; }
@@ -169,7 +180,12 @@ public sealed class LineupPlanner
 
         private (Dictionary<string, int> Counts, Dictionary<string, int> Bonus) Count(IReadOnlyList<int> team, IReadOnlyDictionary<int, string> tr)
         {
-            var counts = _request.Goals.ToDictionary(g => g.Name, _ => 0);
+            var counts = _covenants.Select(c => c.Name).Distinct(StringComparer.Ordinal)
+                .ToDictionary(n => n, _ => 0, StringComparer.Ordinal);
+            foreach (var target in tr.Values)
+                if (!counts.ContainsKey(target)) counts[target] = 0;
+            foreach (var goal in _request.Goals)
+                counts.TryAdd(goal.Name, 0);
             var present = new HashSet<string>(StringComparer.Ordinal);
             var harmony = 0;
             foreach (var i in team)
@@ -200,7 +216,7 @@ public sealed class LineupPlanner
             return (counts, bonus);
         }
 
-        private bool Done => _found.Count >= _maxResults || _nodes > _maxNodes;
+        private bool Done => _nodes > _maxNodes;
 
         private bool Contributes(int i, PlannerGoal g, Dictionary<string, int> counts)
             => _native[i].Contains(g.Name) || (g.IsCore && _harmony[i] && counts[g.Name] > 0);
@@ -214,32 +230,47 @@ public sealed class LineupPlanner
             var (counts, _) = Count(_picked, NoTransforms);
             if (_hasSoloGoal && counts[SoloCovenant] > 1) return;
             var missing = _request.Goals.Where(g => counts[g.Name] < g.Count).ToList();
-            var slots = _people - _picked.Count;
+            var slots = _teamSize - _picked.Count;
             var trLeft = _transforms;
 
-            // Remaining deficits fit into the transforms: try to finish here.
+            // Once targets are reachable, keep branching until the whole lineup is
+            // filled. This is what lets the score see the operators in the free slots.
             var transformDeficit = missing.Sum(g => g.Count - counts[g.Name]);
-            if (missing.All(g => _allowed.Contains(g.Name)) && transformDeficit <= trLeft)
+            if (slots <= 0)
             {
-                if (TryFinish(counts)) return;
-                if (missing.Count == 0) return;
+                if (missing.All(g => _allowed.Contains(g.Name)) && transformDeficit <= trLeft)
+                    TryFinish(counts);
+                return;
             }
-            if (slots <= 0 || !CanStillReach(missing, counts, slots, trLeft)) return;
+            if (!CanStillReach(missing, counts, slots, trLeft)) return;
             if (!_visited.Add(StateKey())) return;
 
             // Branch on the hardest goal: ones that cannot be transformed first, then the rarest.
-            var pivot = missing
+            // If transforms can cover every remaining deficit, the next operator
+            // is selected for the score rather than for a target covenant.
+            var pivot = missing.Count > 0 && !(missing.All(g => _allowed.Contains(g.Name)) && transformDeficit <= trLeft) ? missing
                 .OrderBy(g => _allowed.Contains(g.Name) ? 1 : 0)
                 .ThenBy(g => _rarity[g.Name])
                 .ThenByDescending(g => g.Count - counts[g.Name])
-                .First();
+                .First() : null;
 
             var branches = new List<(int Index, double Score)>();
             for (var i = 0; i < _ops.Count; i++)
             {
-                if (_used[i] || !Contributes(i, pivot, counts)) continue;
+                if (_used[i]) continue;
+                if (_hasSoloGoal && _native[i].Contains(SoloCovenant) && counts[ SoloCovenant ] >= 1) continue;
+                if (pivot is not null && !Contributes(i, pivot, counts)) continue;
                 var gain = missing.Count(g => Contributes(i, g, counts));
-                branches.Add((i, 10 * gain + (i * 13 % 31) / 50.0));
+                var extra = _native[i].Count(c => _additionalNames.Contains(c));
+                branches.Add((i, 10 * gain + 0.8 * extra + (i * 13 % 31) / 50.0));
+            }
+
+            // A solo covenant can make the requested people count impossible to
+            // fill with valid operators. Keep the best partial lineup in that case.
+            if (branches.Count == 0 && missing.Count == 0)
+            {
+                TryFinish(counts);
+                return;
             }
 
             var expanded = 0;
@@ -288,7 +319,7 @@ public sealed class LineupPlanner
             return string.Join(',', ids);
         }
 
-        /// <summary>Assigns transforms (and carrier operators if needed); records the lineup when every target is met.</summary>
+        /// <summary>Assigns transforms and records a complete, scored lineup.</summary>
         private bool TryFinish(Dictionary<string, int> nativeCounts)
         {
             var team = new List<int>(_picked);
@@ -299,17 +330,7 @@ public sealed class LineupPlanner
             {
                 foreach (var i in team.OrderBy(i => _lockedSet.Contains(i)))
                     if (!tr.ContainsKey(i) && !_native[i].Contains(covenant)) return i;
-                if (team.Count >= _people) return null;
-                // A carrier: an extra operator who takes the transform. Prefer ones that also hold target covenants.
-                var carrier = Enumerable.Range(0, _ops.Count)
-                    .Where(i => !_used[i] && !usedHere.Contains(i) && !_native[i].Contains(covenant))
-                    .Where(i => !(_hasSoloGoal && _native[i].Contains(SoloCovenant)))
-                    .OrderByDescending(i => _native[i].Count(_goalNames.Contains))
-                    .ThenBy(i => _ops[i].Tier)
-                    .Cast<int?>()
-                    .FirstOrDefault();
-                if (carrier is int c) { team.Add(c); usedHere.Add(c); }
-                return carrier;
+                return null;
             }
 
             foreach (var g in _request.Goals)
@@ -329,8 +350,11 @@ public sealed class LineupPlanner
             {
                 if (tr.Count >= _transforms) break;
                 if (tr.ContainsKey(i)) continue;
-                var target = goalTargets.FirstOrDefault(n => !_native[i].Contains(n))
-                             ?? _allowedOrdered.FirstOrDefault(n => !_native[i].Contains(n));
+                var target = goalTargets.FirstOrDefault(n => !_native[i].Contains(n));
+                target ??= _allowedOrdered
+                    .Where(n => !_native[i].Contains(n))
+                    .OrderByDescending(n => TransformScore(n, team, tr))
+                    .FirstOrDefault();
                 if (target is null) continue;
                 tr[i] = target; forced++;
             }
@@ -344,6 +368,8 @@ public sealed class LineupPlanner
                       string.Join(',', tr.Select(x => _ops[x.Key].Name + ':' + x.Value).Order(StringComparer.Ordinal));
             if (!_seen.Add(key)) return true;
 
+            var (additionalScore, additionalLevels) = Score(counts);
+
             var operators = team
                 .OrderBy(i => _lockedSet.Contains(i) ? 0 : 1)
                 .Select(i => new PlannedOperator(_ops[i].Name, tr.GetValueOrDefault(i), [.. _native[i]])
@@ -352,13 +378,51 @@ public sealed class LineupPlanner
                     IsHarmony = _harmony[i],
                     IconPath = _ops[i].IconPath
                 }).ToList();
-            _found.Add(new PlannedLineup(_people, _transforms, operators, counts, false)
+            var lineup = new PlannedLineup(_people, _transforms, operators, counts, false)
             {
                 Goals = _request.Goals,
                 ForcedTransforms = forced,
-                HarmonyBonus = bonus
-            });
+                HarmonyBonus = bonus,
+                AdditionalScore = additionalScore,
+                AdditionalCovenants = additionalLevels
+            };
+            _found.Add(lineup);
+            _found = _found
+                .OrderByDescending(x => x.AdditionalScore)
+                .ThenByDescending(x => x.AdditionalCovenants.Count)
+                .ThenBy(x => x.Operators.Sum(o => o.IsLocked ? 0 : 1))
+                .Take(_maxResults)
+                .ToList();
             return true;
         }
+
+        private int TransformScore(string covenant, IReadOnlyList<int> team, IReadOnlyDictionary<int, string> tr)
+        {
+            if (!_additionalNames.Contains(covenant)) return 0;
+            var (counts, _) = Count(team, tr);
+            var current = counts.GetValueOrDefault(covenant);
+            var info = _covenants.FirstOrDefault(c => c.Name == covenant);
+            var threshold = info?.ActivateCount ?? 2;
+            if (current + 1 < threshold) return 0;
+            return IsKnownSecond(covenant) && current + 1 >= 3 ? 2 : 1;
+        }
+
+        private (int Score, IReadOnlyDictionary<string, int> Levels) Score(IReadOnlyDictionary<string, int> counts)
+        {
+            var levels = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var covenant in _covenants)
+            {
+                if (!_additionalNames.Contains(covenant.Name)) continue;
+                var count = counts.GetValueOrDefault(covenant.Name);
+                var threshold = covenant.ActivateCount ?? 2;
+                if (count < threshold) continue;
+                var level = IsKnownSecond(covenant.Name) && count >= 3 ? 2 : 1;
+                levels[covenant.Name] = level;
+            }
+            return (levels.Values.Sum(), levels);
+        }
+
+        private static bool IsKnownSecond(string covenant)
+            => PeopleSecond.Contains(covenant);
     }
 }

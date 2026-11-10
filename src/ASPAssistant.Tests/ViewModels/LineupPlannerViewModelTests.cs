@@ -14,8 +14,8 @@ public class LineupPlannerViewModelTests
         var operators = new List<Operator>();
         for (var i = 1; i <= 6; i++) operators.Add(Op($"炎{i}", "炎"));
         for (var i = 1; i <= 6; i++) operators.Add(Op($"维{i}", "维多利亚"));
-        operators.Add(new Operator { Name = "炎突", CoreCovenants = ["炎"], AdditionalCovenants = ["突袭"] });
-        operators.Add(new Operator { Name = "维突", CoreCovenants = ["维多利亚"], AdditionalCovenants = ["突袭"] });
+        operators.Add(new Operator { Name = "炎突", CoreCovenants = ["炎"], AdditionalCovenants = ["突袭"], IconPath = "icons/operators/炎突.png" });
+        operators.Add(new Operator { Name = "维突", CoreCovenants = ["维多利亚"], AdditionalCovenants = ["突袭"], IconPath = "icons/operators/维突.png" });
         var covenants = new[]
         {
             new CovenantInfo { Name = "炎", BondType = "SEASON", ActivateCount = 3 },

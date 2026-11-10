@@ -28,14 +28,18 @@ public sealed record PlannedOperator(string Name, string? TransformedCovenant, I
 }
 
 /// <summary>
-/// One candidate lineup. <see cref="Operators"/> holds only the operators the targets need;
-/// the remaining <see cref="FreeSlots"/> positions up to <see cref="People"/> can be filled freely.
+/// One complete candidate lineup.
 /// </summary>
 public sealed record PlannedLineup(int People, int Transforms, IReadOnlyList<PlannedOperator> Operators,
     IReadOnlyDictionary<string, int> Counts, bool SearchLimited)
 {
     public IReadOnlyList<PlannerGoal> Goals { get; init; } = [];
+    /// <summary>Only nonzero when the available candidate pool cannot fill the requested size.</summary>
     public int FreeSlots => Math.Max(0, People - Operators.Count);
+    /// <summary>Score from non-target additional covenants: level I = 1, level II = 2.</summary>
+    public int AdditionalScore { get; init; }
+    /// <summary>Additional covenants activated by this lineup and the level counted for scoring.</summary>
+    public IReadOnlyDictionary<string, int> AdditionalCovenants { get; init; } = new Dictionary<string, int>();
     /// <summary>Transforms added only to reach the requested transform count; they do not help any unmet target.</summary>
     public int ForcedTransforms { get; init; }
     /// <summary>Extra core count contributed by 调和, per goal (already included in <see cref="Counts"/>).</summary>
