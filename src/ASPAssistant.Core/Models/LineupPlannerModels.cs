@@ -36,7 +36,7 @@ public sealed record PlannedLineup(int People, int Transforms, IReadOnlyList<Pla
     public IReadOnlyList<PlannerGoal> Goals { get; init; } = [];
     /// <summary>Only nonzero when the available candidate pool cannot fill the requested size.</summary>
     public int FreeSlots => Math.Max(0, People - Operators.Count);
-    /// <summary>Score from non-target additional covenants: level I = 1, level II = 2.</summary>
+    /// <summary>Score from non-target additional covenants: level I = 1, auto-confirmed level II = 3.</summary>
     public int AdditionalScore { get; init; }
     /// <summary>Additional covenants activated by this lineup and the level counted for scoring.</summary>
     public IReadOnlyDictionary<string, int> AdditionalCovenants { get; init; } = new Dictionary<string, int>();

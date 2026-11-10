@@ -14,6 +14,8 @@ public sealed class LineupPlanner
     public static readonly IReadOnlySet<string> PeopleSecond = new HashSet<string> { "精准", "坚守", "助力", "不屈", "聚合", "奥术" };
     /// <summary>Covenants without a level II.</summary>
     public static readonly IReadOnlySet<string> NoSecond = new HashSet<string> { "独行", "调和", "协防干员" };
+    /// <summary>These covenants apply in the preparation area and are not counted as lineup bonuses.</summary>
+    public static readonly IReadOnlySet<string> NoAdditionalScore = new HashSet<string> { "奇迹" };
     public const string SoloCovenant = "独行";
     public const int MaxLockedOperators = 9;
     private const int MaxBranches = 48;
@@ -158,7 +160,7 @@ public sealed class LineupPlanner
             _rarity = request.Goals.ToDictionary(g => g.Name, g => _native.Count(n => n.Contains(g.Name)));
             _goalNames = request.Goals.Select(g => g.Name).ToHashSet(StringComparer.Ordinal);
             _additionalNames = _covenantNames.Where(n => !_goalNames.Contains(n)
-                && !_coreNames.Contains(n)).ToHashSet(StringComparer.Ordinal);
+                && !_coreNames.Contains(n) && !NoAdditionalScore.Contains(n)).ToHashSet(StringComparer.Ordinal);
             _hasSoloGoal = request.Goals.Any(g => g.Name == SoloCovenant);
         }
 
@@ -404,7 +406,7 @@ public sealed class LineupPlanner
             var info = _covenants.FirstOrDefault(c => c.Name == covenant);
             var threshold = info?.ActivateCount ?? 2;
             if (current + 1 < threshold) return 0;
-            return IsKnownSecond(covenant) && current + 1 >= 3 ? 2 : 1;
+            return IsKnownSecond(covenant) && current + 1 >= 3 ? 3 : 1;
         }
 
         private (int Score, IReadOnlyDictionary<string, int> Levels) Score(IReadOnlyDictionary<string, int> counts)
@@ -416,7 +418,7 @@ public sealed class LineupPlanner
                 var count = counts.GetValueOrDefault(covenant.Name);
                 var threshold = covenant.ActivateCount ?? 2;
                 if (count < threshold) continue;
-                var level = IsKnownSecond(covenant.Name) && count >= 3 ? 2 : 1;
+                var level = IsKnownSecond(covenant.Name) && count >= 3 ? 3 : 1;
                 levels[covenant.Name] = level;
             }
             return (levels.Values.Sum(), levels);

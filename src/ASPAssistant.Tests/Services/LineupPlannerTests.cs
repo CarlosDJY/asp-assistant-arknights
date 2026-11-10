@@ -100,7 +100,27 @@ public class LineupPlannerTests
             PeopleOptions = [8], TransformOptions = [0]
         });
 
-        result.AllLineups.Should().ContainSingle().Which.AdditionalScore.Should().Be(2);
+        result.AllLineups.Should().ContainSingle().Which.AdditionalScore.Should().Be(3);
+    }
+
+    [Fact]
+    public void Solve_MiracleDoesNotContributeToAdditionalScore()
+    {
+        var operators = new[]
+        {
+            Op("炎甲", ["炎"]), Op("炎乙", ["炎"]), Op("炎丙", ["炎"]),
+            Op("奇迹甲", extra: ["奇迹"]), Op("奇迹乙", extra: ["奇迹"]),
+            Op("空甲"), Op("空乙"), Op("空丙")
+        };
+        var planner = new LineupPlanner(operators, [Core("炎"), Extra("奇迹")]);
+
+        var result = planner.Plan(new PlannerRequest
+        {
+            Goals = [new PlannerGoal("炎", 1, 3, false, true)],
+            PeopleOptions = [8], TransformOptions = [0]
+        });
+
+        result.AllLineups.Should().ContainSingle().Which.AdditionalScore.Should().Be(0);
     }
 
     [Fact]
