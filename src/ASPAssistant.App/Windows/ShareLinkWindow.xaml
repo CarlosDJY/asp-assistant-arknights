@@ -1,0 +1,44 @@
+<!-- Modified for ASP Assistant Regulation on 2026-11-10; local share result. -->
+<Window x:Class="ASPAssistant.App.Windows.ShareLinkWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="阵容分享" Width="460" Height="230" WindowStartupLocation="CenterOwner"
+        WindowStyle="None" ResizeMode="NoResize" Icon="{StaticResource AspaLogo}"
+        Background="{DynamicResource PanelBackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="0" GlassFrameThickness="0" />
+    </WindowChrome.WindowChrome>
+    <Border Background="{DynamicResource PanelBackgroundBrush}"
+            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Background="{DynamicResource TitleBackgroundBrush}"
+                    MouseLeftButtonDown="OnTitleBarDrag">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Content="✕" Click="OnClose" Style="{StaticResource CloseButton}" />
+                    <TextBlock Text="阵容分享 · 链接已生成" FontSize="13" FontWeight="SemiBold"
+                               Padding="12,8" VerticalAlignment="Center" />
+                </DockPanel>
+            </Border>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="14,0,14,12">
+                <Button Content="关闭" Click="OnClose" Padding="14,5" Margin="0,0,8,0"
+                        Style="{StaticResource TrackingButton}" FontSize="12"
+                        Background="{DynamicResource NeutralHoverBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                        Foreground="{DynamicResource TextPrimaryBrush}" />
+                <Button x:Name="CopyButton" Content="复制链接" Click="OnCopy" Padding="14,5"
+                        Style="{StaticResource TrackingButton}" FontSize="12"
+                        Background="{DynamicResource PrimaryActionBrush}" Foreground="White" BorderThickness="0" />
+            </StackPanel>
+            <StackPanel Margin="14,12">
+                <TextBlock Text="将此链接发给其他玩家，即可通过“导入”添加阵容。"
+                           FontSize="12" TextWrapping="Wrap" Margin="0,0,0,10"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                <TextBox x:Name="LinkBox" IsReadOnly="True" TextWrapping="NoWrap" Padding="6,7"
+                         Background="{DynamicResource InputOverlayBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+                         BorderBrush="{DynamicResource BorderBrush}" />
+                <TextBlock x:Name="CopyStatusText" Text="链接已生成，正在复制…" FontSize="12"
+                           TextWrapping="Wrap" Margin="0,8,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+            </StackPanel>
+        </DockPanel>
+    </Border>
+</Window>

@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using ASPAssistant.Core.Data;
 using ASPAssistant.Core.Models;
 using FluentAssertions;
@@ -63,9 +63,9 @@ public class SettingsManagerTests : IDisposable
     }
 
     [Fact]
-    public async Task NewPreferences_DefaultToTerminalAndSingleLineup()
+    public async Task NewPreferences_RequireThemeChoiceAndUseSingleLineup()
     {
-        (await _manager.LoadGameShopThemeAsync()).Should().Be(GameShopTheme.Terminal);
+        (await _manager.LoadGameShopThemeAsync()).Should().BeNull();
         (await _manager.LoadTrackMultipleLineupsAsync()).Should().BeFalse();
     }
 
@@ -79,6 +79,23 @@ public class SettingsManagerTests : IDisposable
         (await new SettingsManager(_tempDir).LoadGameShopThemeAsync()).Should().Be(theme);
         (await File.ReadAllTextAsync(Path.Combine(_tempDir, "game-theme.json")))
             .Should().Be($"\"{theme}\"");
+    }
+
+    [Theory]
+    [InlineData("invalid JSON")]
+    [InlineData("\"UnknownTheme\"")]
+    [InlineData("99")]
+    public async Task InvalidThemePreference_RequiresChoice(string json)
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "game-theme.json"), json);
+        (await _manager.LoadGameShopThemeAsync()).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task MissingSettingsDirectory_RequiresChoice()
+    {
+        var manager = new SettingsManager(Path.Combine(_tempDir, "first-start"));
+        (await manager.LoadGameShopThemeAsync()).Should().BeNull();
     }
 
     [Theory]

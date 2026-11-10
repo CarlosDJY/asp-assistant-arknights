@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.IO;
 using System.Text.RegularExpressions;
 using System.Windows;
@@ -26,6 +26,11 @@ public partial class EquipmentCard : UserControl
 
     public Func<string, bool>? IsTrackedCheck { get; set; }
     public bool IsTracked { get; set; }
+    public bool ShowTrackingButton
+    {
+        get => TrackButton.Visibility == Visibility.Visible;
+        set => TrackButton.Visibility = value ? Visibility.Visible : Visibility.Collapsed;
+    }
     private static readonly Regex EffectNumber = new(@"\d+(?:\.\d+)?%?");
 
     public EquipmentCard()

@@ -11,6 +11,15 @@ public enum LineupTag
     输出,
     控场,
     经济,
+    阵容核心,
+}
+
+public enum LineupPhase
+{
+    前期,
+    中期,
+    后期,
+    挂件,
 }
 
 public class LineupSlot
@@ -26,6 +35,9 @@ public class LineupSlot
     [JsonPropertyName("equipments")]
     public List<string> Equipments { get; set; } = [];
 
+    [JsonPropertyName("coreEquipments")]
+    public List<string> CoreEquipments { get; set; } = [];
+
     /// <summary>标签列表，最多 2 个。</summary>
     [JsonPropertyName("tags")]
     public List<LineupTag> Tags { get; set; } = [];
@@ -39,9 +51,18 @@ public class Lineup
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";
 
-    /// <summary>阵容内的干员槽位（最多 9 个）。</summary>
+    /// <summary>后期阵容（最多 9 个），也是列表预览和追踪使用的阵容。</summary>
     [JsonPropertyName("slots")]
     public List<LineupSlot> Slots { get; set; } = [];
+
+    [JsonPropertyName("earlySlots")]
+    public List<LineupSlot> EarlySlots { get; set; } = [];
+
+    [JsonPropertyName("midSlots")]
+    public List<LineupSlot> MidSlots { get; set; } = [];
+
+    [JsonPropertyName("supportSlots")]
+    public List<LineupSlot> SupportSlots { get; set; } = [];
 
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

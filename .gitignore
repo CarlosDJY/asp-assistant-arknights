@@ -1,4 +1,4 @@
-# Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+# Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 # .NET build output
 bin/
 obj/
@@ -108,3 +108,5 @@ __pycache__/
 /light-theme.json
 /game-theme.json
 /multiple-lineups.json
+# 本地维护记录，不随仓库/发布包分发
+MODIFICATIONS.md

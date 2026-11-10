@@ -8,14 +8,14 @@
     <img src="https://img.shields.io/badge/game-卫戍协议·规程-orange?style=flat-square" alt="卫戍协议·规程"/>
     <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat-square" alt="Apache 2.0"/></a>
   </p>
-  <p><a href="https://github.com/Moonfair/ASP_Assistant">原项目</a> · <a href="MODIFICATIONS.md">修改说明</a> · <a href="https://github.com/bingyunhe/asp-assistant-arknights/issues">问题反馈</a></p>
+  <p><a href="https://github.com/Moonfair/ASP_Assistant">原项目</a> · <a href="https://github.com/bingyunhe/asp-assistant-arknights/issues">问题反馈</a></p>
 </div>
 
 ---
 
 > **项目来源**：本项目是在 [Moonfair/ASP_Assistant](https://github.com/Moonfair/ASP_Assistant) 基础上修改的独立衍生版本，保留原项目 Apache License 2.0 协议与归属声明。感谢 Moonfair 及上游贡献者。本仓库不是原作者发布的版本。
 >
-> 上游基线：[`93b2ba8`](https://github.com/Moonfair/ASP_Assistant/commit/93b2ba8514f6591a67e4cbf5a6169dee7d065bf6)。本次修改日期为 **2026-11-09**；涉及文件详见 [MODIFICATIONS.md](MODIFICATIONS.md)。
+> 上游基线：[`93b2ba8`](https://github.com/Moonfair/ASP_Assistant/commit/93b2ba8514f6591a67e4cbf5a6169dee7d065bf6)。本次修改日期为 **2026-11-09**；改动范围见各文件头部声明。
 
 ## 截图
 
@@ -34,7 +34,7 @@
 
 ASP Assistant · Arknights 是运行于《明日方舟》游戏窗口旁的侧边辅助工具，提供干员、装备查询，追踪列表、阵容管理与 Ban 位录入。
 
-当前版本为 **v1.2.0**，新增三款商店主题设置、组合筛选、装备功能分类、鸿雪画框图标及自动更新校验与回滚。旧版用户可从本仓库 Releases 更新。
+当前版本为 **v1.3.0**，新增阵容编辑器与分享链接、追踪装备详情、手动检查更新，并把敌人资料刷新为 10 首领 / 9 特训类型 / 93 变体（含缺失图标）。旧版用户可从本仓库 Releases 更新。
 
 ### 干员浏览与筛选
 
@@ -116,12 +116,12 @@ ASP Assistant · Arknights 是运行于《明日方舟》游戏窗口旁的侧�
 
 无需编译的 Windows x64 独立运行包可在 [Releases](https://github.com/bingyunhe/asp-assistant-arknights/releases/latest) 获取。
 
-1. 下载 `ASPAssistant-v1.2.0-win-x64.zip`，不要选择 `Source code` 源码压缩包。
+1. 下载 `ASPAssistant-v1.3.0-win-x64.zip`，不要选择 `Source code` 源码压缩包。
 2. 右键“全部解压”到独立目录，保留全部文件和 `data`、`runtimes` 文件夹。
 3. 双击 `ASPAssistant.App.exe` 启动。无需另外安装 .NET；包内带有识别模型和所需运行库。
 4. 更新时先退出旧程序，再解压新版。个人追踪与阵容设置存放于本机用户数据目录。
 
-发布页同时提供 `SHA256SUMS.txt`，可用 `Get-FileHash .\ASPAssistant-v1.2.0-win-x64.zip -Algorithm SHA256` 核对下载完整性。详细说明见 [本版发行说明](RELEASE_NOTES.md)。
+发布页同时提供 `SHA256SUMS.txt`，可用 `Get-FileHash .\ASPAssistant-v1.3.0-win-x64.zip -Algorithm SHA256` 核对下载完整性。详细说明见 [本版发行说明](RELEASE_NOTES.md)。
 
 如果需要从源码构建：
 
@@ -188,7 +188,6 @@ python fetch_spdatabase.py --skip-bosses --skip-enemies
 ├── LICENSE                     # Apache 官方标准 License 2.0 正文
 ├── LICENSE.upstream            # 保留上游许可原文及版权声明
 ├── NOTICE                      # 上游与第三方归属
-└── MODIFICATIONS.md            # 本衍生版本的变更说明
 ```
 
 个人追踪、阵容、窗口及主题设置存放在本机用户数据目录，不随源码分发。不要把个人配置、未经脱敏的游戏截图、日志、密钥或构建缓存提交到仓库。
@@ -205,6 +204,6 @@ python fetch_spdatabase.py --skip-bosses --skip-enemies
 
 本项目的修改部分以 **[Apache License 2.0](LICENSE)** 开源。`LICENSE` 采用 [Apache 官方标准正文](https://www.apache.org/licenses/LICENSE-2.0.txt)；上游仓库原许可文本的部分措辞与标准正文不同，已逐字保留于 [LICENSE.upstream](LICENSE.upstream)，其中的原始版权声明及上游许可条件继续保留。
 
-分发源码或构建产物时，请一并保留 `LICENSE`、`LICENSE.upstream`、`NOTICE`、`MODIFICATIONS.md` 以及相关文件中的版权和变更声明。
+分发源码或构建产物时，请一并保留 `LICENSE`、`LICENSE.upstream`、`NOTICE` 以及相关文件中的版权和变更声明。
 
 软件许可证不改变《明日方舟》游戏数据、名称、图像和其他第三方资源的权利归属；各依赖遵循其各自的许可证。本项目仅供学习和个人使用，与 Hypergryph / 鹰角网络无关。

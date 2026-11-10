@@ -15,7 +15,7 @@ remove or override the retained upstream license or its attribution notices.
 Modifications copyright (c) 2026 ASP Assistant Regulation contributors.
 This distribution contains modifications for the Regulation season, interface,
 themes, tracking, equipment comparison, tests, documentation and release setup.
-See MODIFICATIONS.md for the modification date and affected files.
+Modification notices are kept in the source headers of each changed file.
 This derivative is not an official release from the upstream author.
 
 MaaFramework and other third-party dependencies retain their own licenses.

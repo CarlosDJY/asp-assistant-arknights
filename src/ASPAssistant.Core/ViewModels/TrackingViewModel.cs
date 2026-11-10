@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ASPAssistant.Core.Models;

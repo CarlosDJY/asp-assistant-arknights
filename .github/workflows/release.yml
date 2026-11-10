@@ -1,4 +1,4 @@
-# Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+# Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 name: Release
 
 on:
@@ -57,7 +57,7 @@ jobs:
       - name: Zip release assets
         shell: pwsh
         run: |
-          foreach ($file in @("LICENSE", "LICENSE.upstream", "NOTICE", "MODIFICATIONS.md")) {
+          foreach ($file in @("LICENSE", "LICENSE.upstream", "NOTICE")) {
             if (-not (Test-Path -LiteralPath (Join-Path "publish/win-x64" $file))) {
               throw "Missing distribution notice: $file"
             }

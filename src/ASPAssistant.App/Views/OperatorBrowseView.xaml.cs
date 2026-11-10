@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -171,12 +171,9 @@ public partial class OperatorBrowseView : UserControl
         }
         else
         {
+            if (TierFilterList.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem allItem)
+                allItem.IsSelected = false;
             container.IsSelected = !container.IsSelected;
-            if (TierFilterList.SelectedIndex == 0)
-            {
-                TierFilterList.SelectedItems.Clear();
-                if (container.IsSelected) TierFilterList.SelectedItems.Add(container.Content);
-            }
 
             bool anySelected = false;
             for (int i = 1; i < TierFilterList.Items.Count; i++)

@@ -1,5 +1,10 @@
 using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Net.Http;
 using System.Runtime.ExceptionServices;
+using System.Runtime.InteropServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -57,6 +62,14 @@ public class ThemeAndHighlightTests
                     view.Arrange(new Rect(0, 0, 310, 900));
                     view.UpdateLayout();
                     Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+
+                    var tierCandidates = vm.FilteredOperators.ToList();
+                    AssertTierClicks((ListBox)view.FindName("TierFilterList"), expected =>
+                    {
+                        vm.SelectedTierFilters.Should().BeEquivalentTo(expected);
+                        vm.FilteredOperators.Should().BeEquivalentTo(tierCandidates
+                            .Where(op => expected.Length == 0 || expected.Contains(op.Tier)));
+                    });
 
                     var item = (ListBoxItem)coreList.ItemContainerGenerator.ContainerFromItem("乌萨斯");
                     item.IsSelected = true;
@@ -124,10 +137,14 @@ public class ThemeAndHighlightTests
                 trackingVm.AddTracking("烈夏", TrackingType.Operator);
                 trackingVm.AddTracking("塔露拉", TrackingType.Operator);
                 trackingVm.AddTracking("乌萨斯呼吸器", TrackingType.Equipment);
+                foreach (var name in new[] { "坚守盾牌", "雪祀之衣", "萨尔贡浓茶", "盟约之币", "卫戍推荐信", "不屈弹射器", "博士投影", "不退者卫护系统" })
+                    trackingVm.AddTracking(name, TrackingType.Equipment);
+                trackingVm.AddTracking(equipment.MaxBy(e => e.Name.Length)!.Name, TrackingType.Equipment);
                 var enemyVm = new EnemyViewModel();
+                using var failedShareHttp = new HttpClient(new FailedShareHandler());
                 var sidePanel = new SidePanelWindow(vm, equipmentVm, trackingVm,
                     new GameStateViewModel(), new BanViewModel(), enemyVm,
-                    lineupVm, new LineupShareService(), operators, equipment, new SettingsManager(output), GameShopTheme.Terminal);
+                    lineupVm, new LineupShareService(failedShareHttp), operators, equipment, new SettingsManager(output), GameShopTheme.Terminal);
                 try
                 {
                     SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
@@ -241,6 +258,20 @@ public class ThemeAndHighlightTests
                                 ((System.Windows.Controls.Primitives.ToggleButton)equipmentView.FindName("FilterToggle")).IsChecked = true;
                                 content.UpdateLayout();
                                 var tiers = (ListBox)equipmentView.FindName("TierFilterList");
+                                var tierCandidates = equipmentVm.FilteredEquipment.ToList();
+                                Action<int[]> assertTiers = expected =>
+                                {
+                                    equipmentVm.SelectedTierFilters.Should().BeEquivalentTo(expected);
+                                    equipmentVm.FilteredEquipment.Should().BeEquivalentTo(tierCandidates
+                                        .Where(item => expected.Length == 0 || expected.Contains(item.Tier)));
+                                };
+                                AssertTierClicks(tiers, assertTiers);
+                                equipmentVm.SelectedCategoryFilters = ["攻击"];
+                                content.UpdateLayout();
+                                tierCandidates = equipmentVm.FilteredEquipment.ToList();
+                                AssertTierClicks(tiers, assertTiers);
+                                equipmentVm.SelectedCategoryFilters = [];
+                                content.UpdateLayout();
                                 tiers.SelectedIndex = 1;
                                 content.UpdateLayout();
                                 equipmentVm.SelectedTierFilters.Should().ContainSingle();
@@ -333,6 +364,55 @@ public class ThemeAndHighlightTests
                                 Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
                                 Descendants<TextBlock>(detail).Select(t => t.Text)
                                     .Should().Contain("普通").And.Contain("精锐");
+                                var hoverCard = new OperatorCard
+                                {
+                                    DataContext = trackedCard.DataContext,
+                                    IsTrackingList = true,
+                                    VerticalAlignment = VerticalAlignment.Top
+                                };
+                                host.Content = hoverCard;
+                                host.Opacity = 0;
+                                host.Left = -10000;
+                                host.Top = -10000;
+                                host.Width = 310;
+                                host.Height = 100;
+                                host.Show();
+                                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                                detail = (ToolTip)hoverCard.FindName("DetailsToolTip");
+                                detail.PlacementTarget = (UIElement)hoverCard.FindName("CardBorder");
+                                detail.MaxHeight = 100;
+                                var row = (Border)hoverCard.FindName("CardBorder");
+                                row.ActualHeight.Should().Be(40);
+                                detail.Opacity = 0; // Exercise the popup lifecycle without displaying test UI.
+                                detail.IsOpen = true;
+                                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                                detail.IsOpen.Should().BeTrue();
+                                row.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseLeaveEvent });
+                                WaitForUi(() => !detail.IsOpen, "moving off the operator into equipment or blank space must close details");
+                                detail.IsOpen = true;
+                                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                                detail.IsOpen.Should().BeTrue();
+                                row.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseLeaveEvent });
+                                detail.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseEnterEvent });
+                                var grace = System.Diagnostics.Stopwatch.StartNew();
+                                while (grace.Elapsed < TimeSpan.FromMilliseconds(250))
+                                {
+                                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                                    Thread.Sleep(1);
+                                }
+                                detail.IsOpen.Should().BeTrue("crossing the gap into details must cancel the pending close");
+                                var detailScroll = Descendants<ScrollViewer>(detail).Single();
+                                detailScroll.ScrollableHeight.Should().BeGreaterThan(0);
+                                detailScroll.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120)
+                                    { RoutedEvent = Mouse.PreviewMouseWheelEvent });
+                                detail.IsOpen.Should().BeTrue("scrolling inside details must keep the popup open");
+                                detail.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseLeaveEvent });
+                                WaitForUi(() => !detail.IsOpen, "leaving the details must also close the popup");
+                                detail.IsOpen = true;
+                                hoverCard.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, 120)
+                                    { RoutedEvent = Mouse.PreviewMouseWheelEvent });
+                                detail.IsOpen.Should().BeFalse("scrolling the operator list must dismiss its details");
+                                detail.Opacity = 1;
                                 ((Button)trackedCard.FindName("TrackButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                                 trackingVm.IsTracked("烈夏").Should().BeFalse();
                                 trackingVm.IsTracked("塔露拉").Should().BeTrue();
@@ -345,9 +425,263 @@ public class ThemeAndHighlightTests
                                 removeUnknown.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                                 trackingVm.IsTracked("旧版已移除干员").Should().BeFalse();
                                 content.UpdateLayout();
+                                var equipmentCards = Descendants<TrackedEquipmentCard>(trackingView).ToList();
+                                equipmentCards.Should().HaveCount(trackingVm.TrackedEquipment.Count);
+                                equipmentCards.SelectMany(c => ((Equipment)c.DataContext).Categories).Distinct().Should()
+                                    .BeEquivalentTo(EquipmentBrowseViewModel.CategoryOrder);
+                                foreach (var equipmentCard in equipmentCards)
+                                {
+                                    var item = (Equipment)equipmentCard.DataContext;
+                                    var chips = (ItemsControl)equipmentCard.FindName("CategoryChips");
+                                    chips.Items.Cast<string>().Should().Equal(item.Categories);
+                                    var type = ((TextBlock)equipmentCard.FindName("TypeText")).Text;
+                                    type.Should().StartWith(item.Type == EquipmentType.JobChange ? "转职" : "普通");
+                                    if (!string.IsNullOrEmpty(item.JobChangeCovenant))
+                                        type.Should().Contain(item.JobChangeCovenant);
+                                    var equipmentDetails = (ToolTip)equipmentCard.FindName("DetailsToolTip");
+                                    equipmentDetails.PlacementTarget = (UIElement)equipmentCard.FindName("CardBorder");
+                                    equipmentDetails.Measure(new Size(320, 700));
+                                    equipmentDetails.Arrange(new Rect(equipmentDetails.DesiredSize));
+                                    equipmentDetails.UpdateLayout();
+                                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                                    var fullCard = (EquipmentCard)equipmentCard.FindName("DetailsCard");
+                                    ((TextBlock)fullCard.FindName("NameText")).Text.Should().Be(item.Name);
+                                    ((ItemsControl)fullCard.FindName("CategoryChips")).Items.Cast<string>().Should().Equal(item.Categories);
+                                    ((Image)fullCard.FindName("IconImage")).Source.Should().NotBeNull();
+                                    ((Button)fullCard.FindName("TrackButton")).Visibility.Should().Be(Visibility.Collapsed);
+                                    ((TextBlock)fullCard.FindName("NoEliteText")).Visibility.Should().Be(
+                                        string.IsNullOrEmpty(item.Elite.EffectDescription) ? Visibility.Visible : Visibility.Collapsed);
+                                    var effect = (TextBlock)fullCard.FindName("EffectText");
+                                    new TextRange(effect.ContentStart, effect.ContentEnd).Text.Should().NotBeNullOrWhiteSpace();
+                                    if (item.Name == "博士投影")
+                                        new TextRange(effect.ContentStart, effect.ContentEnd).Text.Should()
+                                            .Be($"普通：{item.Normal.EffectDescription}\n精锐：{item.Elite.EffectDescription}");
+                                    Save(equipmentDetails, Path.Combine(output,
+                                        $"{(isLight ? "light" : "dark")}-tracked-equipment-{item.Name}.png"));
+                                }
+
+                                var equipmentHover = new TrackedEquipmentCard
+                                {
+                                    DataContext = equipment.Single(e => e.Name == "博士投影"),
+                                    VerticalAlignment = VerticalAlignment.Top
+                                };
+                                host.Content = equipmentHover;
+                                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                                var equipmentRow = (Border)equipmentHover.FindName("CardBorder");
+                                var hoverDetails = (ToolTip)equipmentHover.FindName("DetailsToolTip");
+                                hoverDetails.PlacementTarget = equipmentRow;
+                                hoverDetails.MaxHeight = 100;
+                                hoverDetails.Opacity = 0;
+                                hoverDetails.IsOpen = true;
+                                Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                                hoverDetails.IsOpen.Should().BeTrue();
+                                equipmentRow.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseLeaveEvent });
+                                hoverDetails.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseEnterEvent });
+                                var equipmentGrace = System.Diagnostics.Stopwatch.StartNew();
+                                while (equipmentGrace.Elapsed < TimeSpan.FromMilliseconds(250))
+                                {
+                                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                                    Thread.Sleep(1);
+                                }
+                                hoverDetails.IsOpen.Should().BeTrue("the equipment popup must allow crossing into its details");
+                                Descendants<ScrollViewer>(hoverDetails).Single().RaiseEvent(
+                                    new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, -120) { RoutedEvent = Mouse.PreviewMouseWheelEvent });
+                                hoverDetails.IsOpen.Should().BeTrue("equipment details must remain open while scrolling inside");
+                                hoverDetails.RaiseEvent(new MouseEventArgs(Mouse.PrimaryDevice, 0) { RoutedEvent = Mouse.MouseLeaveEvent });
+                                WaitForUi(() => !hoverDetails.IsOpen, "leaving equipment details must dismiss the popup");
+                                hoverDetails.IsOpen = true;
+                                equipmentHover.RaiseEvent(new MouseWheelEventArgs(Mouse.PrimaryDevice, 0, 120)
+                                    { RoutedEvent = Mouse.PreviewMouseWheelEvent });
+                                hoverDetails.IsOpen.Should().BeFalse("scrolling the tracking list must close equipment details");
+
+                                var shield = equipmentCards.Single(c => ((Equipment)c.DataContext).Name == "坚守盾牌");
+                                ((Button)shield.FindName("TrackButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                                trackingVm.IsTracked("坚守盾牌").Should().BeFalse();
+                                trackingVm.IsTracked("乌萨斯呼吸器").Should().BeTrue();
+                                trackingVm.AddTracking("坚守盾牌", TrackingType.Equipment);
+                                trackingVm.AddTracking("旧版已移除装备", TrackingType.Equipment);
+                                content.UpdateLayout();
+                                var removeUnknownEquipment = Descendants<Button>(trackingView)
+                                    .Single(b => b.Tag as string == "旧版已移除装备");
+                                removeUnknownEquipment.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                                trackingVm.IsTracked("旧版已移除装备").Should().BeFalse();
+                                content.UpdateLayout();
+                                content.Measure(new Size(280, 900));
+                                content.Arrange(new Rect(0, 0, 280, 900));
+                                content.UpdateLayout();
+                                foreach (var equipmentCard in Descendants<TrackedEquipmentCard>(trackingView))
+                                {
+                                    var equipmentBorder = (Border)equipmentCard.FindName("CardBorder");
+                                    foreach (var name in new[] { "NameText", "CategoryChips", "TypeText", "TrackButton" })
+                                    {
+                                        var element = (FrameworkElement)equipmentCard.FindName(name);
+                                        var left = element.TranslatePoint(new Point(), equipmentBorder).X;
+                                        left.Should().BeGreaterThanOrEqualTo(0);
+                                        (left + element.ActualWidth).Should().BeLessThanOrEqualTo(equipmentBorder.ActualWidth);
+                                    }
+                                }
+                                Save(content, Path.Combine(output, isLight ? "light-tracking-narrow.png" : "dark-tracking-narrow.png"));
+                                content.Measure(new Size(310, 900));
+                                content.Arrange(new Rect(0, 0, 310, 900));
+                                content.UpdateLayout();
                             }
                             Save(content, Path.Combine(output, $"{(isLight ? "light" : "dark")}-page-{i}.png"));
                         }
+                    }
+
+                    foreach (var isLight in new[] { false, true })
+                    {
+                        ThemeManager.Apply(isLight);
+                        const string sharedUrl = "https://dpaste.com/TEST12345";
+                        var attempts = 0;
+                        var copiedText = "";
+                        var shareWindow = new ShareLinkWindow(sharedUrl, text =>
+                        {
+                            attempts++;
+                            if (attempts < 3) throw new COMException("Clipboard busy", unchecked((int)0x800401D0));
+                            copiedText = text;
+                        });
+                        try
+                        {
+                            var copyTask = shareWindow.CopyLinkAsync();
+                            var copyButton = (Button)shareWindow.FindName("CopyButton");
+                            copyButton.IsEnabled.Should().BeFalse();
+                            shareWindow.CopyLinkAsync().IsCompleted.Should().BeTrue("repeated clicks must not create another copy attempt");
+                            WaitForUi(() => copyTask.IsCompleted, "a temporary clipboard lock should recover");
+                            copyTask.GetAwaiter().GetResult();
+                            attempts.Should().Be(3);
+                            copiedText.Should().Be(sharedUrl);
+                            ((TextBlock)shareWindow.FindName("CopyStatusText")).Text.Should().Contain("已复制");
+                            copyButton.IsEnabled.Should().BeTrue();
+                        }
+                        finally { shareWindow.Close(); }
+
+                        var clipboardBusy = true;
+                        attempts = 0;
+                        var fallbackWindow = new ShareLinkWindow(sharedUrl, _ =>
+                        {
+                            attempts++;
+                            if (clipboardBusy) throw new COMException("Clipboard busy", unchecked((int)0x800401D0));
+                        });
+                        try
+                        {
+                            var copyTask = fallbackWindow.CopyLinkAsync();
+                            WaitForUi(() => copyTask.IsCompleted, "a persistent clipboard lock must stop retrying");
+                            copyTask.GetAwaiter().GetResult();
+                            attempts.Should().Be(3);
+                            var linkBox = (TextBox)fallbackWindow.FindName("LinkBox");
+                            linkBox.Text.Should().Be(sharedUrl);
+                            linkBox.IsReadOnly.Should().BeTrue();
+                            linkBox.SelectionLength.Should().Be(sharedUrl.Length);
+                            ((TextBlock)fallbackWindow.FindName("CopyStatusText")).Text.Should().Contain("链接已生成").And.Contain("手动复制");
+                            var dialogContent = (Border)fallbackWindow.Content;
+                            dialogContent.Measure(new Size(460, 230));
+                            dialogContent.Arrange(new Rect(0, 0, 460, 230));
+                            dialogContent.UpdateLayout();
+                            Save(dialogContent, Path.Combine(output, isLight ? "light-share-link.png" : "dark-share-link.png"));
+                            clipboardBusy = false;
+                            copyTask = fallbackWindow.CopyLinkAsync();
+                            WaitForUi(() => copyTask.IsCompleted, "manual retry must reuse the existing link");
+                            copyTask.GetAwaiter().GetResult();
+                            attempts.Should().Be(4);
+                            ((TextBlock)fallbackWindow.FindName("CopyStatusText")).Text.Should().Contain("已复制");
+                        }
+                        finally { fallbackWindow.Close(); }
+                    }
+                    var closeAttempts = 0;
+                    var closingShareWindow = new ShareLinkWindow("https://dpaste.com/TEST12345", _ =>
+                    {
+                        closeAttempts++;
+                        throw new COMException("Clipboard busy", unchecked((int)0x800401D0));
+                    });
+                    var closingCopyTask = closingShareWindow.CopyLinkAsync();
+                    closingShareWindow.Close();
+                    WaitForUi(() => closingCopyTask.IsCompleted, "closing the result window must stop pending clipboard retries");
+                    closingCopyTask.GetAwaiter().GetResult();
+                    closeAttempts.Should().Be(1);
+
+                    lineupVm.LoadLineups([new Lineup { Name = "分享失败回归阵容" }]);
+                    tabs.SelectedIndex = 3;
+                    content.Measure(new Size(310, 900));
+                    content.Arrange(new Rect(0, 0, 310, 900));
+                    content.UpdateLayout();
+                    var lineupView = (LineupListView)((TabItem)tabs.Items[3]).Content;
+                    Descendants<Button>(lineupView).Single(b => b.Content as string == "分享")
+                        .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    WaitForUi(() => ((TextBlock)sidePanel.FindName("ToastText")).Text.StartsWith("生成分享链接失败"),
+                        "network failures must be distinguished from clipboard failures");
+
+                    var checkUpdate = (Button)sidePanel.FindName("CheckUpdateButton");
+                    var updateStatus = (TextBlock)sidePanel.FindName("UpdateStatusText");
+                    var updateBanner = (Border)sidePanel.FindName("UpdateBanner");
+                    var updateAction = (Button)sidePanel.FindName("UpdateActionButton");
+                    ((TextBlock)sidePanel.FindName("CurrentVersionText")).Text.Should().Be(
+                        $"当前版本：v{typeof(SidePanelWindow).Assembly.GetName().Version!.ToString(3)}");
+                    var previousFeed = Environment.GetEnvironmentVariable(UpdateService.FeedOverrideVariable);
+                    using var updateServer = new TcpListener(IPAddress.Loopback, 0);
+                    updateServer.Start();
+                    var feed = $"http://127.0.0.1:{((IPEndPoint)updateServer.LocalEndpoint).Port}/";
+                    Environment.SetEnvironmentVariable(UpdateService.FeedOverrideVariable, feed);
+                    try
+                    {
+                        const string futureTag = "v999.0.0";
+                        var release = System.Text.Json.JsonSerializer.Serialize(new
+                        {
+                            tag_name = futureTag,
+                            body = "Offline UI regression",
+                            assets = new[] { new { name = "ASPAssistant-v999.0.0-win-x64.zip", browser_download_url = feed + "package.zip" } }
+                        });
+                        var saveSkipped = new SettingsManager(output).SaveSkippedVersionAsync(futureTag);
+                        WaitForUi(() => saveSkipped.IsCompleted, "the skipped version should be saved");
+                        saveSkipped.GetAwaiter().GetResult();
+                        var automaticCheck = sidePanel.StartUpdateCheckAsync();
+                        RespondToUpdateRequest(updateServer, 200, release);
+                        WaitForUi(() => automaticCheck.IsCompleted, "the automatic update check should finish");
+                        automaticCheck.GetAwaiter().GetResult();
+                        updateStatus.Text.Should().Contain("已跳过").And.Contain(futureTag);
+                        updateBanner.Visibility.Should().Be(Visibility.Collapsed);
+
+                        checkUpdate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        checkUpdate.IsEnabled.Should().BeFalse();
+                        updateStatus.Text.Should().Be("正在检查更新…");
+                        checkUpdate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        RespondToUpdateRequest(updateServer, 200,
+                            $"{{\"tag_name\":\"v{new UpdateService().CurrentVersion}\",\"assets\":[]}}");
+                        WaitForUi(() => checkUpdate.IsEnabled, "manual update checks must restore the button");
+                        updateStatus.Text.Should().Be("当前已是最新版本");
+                        updateServer.Pending().Should().BeFalse("repeated clicks must not start another request");
+
+                        checkUpdate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        RespondToUpdateRequest(updateServer, 403, "{}");
+                        WaitForUi(() => checkUpdate.IsEnabled, "failed requests must allow another check");
+                        updateStatus.Text.Should().Contain("检查失败").And.Contain("限流");
+                        checkUpdate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        RespondToUpdateRequest(updateServer, 200, "invalid JSON");
+                        WaitForUi(() => checkUpdate.IsEnabled, "malformed responses must allow another check");
+                        updateStatus.Text.Should().Contain("检查失败").And.Contain("有效 JSON");
+
+                        checkUpdate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        RespondToUpdateRequest(updateServer, 200, release);
+                        WaitForUi(() => checkUpdate.IsEnabled, "manual checks must bypass a previously skipped version");
+                        updateBanner.Visibility.Should().Be(Visibility.Visible);
+                        updateStatus.Text.Should().Contain("正在下载").And.Contain(futureTag);
+                        ((Button)sidePanel.FindName("SkipVersionButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        WaitForUi(() => updateBanner.Visibility == Visibility.Collapsed, "skipping should hide the banner");
+                        checkUpdate.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        updateBanner.Visibility.Should().Be(Visibility.Visible);
+                        RespondToUpdateRequest(updateServer, 503, "{}");
+                        WaitForUi(() => updateStatus.Text.StartsWith("下载失败"), "download errors must be visible");
+                        updateStatus.Text.Should().Contain("503");
+                        updateServer.Pending().Should().BeFalse("reopening an active update must reuse the existing download");
+                        ((TextBlock)sidePanel.FindName("UpdateActionText")).Text.Should().Be("重试");
+                        updateAction.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        updateStatus.Text.Should().Contain("正在下载");
+                        RespondToUpdateRequest(updateServer, 503, "{}");
+                        WaitForUi(() => updateStatus.Text.StartsWith("下载失败"), "retry must issue a fresh download request");
+                    }
+                    finally
+                    {
+                        Environment.SetEnvironmentVariable(UpdateService.FeedOverrideVariable, previousFeed);
                     }
                 }
                 finally
@@ -368,8 +702,60 @@ public class ThemeAndHighlightTests
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
         thread.Start();
-        thread.Join(TimeSpan.FromSeconds(30)).Should().BeTrue("WPF layout should finish without blocking");
+        // 30 秒的旧上限在较慢的 CI runner（Windows Server 2022）上会被触碰：
+        // 本地约 16～27 秒完成，云端同一步超过 30 秒而误判为阻塞。放宽到 180 秒，
+        // 仍能在真正死锁时失败，只是判定更宽松。
+        thread.Join(TimeSpan.FromSeconds(180)).Should().BeTrue("WPF layout should finish without blocking");
         if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
+    private static void AssertTierClicks(ListBox tiers, Action<int[]> assertFiltered)
+    {
+        void Click(int index)
+        {
+            var item = (ListBoxItem)tiers.ItemContainerGenerator.ContainerFromIndex(index);
+            var click = new MouseButtonEventArgs(Mouse.PrimaryDevice, Environment.TickCount, MouseButton.Left)
+            {
+                RoutedEvent = UIElement.PreviewMouseLeftButtonDownEvent,
+                Source = Descendants<TextBlock>(item).Single()
+            };
+            tiers.RaiseEvent(click);
+            tiers.UpdateLayout();
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            click.Handled.Should().BeTrue();
+        }
+
+        void AssertSelected(params int[] expected)
+        {
+            tiers.SelectedItems.OfType<int>().Should().BeEquivalentTo(expected);
+            assertFiltered(expected);
+            if (expected.Length == 0)
+                tiers.SelectedIndex.Should().Be(0);
+            else
+                ((ListBoxItem)tiers.ItemContainerGenerator.ContainerFromIndex(0)).IsSelected.Should().BeFalse();
+        }
+
+        var first = (int)tiers.Items[1];
+        var second = (int)tiers.Items[2];
+        AssertSelected();
+        Click(1);
+        AssertSelected(first);
+        Click(2);
+        AssertSelected(first, second);
+        Click(1);
+        AssertSelected(second);
+        Click(2);
+        AssertSelected();
+        Click(2);
+        AssertSelected(second);
+        Click(0);
+        AssertSelected();
+        Click(0);
+        AssertSelected();
+        Click(1);
+        AssertSelected(first);
+        Click(0);
+        AssertSelected();
     }
 
     private static IEnumerable<T> Descendants<T>(DependencyObject parent) where T : DependencyObject
@@ -391,6 +777,37 @@ public class ThemeAndHighlightTests
             Thread.Sleep(1);
         }
         control.IsEnabled.Should().BeTrue("the preference write should complete");
+    }
+
+    private static void WaitForUi(Func<bool> completed, string reason)
+    {
+        var timer = System.Diagnostics.Stopwatch.StartNew();
+        while (!completed() && timer.Elapsed < TimeSpan.FromSeconds(5))
+        {
+            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+            Thread.Sleep(1);
+        }
+        completed().Should().BeTrue(reason);
+    }
+
+    private static void RespondToUpdateRequest(TcpListener server, int statusCode, string body)
+    {
+        WaitForUi(server.Pending, "the updater should contact the local test server");
+        using var client = server.AcceptTcpClient();
+        client.ReceiveTimeout = 5000;
+        using var stream = client.GetStream();
+        using var reader = new StreamReader(stream, Encoding.ASCII, leaveOpen: true);
+        while (!string.IsNullOrEmpty(reader.ReadLine())) { }
+        var content = Encoding.UTF8.GetBytes(body);
+        stream.Write(Encoding.ASCII.GetBytes(
+            $"HTTP/1.1 {statusCode} Test\r\nContent-Type: application/json\r\nContent-Length: {content.Length}\r\nConnection: close\r\n\r\n"));
+        stream.Write(content);
+    }
+
+    private sealed class FailedShareHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
     }
 
     private static void Save(FrameworkElement element, string path)

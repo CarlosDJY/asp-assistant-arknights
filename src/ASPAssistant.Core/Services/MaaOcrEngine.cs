@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Arknights on 2026-11-09; see NOTICE.
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;

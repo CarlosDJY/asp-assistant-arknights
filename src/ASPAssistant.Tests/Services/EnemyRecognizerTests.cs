@@ -32,7 +32,7 @@ public class EnemyRecognizerTests(EnemyRecognitionFixture fixture, ITestOutputHe
         result!.BossName.Should().Be(boss);
         result.EnemyTypes.Should().Equal(types.Split('|'));
         if (image == "ban-sample-1920x1080.png")
-            fixture.Bosses.Lookup(result.BossName).Should().BeNull("鳍 is not 胄/铳/管 in the old catalogue");
+            fixture.Bosses.Lookup(result.BossName).Should().NotBeNull("鳍 belongs to the current season catalogue");
     }
 
     [Fact]
@@ -65,7 +65,7 @@ public class EnemyRecognizerTests(EnemyRecognitionFixture fixture, ITestOutputHe
     }
 
     [Theory]
-    [InlineData("假想敌：鳍")]
+    [InlineData("假想敌：刃")]
     [InlineData("假想敌：盾")]
     public void UnlistedBossIsNotReplacedWithAnotherImaginaryEnemy(string text)
     {
@@ -75,13 +75,13 @@ public class EnemyRecognizerTests(EnemyRecognitionFixture fixture, ITestOutputHe
     [Fact]
     public void KnownBossMatchesAcrossLineBreaksAndPunctuation()
     {
-        fixture.Bosses.TryMatchBossFromOcr(["卢西恩，", "“猩红血钻”"], out var name).Should().BeTrue();
-        name.Should().Be("卢西恩，“猩红血钻”");
+        fixture.Bosses.TryMatchBossFromOcr(["阿利斯泰尔，", "帝国余晖"], out var name).Should().BeTrue();
+        name.Should().Be("阿利斯泰尔，帝国余晖");
     }
 
     [Theory]
-    [InlineData("复苏")]
-    [InlineData("致命")]
+    [InlineData("剧毒")]
+    [InlineData("腐蚀")]
     [InlineData("飞向")]
     public void UnlistedTypeDoesNotGetUnrelatedDetailCards(string text)
         => fixture.Types.LookupByTypeName(text).Should().BeNull();

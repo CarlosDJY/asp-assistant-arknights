@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
@@ -23,6 +23,13 @@ public partial class TrackingView : UserControl
     private TrackingViewModel? _vm;
     private INotifyCollectionChanged? _operators;
     private INotifyCollectionChanged? _equipment;
+
+    public static readonly DependencyProperty EquipmentDatabaseProperty = DependencyProperty.Register(
+        nameof(EquipmentDatabase), typeof(IReadOnlyDictionary<string, Equipment>), typeof(TrackingView),
+        new PropertyMetadata(new Dictionary<string, Equipment>()));
+
+    public IReadOnlyDictionary<string, Equipment> EquipmentDatabase
+        => (IReadOnlyDictionary<string, Equipment>)GetValue(EquipmentDatabaseProperty);
 
     public TrackingView()
     {
@@ -88,6 +95,15 @@ public partial class TrackingView : UserControl
             .Select(x => new TrackedCovenantChip(x.Key, x.Value.Count, x.Value.IsCore))
             .ToList();
         CovenantSection.Visibility = tally.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public void SetEquipment(IReadOnlyList<Equipment> equipment)
+        => SetValue(EquipmentDatabaseProperty, equipment.ToDictionary(e => e.Name));
+
+    private void OnTrackedEquipmentToggled(object sender, RoutedEventArgs e)
+    {
+        if (e.OriginalSource is TrackedEquipmentCard { DataContext: Equipment equipment })
+            RemoveTrackingRequested?.Invoke(equipment.Name);
     }
 
     private void OnTrackedOperatorToggled(object sender, RoutedEventArgs e)

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-# Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+# Modified for ASP Assistant Regulation on 2026-11-10; see NOTICE.
 """
 SPDatabase 数据抓取工具
-从 PRTS Wiki 获取卫戍协议/盟约数据，输出 operators.json 和 equipment.json
+从 PRTS 与游戏图鉴获取卫戍协议/盟约数据，输出干员、装备、盟约、首领与特训敌人 JSON。
+仅更新敌人（不下载图标）：python fetch_spdatabase.py --only-enemies --skip-icons
 
 数据来源: https://static.prts.wiki/app/spdatabase/index.html
 参考项目: https://github.com/Yanstory/SPDatabase
@@ -454,31 +455,7 @@ def process_skin_avatars(
 
 # ── 特训敌人类型处理 ──────────────────────────────────────────────────────────
 
-# 类型代码 → 中文名（与游戏内 OCR 识别到的 "特训敌人·XXX" 后缀对应）
-ENEMY_TYPE_NAMES: dict[str, str] = {
-    "DOT":        "持续",
-    "ELEMENT":    "元素",
-    "FLY":        "飞行",
-    "INVISIBLE":  "隐匿",
-    "REFLECTION": "折射",
-    "SPECIAL":    "特异",
-    "TIMES":      "频次",
-}
-
-# 类型代码 → PRTS Wiki 图标文件名
-# URL 形如: https://media.prts.wiki/{md5[0]}/{md5[:2]}/特训敌人_飞行.png
-ENEMY_TYPE_ICON_FILES: dict[str, str] = {
-    "DOT":        "特训敌人_持续.png",
-    "ELEMENT":    "特训敌人_元素.png",
-    "FLY":        "特训敌人_飞行.png",
-    "INVISIBLE":  "特训敌人_隐匿.png",
-    "REFLECTION": "特训敌人_折射.png",
-    "SPECIAL":    "特训敌人_特异.png",
-    "TIMES":      "特训敌人_频次.png",
-}
-
-
-def process_enemy_types(season_data: dict, enemy_name_map: dict[str, str] | None = None) -> dict:
+def process_enemy_types(season_data: dict, type_metadata: dict, enemy_name_map: dict[str, str]) -> dict:
     """
     从赛季数据的 specialEnemyInfoDict 中提取特训敌人类型信息。
 
@@ -487,8 +464,9 @@ def process_enemy_types(season_data: dict, enemy_name_map: dict[str, str] | None
       - firstHalfVariants: isInFirstHalf=True 的代表敌人列表（iconPath 已填充）
       - secondHalfVariants: isInFirstHalf=False 的代表敌人列表
     """
-    spec_dict: dict = season_data.get("specialEnemyInfoDict", {})
-    enemy_name_map = enemy_name_map or {}
+    spec_dict: dict = season_data["specialEnemyInfoDict"]
+    if not spec_dict:
+        raise ValueError("赛季特训敌人列表为空，停止更新")
 
     types: dict[str, dict] = {}
 
@@ -516,15 +494,15 @@ def process_enemy_types(season_data: dict, enemy_name_map: dict[str, str] | None
         return ""
 
     for enemy_id, entry in spec_dict.items():
-        if not entry:
-            continue
-        type_code: str = entry.get("type", "")
-        if not type_code:
-            continue
-
-        type_name = ENEMY_TYPE_NAMES.get(type_code, type_code)
-        is_first_half: bool = bool(entry.get("isInFirstHalf", True))
-        weight: int = int(entry.get("randomWeight", 1))
+        type_code: str = entry["type"]
+        if type_code not in type_metadata:
+            raise ValueError(f"未知特训类型 {type_code}：enemyTypeDatas 中缺少类型资料，停止更新")
+        full_name = type_metadata[type_code]["name"]
+        type_name = full_name.removeprefix("特训敌人·").strip()
+        if not full_name.startswith("特训敌人·") or not type_name:
+            raise ValueError(f"特训类型 {type_code} 的中文名称无效：{full_name!r}")
+        is_first_half: bool = entry["isInFirstHalf"]
+        weight: int = entry["randomWeight"]
 
         if type_code not in types:
             types[type_code] = {
@@ -552,7 +530,7 @@ def process_enemy_types(season_data: dict, enemy_name_map: dict[str, str] | None
         t["firstHalfVariants"].sort(key=lambda v: -v["weight"])
         t["secondHalfVariants"].sort(key=lambda v: -v["weight"])
 
-    return types
+    return dict(sorted(types.items(), key=lambda item: type_metadata[item[0]]["sortId"]))
 
 
 def collect_enemy_ids_for_icons(enemy_types: dict) -> set[str]:
@@ -584,15 +562,16 @@ def download_enemy_icons(enemy_ids: set[str], data_dir: Path) -> None:
     print(f"  特训小怪头像: {dl_new} 新下载, {dl_skip} 已存在, {dl_fail} 失败")
 
 
-def download_enemy_type_icons(data_dir: Path) -> None:
-    """从 PRTS Media Wiki 下载 7 种特训敌人类型图标。
+def download_enemy_type_icons(enemy_types: dict, data_dir: Path) -> None:
+    """从 PRTS Media Wiki 下载当前赛季特训敌人类型图标。
     保存为 data/icons/enemy_types/{typeCode}.png。
     """
     icon_dir = data_dir / "icons" / "enemy_types"
     icon_dir.mkdir(parents=True, exist_ok=True)
 
     dl_new, dl_skip, dl_fail = 0, 0, 0
-    for type_code, filename in ENEMY_TYPE_ICON_FILES.items():
+    for type_code, entry in enemy_types.items():
+        filename = f"特训敌人_{entry['typeName']}.png"
         save_path = icon_dir / f"{type_code}.png"
         if save_path.exists():
             dl_skip += 1
@@ -608,55 +587,40 @@ def download_enemy_type_icons(data_dir: Path) -> None:
 
 # ── Boss（卫戍协议「领袖」池）处理 ────────────────────────────────────────────
 
-# 与游戏内卫戍协议 / 盟约「领袖」表一致（同名多 phase 只保留主条目一条）
-GARRISON_PROTOCOL_BOSS_IDS: frozenset[str] = frozenset(
-    {
-        "enemy_9013_acstmk",  # 假想敌：胄
-        "enemy_9017_achunt",  # 假想敌：铳
-        "enemy_9021_acduml",  # 假想敌：管
-        "enemy_1521_dslily",  # 盐风主教昆图斯
-        "enemy_2016_csphtm",  # 卢西恩，“猩红血钻”
-        "enemy_9032_aclionk",  # 阿利斯泰尔，帝国余晖（盟约）
-        "enemy_9033_acdeer",  # “萨米的意志”（盟约）
-    }
-)
-
-# 与游戏内「领袖」表展示顺序一致（非 enemyIndex 字母序）
-GARRISON_BOSS_ORDER: tuple[str, ...] = (
-    "enemy_9013_acstmk",
-    "enemy_9017_achunt",
-    "enemy_9021_acduml",
-    "enemy_1521_dslily",
-    "enemy_2016_csphtm",
-    "enemy_9032_aclionk",
-    "enemy_9033_acdeer",
-)
-_GARRISON_ORDER_RANK: dict[str, int] = {eid: i for i, eid in enumerate(GARRISON_BOSS_ORDER)}
-
 # 在 handbook 名称之外补充 OCR 常见简称（enemyId -> 额外 aliases）
 BOSS_EXTRA_ALIASES: dict[str, list[str]] = {
     "enemy_9032_aclionk": ["帝国余晖"],
 }
 
 
-def process_bosses(handbook_data: dict) -> list[dict]:
+def process_bosses(handbook_data: dict, season_data: dict, boss_metadata: dict) -> list[dict]:
     """
-    从 enemy_handbook_table.json 中提取卫戍协议「领袖」池：
-    enemyLevel == "BOSS" 且 enemyId 属于 GARRISON_PROTOCOL_BOSS_IDS。
+    按赛季首领池和 sortId 选取图鉴资料，同名强化形态只保留一条。
+    enemyId 用于战斗头像，handbookEnemyId 用于图鉴；两者可能不同。
     """
-    enemy_data: dict = handbook_data.get("enemyData", {})
+    enemy_data: dict = handbook_data["enemyData"]
+    pool = season_data["bossInfoDict"]
+    if not pool:
+        raise ValueError("赛季首领池为空，停止更新")
     bosses = []
+    seen_names: set[str] = set()
 
-    for enemy_id, entry in enemy_data.items():
-        if not entry:
-            continue
-        if enemy_id not in GARRISON_PROTOCOL_BOSS_IDS:
-            continue
-        if entry.get("enemyLevel") != "BOSS":
-            continue
-        name: str = (entry.get("name") or "").strip()
+    for boss in sorted(pool.values(), key=lambda entry: entry["sortId"]):
+        boss_id = boss["bossId"]
+        if boss_id not in boss_metadata:
+            raise ValueError(f"首领 {boss_id} 缺少全局映射，停止更新")
+        metadata = boss_metadata[boss_id]
+        enemy_id = metadata["enemyId"]
+        handbook_id = metadata["handbookEnemyId"]
+        if handbook_id not in enemy_data:
+            raise ValueError(f"首领 {boss_id} 的图鉴 {handbook_id} 未收录，停止更新")
+        entry = enemy_data[handbook_id]
+        name: str = entry["name"].strip()
         if not name:
+            raise ValueError(f"首领 {boss_id} 的图鉴名称为空，停止更新")
+        if name in seen_names:
             continue
+        seen_names.add(name)
 
         ability_list = [
             a["text"]
@@ -683,9 +647,6 @@ def process_bosses(handbook_data: dict) -> list[dict]:
                     row["aliases"].append(a)
         bosses.append(row)
 
-    bosses.sort(
-        key=lambda b: (_GARRISON_ORDER_RANK.get(b.get("enemyId") or "", 999), b.get("enemyId") or "")
-    )
     return bosses
 
 
@@ -700,34 +661,6 @@ def build_enemy_name_map(handbook_data: dict) -> dict[str, str]:
         if name:
             name_map[enemy_id] = name
     return name_map
-
-
-def merge_extra_bosses_from_disk(bosses: list[dict], bosses_path: Path) -> list[dict]:
-    """
-    保留 bosses.json 中已有、但本次 handbook 未返回的条目；
-    仅合并 enemyId 在 GARRISON_PROTOCOL_BOSS_IDS 内的行，避免塞回全图鉴 Boss。
-    """
-    if not bosses_path.exists():
-        return bosses
-    try:
-        with open(bosses_path, encoding="utf-8") as f:
-            old = json.load(f).get("bosses") or []
-    except Exception:
-        return bosses
-    new_ids = {b.get("enemyId") for b in bosses if b.get("enemyId")}
-    merged = list(bosses)
-    for b in old:
-        eid = b.get("enemyId")
-        if not eid or eid in new_ids:
-            continue
-        if eid not in GARRISON_PROTOCOL_BOSS_IDS:
-            continue
-        merged.append(b)
-        new_ids.add(eid)
-    merged.sort(
-        key=lambda b: (_GARRISON_ORDER_RANK.get(b.get("enemyId") or "", 999), b.get("enemyId") or "")
-    )
-    return merged
 
 
 def download_boss_icons(bosses: list[dict], data_dir: Path) -> None:
@@ -753,6 +686,39 @@ def download_boss_icons(bosses: list[dict], data_dir: Path) -> None:
 
 # ── 主流程 ────────────────────────────────────────────────────────────────────
 
+def update_enemy_data(season_data: dict, auto_chess_data: dict, data_dir: Path, *,
+                      skip_icons: bool, skip_bosses: bool, skip_enemies: bool) -> None:
+    if skip_enemies and skip_bosses:
+        return
+
+    print("\n获取敌人图鉴数据 (enemy_handbook_table.json)...")
+    handbook_data = fetch_json(ARKGAMEDATA_HANDBOOK_URL)
+    outputs = []
+
+    # Validate both catalogues before writing either file or downloading icons.
+    if not skip_enemies:
+        enemy_types = process_enemy_types(
+            season_data, auto_chess_data["enemyTypeDatas"], build_enemy_name_map(handbook_data))
+        outputs.append((data_dir / "enemy_types.json", {"types": enemy_types}))
+        print(f"  类型数: {len(enemy_types)}, 敌人变体数: {sum(len(t['firstHalfVariants']) + len(t['secondHalfVariants']) for t in enemy_types.values())}")
+    if not skip_bosses:
+        bosses = process_bosses(handbook_data, season_data, auto_chess_data["bossInfoDict"])
+        outputs.append((data_dir / "bosses.json", {"bosses": bosses}))
+        print(f"  Boss 数: {len(bosses)}")
+
+    if not skip_icons:
+        if not skip_enemies:
+            download_enemy_icons(collect_enemy_ids_for_icons(enemy_types), data_dir)
+            download_enemy_type_icons(enemy_types, data_dir)
+        if not skip_bosses:
+            download_boss_icons(bosses, data_dir)
+
+    for path, payload in outputs:
+        with path.open("w", encoding="utf-8") as file:
+            json.dump(payload, file, ensure_ascii=False, indent=2)
+        print(f"  {path.resolve()} ({path.stat().st_size / 1024:.1f} KB)")
+
+
 def main():
     parser = argparse.ArgumentParser(description="SPDatabase 数据抓取工具")
     parser.add_argument(
@@ -765,10 +731,15 @@ def main():
     parser.add_argument("--skip-icons", action="store_true", help="跳过图标下载")
     parser.add_argument("--skip-bosses",   action="store_true", help="跳过 Boss 数据获取")
     parser.add_argument("--skip-enemies", action="store_true", help="跳过特训敌人类型数据获取")
+    parser.add_argument("--only-enemies", action="store_true", help="仅更新首领和特训敌人，不处理干员、装备、盟约或皮肤")
     parser.add_argument("--download-skins", action="store_true", help="下载皮肤头像并生成映射文件")
     parser.add_argument("--apply-mask", action="store_true",
                         help="对 skin_avatars/ 目录内所有现有 PNG 原地补白色背景（需要 Pillow）")
     args = parser.parse_args()
+    if args.only_enemies and (args.download_skins or args.apply_mask):
+        parser.error("--only-enemies 不能与 --download-skins 或 --apply-mask 同时使用")
+    if args.only_enemies and args.skip_bosses and args.skip_enemies:
+        parser.error("--only-enemies 不能同时跳过首领和特训敌人")
 
     # --apply-mask 是独立操作，不需要拉取网络数据
     if args.apply_mask:
@@ -785,27 +756,30 @@ def main():
     print(f"=== SPDatabase 数据抓取工具 ===")
     print(f"赛季: {season_cfg['name']} (season {season_no})\n")
 
-    # 1. 获取干员名称表
-    print("[1/2] 获取干员数据 (character_table.json)...")
-    char_table = fetch_json(
-        f"{TORAPPU_ENDPOINT}/gamedata/latest/excel/character_table.json"
-    )
-    print(f"      共 {len(char_table)} 名干员\n")
-
-    # 2. 获取活动/存档数据
+    # 1. 获取活动/存档数据
     if season_cfg["mode"] == "ACTIVITY_SEASON_ARC":
         archive_file = season_cfg["archiveFile"]
-        print(f"[2/2] 获取存档数据 ({archive_file})...")
+        print(f"[1/2] 获取存档数据 ({archive_file})...")
         act_data = fetch_json(f"{ARCHIVE_ENDPOINT}/archive/{archive_file}")
         season_data = act_data["activity"]["AUTOCHESS_SEASON"][season_code]
     else:
-        print("[2/2] 获取活动数据 (activity_table.json)...")
+        print("[1/2] 获取活动数据 (activity_table.json)...")
         act_data = fetch_json(
             f"{TORAPPU_ENDPOINT}/gamedata/latest/excel/activity_table.json"
         )
         season_data = act_data["activity"]["AUTOCHESS"][season_code][season_cfg["versionId"]]
 
-    print()
+    if args.only_enemies:
+        update_enemy_data(season_data, act_data["autoChessData"], data_dir,
+                          skip_icons=args.skip_icons, skip_bosses=args.skip_bosses, skip_enemies=args.skip_enemies)
+        return
+
+    # 2. 获取干员名称表
+    print("[2/2] 获取干员数据 (character_table.json)...")
+    char_table = fetch_json(
+        f"{TORAPPU_ENDPOINT}/gamedata/latest/excel/character_table.json"
+    )
+    print(f"      共 {len(char_table)} 名干员\n")
 
     # 3. 定位赛季数据和全局盟约信息
     bond_info_dict = act_data["autoChessData"]["bondInfoDict"]
@@ -915,50 +889,9 @@ def main():
     else:
         print("跳过图标下载 (--skip-icons)")
 
-    handbook_data: dict | None = None
-    if not args.skip_enemies or not args.skip_bosses:
-        print("\n获取敌人图鉴数据 (enemy_handbook_table.json)...")
-        handbook_data = fetch_json(ARKGAMEDATA_HANDBOOK_URL)
-
-    # 7. 处理特训敌人类型数据
-    if not args.skip_enemies:
-        print("\n处理特训敌人类型数据...")
-        enemy_name_map = build_enemy_name_map(handbook_data or {})
-        enemy_types = process_enemy_types(season_data, enemy_name_map)
-        enemy_ids_for_icons = collect_enemy_ids_for_icons(enemy_types)
-        print(f"  已加载中文敌人名: {len(enemy_name_map)}")
-        print(f"  类型数: {len(enemy_types)}, 敌人变体数: {sum(len(t['firstHalfVariants']) + len(t['secondHalfVariants']) for t in enemy_types.values())}")
-
-        if not args.skip_icons:
-            print("下载特训小怪头像...")
-            download_enemy_icons(enemy_ids_for_icons, data_dir)
-            print("下载特训敌人类型图标...")
-            download_enemy_type_icons(data_dir)
-
-        enemy_types_path = data_dir / "enemy_types.json"
-        with open(enemy_types_path, "w", encoding="utf-8") as f:
-            json.dump({"types": enemy_types}, f, ensure_ascii=False, indent=2)
-        print(f"  {enemy_types_path.resolve()} ({enemy_types_path.stat().st_size / 1024:.1f} KB)")
-    else:
-        print("\n跳过特训敌人类型数据获取 (--skip-enemies)")
-
-    # 8. 获取 Boss 数据
-    if not args.skip_bosses:
-        print("\n处理 Boss 数据...")
-        bosses = process_bosses(handbook_data or {})
-        bosses_path = data_dir / "bosses.json"
-        bosses = merge_extra_bosses_from_disk(bosses, bosses_path)
-        print(f"  Boss 数: {len(bosses)}")
-
-        if not args.skip_icons:
-            print("下载 Boss 头像...")
-            download_boss_icons(bosses, data_dir)
-
-        with open(bosses_path, "w", encoding="utf-8") as f:
-            json.dump({"bosses": bosses}, f, ensure_ascii=False, indent=2)
-        print(f"  {bosses_path.resolve()} ({bosses_path.stat().st_size / 1024:.1f} KB)")
-    else:
-        print("\n跳过 Boss 数据获取 (--skip-bosses)")
+    # 7. 更新当前赛季的首领和特训敌人
+    update_enemy_data(season_data, act_data["autoChessData"], data_dir,
+                      skip_icons=args.skip_icons, skip_bosses=args.skip_bosses, skip_enemies=args.skip_enemies)
 
     # 8. 下载皮肤头像并生成映射
     if args.download_skins:

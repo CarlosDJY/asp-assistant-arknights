@@ -1,4 +1,4 @@
-<!-- Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md. -->
+<!-- Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE. -->
 <UserControl x:Class="ASPAssistant.App.Views.EquipmentBrowseView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"

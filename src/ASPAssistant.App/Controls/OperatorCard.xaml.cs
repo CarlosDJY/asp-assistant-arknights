@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -52,9 +52,9 @@ public partial class OperatorCard : UserControl
     public OperatorCard()
     {
         InitializeComponent();
+        HoverToolTipBehavior.Attach(CardBorder, DetailsToolTip);
         DataContextChanged += (_, _) => RefreshOperatorState();
         Loaded += (_, _) => RefreshOperatorState();
-        Unloaded += (_, _) => DetailsToolTip.IsOpen = false;
     }
 
     private void RefreshOperatorState()

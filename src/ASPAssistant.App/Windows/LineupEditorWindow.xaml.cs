@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -21,7 +21,24 @@ public partial class LineupEditorWindow : Window
     {
         _vm = vm;
         InitializeComponent();
+        foreach (var phase in Enum.GetValues<LineupPhase>())
+        {
+            var button = new Button { Content = phase.ToString(), Style = (Style)FindResource("ChipButton"), Padding = new Thickness(16, 4, 16, 4) };
+            button.Click += (_, _) =>
+            {
+                _vm.SelectPhase(phase);
+                RefreshEditor();
+            };
+            PhaseTabs.Children.Add(button);
+        }
+        RefreshEditor();
+    }
+
+    private void RefreshEditor()
+    {
         LineupNameBox.Text = _vm.Name;
+        foreach (Button button in PhaseTabs.Children)
+            button.Tag = (string)button.Content == _vm.CurrentPhase.ToString() ? "active" : null;
         BuildSlotCards();
         RefreshCovenantPanel();
     }
@@ -47,6 +64,24 @@ public partial class LineupEditorWindow : Window
     {
         Result = null;
         DialogResult = false;
+    }
+
+    private void OnResetClick(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this, "确定恢复到本次打开编辑器时的状态？本次未保存的修改将被撤销。",
+                "确认恢复", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        _vm.Reset();
+        RefreshEditor();
+    }
+
+    private void OnClearClick(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this, $"确定清空“{_vm.CurrentPhase}”页的干员、装备和标签？阵容名称和其他阶段将保留，保存前不会改动已保存阵容。",
+                "确认清空", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+        _vm.Clear();
+        RefreshEditor();
     }
 
     // ── Slot card construction ──────────────────────────────────────────────
@@ -172,7 +207,16 @@ public partial class LineupEditorWindow : Window
             };
             int captured = slotI;
             chip.Click += (_, _) => PickEquipment(slotIndex, captured);
-            if (eqName is not null) chip.Tag = "active";
+            if (eqName is not null)
+            {
+                var isCore = slot.CoreEquipments.Contains(eqName);
+                chip.Tag = isCore ? "core" : "active";
+                if (isCore)
+                {
+                    chip.Content = $"★ {eqName}";
+                    chip.ToolTip = $"核心装备：{eqName}";
+                }
+            }
             equipPanel.Children.Add(chip);
         }
         rightStack.Children.Add(equipPanel);
@@ -190,14 +234,14 @@ public partial class LineupEditorWindow : Window
         };
         stack.Children.Add(tagsLabel);
         var tagPanel = new WrapPanel();
-        foreach (LineupTag tag in Enum.GetValues<LineupTag>())
+        foreach (LineupTag tag in Enum.GetValues<LineupTag>().OrderBy(tag => tag != LineupTag.阵容核心))
         {
             var chip = new Button
             {
                 Content = tag.ToString(),
                 Style = (Style)FindResource("ChipButton"),
             };
-            if (slot.Tags.Contains(tag)) chip.Tag = "active";
+            if (slot.Tags.Contains(tag)) chip.Tag = tag == LineupTag.阵容核心 ? "core" : "active";
             chip.Click += (_, _) =>
             {
                 _vm.ToggleSlotTag(slotIndex, tag);
@@ -214,17 +258,7 @@ public partial class LineupEditorWindow : Window
     private void PickOperator(int slotIndex)
     {
         var current = _vm.Slots[slotIndex].OperatorName;
-        var items = _vm.AllOperators
-            .OrderBy(o => o.Tier)
-            .ThenBy(o => o.Name, StringComparer.CurrentCulture)
-            .Select(o => new SimplePickerDialog.PickerItem(
-                o.Name,
-                $"[T{o.Tier}] {o.Name}",
-                o.IconPath,
-                FormatOperatorCovenants(o)));
-
-        var dlg = new SimplePickerDialog("选择干员", items, current,
-            "搜索干员名 / 单击直接选中")
+        var dlg = new OperatorPickerWindow(_vm.AllOperators, current)
         {
             Owner = this,
         };
@@ -236,14 +270,6 @@ public partial class LineupEditorWindow : Window
         }
     }
 
-    private static string FormatOperatorCovenants(Operator op)
-    {
-        var parts = new List<string>(op.CoreCovenants.Count + op.AdditionalCovenants.Count);
-        parts.AddRange(op.CoreCovenants);
-        parts.AddRange(op.AdditionalCovenants);
-        return string.Join(" · ", parts);
-    }
-
     private void PickEquipment(int slotIndex, int equipIndex)
     {
         var slot = _vm.Slots[slotIndex];
@@ -251,16 +277,8 @@ public partial class LineupEditorWindow : Window
 
         var current = equipIndex < slot.Equipments.Count ? slot.Equipments[equipIndex] : null;
 
-        var items = _vm.AllEquipment
-            .OrderBy(eq => eq.Tier)
-            .ThenBy(eq => eq.Name, StringComparer.CurrentCulture)
-            .Select(eq => new SimplePickerDialog.PickerItem(
-                eq.Name,
-                $"[T{eq.Tier}] {eq.Name}",
-                eq.IconPath));
-
-        var dlg = new SimplePickerDialog("选择装备", items, current,
-            "搜索装备名 / 双击或确定")
+        var dlg = new SimplePickerDialog(_vm.AllEquipment, current,
+            current is not null && slot.CoreEquipments.Contains(current))
         {
             Owner = this,
         };
@@ -269,38 +287,7 @@ public partial class LineupEditorWindow : Window
         var picked = dlg.Result;
         if (picked is null) return;
 
-        // Apply: replace at equipIndex, or remove if cleared
-        var newEquips = new List<string>(slot.Equipments);
-        if (string.IsNullOrEmpty(picked))
-        {
-            if (equipIndex < newEquips.Count)
-                newEquips.RemoveAt(equipIndex);
-        }
-        else
-        {
-            // Disallow duplicates within the slot
-            var existingIdx = newEquips.IndexOf(picked);
-            if (existingIdx >= 0 && existingIdx != equipIndex)
-                newEquips.RemoveAt(existingIdx);
-
-            if (equipIndex < newEquips.Count)
-                newEquips[equipIndex] = picked;
-            else
-                newEquips.Add(picked);
-
-            while (newEquips.Count > LineupEditorViewModel.MaxEquipPerSlot)
-                newEquips.RemoveAt(0);
-        }
-        _vm.Slots[slotIndex].Equipments.Clear();
-        foreach (var n in newEquips) _vm.Slots[slotIndex].Equipments.Add(n);
-        // Force collection-changed notification by reassigning the slot
-        _vm.Slots[slotIndex] = new LineupSlot
-        {
-            OperatorName = slot.OperatorName,
-            Equipments   = [.. newEquips],
-            Tags         = [.. slot.Tags],
-        };
-        _vm.Recalculate();
+        _vm.SetSlotEquipment(slotIndex, equipIndex, picked, dlg.IsCoreEquipment);
 
         RefreshSlotCard(_slotCards[slotIndex], slotIndex);
         RefreshCovenantPanel();
@@ -334,7 +321,7 @@ public partial class LineupEditorWindow : Window
         // The ItemsControl re-binds against ActiveStats automatically.
         CovenantStatsList.ItemsSource = null;
         CovenantStatsList.ItemsSource = _vm.ActiveStats;
-        EditorHint.Text = "提示：盟约阈值缺失（?）请在 data/covenants.user.json 中手动补齐。";
+        EditorHint.Text = $"正在编辑：{_vm.CurrentPhase} · 列表预览与追踪使用后期阵容";
     }
 
     private void OnCovenantRowLoaded(object sender, RoutedEventArgs e)

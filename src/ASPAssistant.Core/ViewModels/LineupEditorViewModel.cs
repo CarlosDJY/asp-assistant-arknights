@@ -16,6 +16,12 @@ public partial class LineupEditorViewModel : ObservableObject
     public const int MaxTagsPerSlot = 2;
 
     private readonly CovenantCalculator _calculator;
+    private readonly string _initialName;
+    private readonly Dictionary<LineupPhase, List<LineupSlot>> _initialSlots;
+    private readonly Dictionary<LineupPhase, ObservableCollection<LineupSlot>> _phaseSlots = [];
+    private readonly LineupPhase _initialPhase;
+
+    public LineupPhase CurrentPhase { get; private set; }
 
     public IReadOnlyList<Operator> AllOperators { get; }
     public IReadOnlyList<Equipment> AllEquipment { get; }
@@ -53,13 +59,31 @@ public partial class LineupEditorViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(source?.Name))
             _name = source!.Name;
 
-        var slots = new List<LineupSlot>(MaxSlots);
-        if (source is not null)
-            slots.AddRange(source.Slots.Take(MaxSlots).Select(CloneSlot));
-        while (slots.Count < MaxSlots)
-            slots.Add(new LineupSlot());
-        _slots = new ObservableCollection<LineupSlot>(slots);
+        foreach (var phase in Enum.GetValues<LineupPhase>())
+        {
+            IEnumerable<LineupSlot> sourceSlots = source is null ? [] : phase switch
+            {
+                LineupPhase.前期 => source.EarlySlots,
+                LineupPhase.中期 => source.MidSlots,
+                LineupPhase.后期 => source.Slots,
+                LineupPhase.挂件 => source.SupportSlots,
+                _ => throw new ArgumentOutOfRangeException(nameof(phase)),
+            };
+            var slots = new ObservableCollection<LineupSlot>(sourceSlots.Take(MaxSlots).Select(CloneSlot));
+            while (slots.Count < MaxSlots)
+                slots.Add(new LineupSlot());
+            _phaseSlots.Add(phase, slots);
+        }
+        _initialName = Name;
+        _initialSlots = _phaseSlots.ToDictionary(pair => pair.Key, pair => pair.Value.Select(CloneSlot).ToList());
+        _initialPhase = source is null ? LineupPhase.前期 : LineupPhase.后期;
+        SelectPhase(_initialPhase);
+    }
 
+    public void SelectPhase(LineupPhase phase)
+    {
+        CurrentPhase = phase;
+        Slots = _phaseSlots[phase];
         Recalculate();
     }
 
@@ -100,7 +124,41 @@ public partial class LineupEditorViewModel : ObservableObject
                 slot.Equipments.RemoveAt(0); // 顶替最早的
             slot.Equipments.Add(equipName);
         }
+        slot.CoreEquipments.RemoveAll(name => !slot.Equipments.Contains(name));
         Slots[slotIndex] = slot;
+        Recalculate();
+    }
+
+    public void SetSlotEquipment(int slotIndex, int equipmentIndex, string equipmentName, bool isCore)
+    {
+        var slot = CloneSlot(Slots[slotIndex]);
+        if (equipmentIndex < slot.Equipments.Count)
+            slot.Equipments.RemoveAt(equipmentIndex);
+        if (equipmentName.Length > 0)
+        {
+            slot.Equipments.Remove(equipmentName);
+            slot.Equipments.Insert(Math.Min(equipmentIndex, slot.Equipments.Count), equipmentName);
+        }
+        slot.CoreEquipments.RemoveAll(name => !slot.Equipments.Contains(name) || name == equipmentName);
+        if (equipmentName.Length > 0 && isCore)
+            slot.CoreEquipments.Add(equipmentName);
+        Slots[slotIndex] = slot;
+        Recalculate();
+    }
+
+    public void Reset()
+    {
+        Name = _initialName;
+        foreach (var (phase, slots) in _initialSlots)
+            _phaseSlots[phase] = new ObservableCollection<LineupSlot>(slots.Select(CloneSlot));
+        SelectPhase(_initialPhase);
+    }
+
+    public void Clear()
+    {
+        Slots.Clear();
+        for (int i = 0; i < MaxSlots; i++)
+            Slots.Add(new LineupSlot());
         Recalculate();
     }
 
@@ -126,8 +184,7 @@ public partial class LineupEditorViewModel : ObservableObject
 
     public void Recalculate()
     {
-        var snapshot = ToLineup();
-        var allStats = _calculator.Compute(snapshot);
+        var allStats = _calculator.Compute(new Lineup { Slots = [.. Slots] });
         var visible = allStats.Where(s => s.Count > 0)
                               .OrderByDescending(s => s.Activated)
                               .ThenBy(s => s.BondType == "SEASON" ? 0 : 1)
@@ -143,17 +200,22 @@ public partial class LineupEditorViewModel : ObservableObject
     {
         Id = LineupId,
         Name = string.IsNullOrWhiteSpace(Name) ? "未命名阵容" : Name.Trim(),
-        Slots = [.. Slots
-            .Where(s => !string.IsNullOrEmpty(s.OperatorName))
-            .Select(CloneSlot)],
+        Slots = ExportPhase(LineupPhase.后期),
+        EarlySlots = ExportPhase(LineupPhase.前期),
+        MidSlots = ExportPhase(LineupPhase.中期),
+        SupportSlots = ExportPhase(LineupPhase.挂件),
         UpdatedAt = DateTime.UtcNow,
     };
+
+    private List<LineupSlot> ExportPhase(LineupPhase phase) => [.. _phaseSlots[phase]
+        .Where(s => !string.IsNullOrEmpty(s.OperatorName)).Select(CloneSlot)];
 
     private static LineupSlot CloneSlot(LineupSlot s) => new()
     {
         OperatorName = s.OperatorName,
         TransformedCovenant = s.TransformedCovenant,
         Equipments   = [.. s.Equipments],
+        CoreEquipments = [.. s.CoreEquipments],
         Tags         = [.. s.Tags],
     };
 }

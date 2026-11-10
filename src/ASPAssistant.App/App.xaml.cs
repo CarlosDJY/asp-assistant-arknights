@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.IO;
 using System.Windows;
 using ASPAssistant.App.Windows;
@@ -72,6 +72,7 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        ShutdownMode = ShutdownMode.OnExplicitShutdown;
         try
         {
             await StartupAsync(e);
@@ -119,7 +120,28 @@ public partial class App : Application
         var dataStore = new JsonDataStore(dataDir);
         _settingsManager = new SettingsManager(settingsDir);
         ThemeManager.Apply(await _settingsManager.LoadLightThemeAsync());
-        var gameTheme = await _settingsManager.LoadGameShopThemeAsync();
+        var savedGameTheme = await _settingsManager.LoadGameShopThemeAsync();
+        if (savedGameTheme is null)
+        {
+            var themeWindow = new ModeThemeWindow();
+            if (themeWindow.ShowDialog() != true)
+            {
+                Shutdown();
+                return;
+            }
+            savedGameTheme = themeWindow.SelectedTheme;
+            try
+            {
+                await _settingsManager.SaveGameShopThemeAsync(savedGameTheme.Value);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                AppLogger.Warn("Settings", $"Could not save initial theme: {ex.Message}");
+                MessageBox.Show("主题已生效，但无法保存设置。下次启动时将再次提示选择。",
+                    "模式主题设置", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+        var gameTheme = savedGameTheme.Value;
 
         // Load data
         AppLogger.Info("App", "Loading operators...");
@@ -520,14 +542,16 @@ public partial class App : Application
         };
 
         // Show windows and start services
+        MainWindow = _sidePanel;
         _sidePanel.Show();
         _overlay.Show();
+        ShutdownMode = ShutdownMode.OnLastWindowClose;
         _windowTracker.Start();
         _ocrScanner.Start();
         AppLogger.Info("App", "Startup complete");
 
         // Start background update check
-        _sidePanel.StartUpdateCheck(new UpdateService());
+        _ = _sidePanel.StartUpdateCheckAsync();
     }
 
     private void RefreshOverlayTracking(TrackingViewModel trackingVm)

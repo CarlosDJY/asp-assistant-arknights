@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ASPAssistant.Core.Models;
@@ -38,11 +38,25 @@ public class SettingsManager
             JsonSerializer.Serialize(isLight));
     }
 
-    public async Task<GameShopTheme> LoadGameShopThemeAsync()
+    public async Task<GameShopTheme?> LoadGameShopThemeAsync()
     {
         var path = Path.Combine(_settingsDir, "game-theme.json");
-        if (!File.Exists(path)) return GameShopTheme.Terminal;
-        return JsonSerializer.Deserialize<GameShopTheme>(await File.ReadAllTextAsync(path), ThemeJsonOptions);
+        try
+        {
+            var theme = JsonSerializer.Deserialize<GameShopTheme>(await File.ReadAllTextAsync(path), ThemeJsonOptions);
+            if (Enum.IsDefined(theme)) return theme;
+            AppLogger.Warn("Settings", "模式主题值无效，启动时重新选择");
+            return null;
+        }
+        catch (IOException ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return null;
+        }
+        catch (JsonException)
+        {
+            AppLogger.Warn("Settings", "模式主题配置无法解析，启动时重新选择");
+            return null;
+        }
     }
 
     public async Task SaveGameShopThemeAsync(GameShopTheme theme)

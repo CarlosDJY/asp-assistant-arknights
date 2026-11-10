@@ -1,5 +1,6 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -38,7 +39,9 @@ public partial class SidePanelWindow : Window
     private readonly IReadOnlyList<CovenantInfo> _covenants;
     private readonly DispatcherTimer _toastHideTimer;
 
-    private UpdateService? _updateService;
+    private readonly UpdateService _updateService = new();
+    private bool _isCheckingForUpdates;
+    private bool _hasCheckedForUpdates;
     private readonly SettingsManager _settingsManager;
     public GameShopTheme GameTheme { get; private set; }
     public event Action<GameShopTheme>? GameThemeChanged;
@@ -100,6 +103,7 @@ public partial class SidePanelWindow : Window
         GameTheme = gameTheme;
 
         InitializeComponent();
+        CurrentVersionText.Text = $"当前版本：v{typeof(SidePanelWindow).Assembly.GetName().Version!.ToString(3)}";
         UiThemeSelector.SelectedIndex = ThemeManager.IsLight ? 1 : 0;
         GameThemeSelector.SelectedIndex = (int)gameTheme;
         MultiLineupTrackingToggle.IsChecked = trackingVm.TrackMultipleLineups;
@@ -123,6 +127,7 @@ public partial class SidePanelWindow : Window
         OperatorView.DataContext = operatorVm;
         EquipmentView.DataContext = equipmentVm;
         TrackingView.SetOperators(allOperators);
+        TrackingView.SetEquipment(allEquipment);
         TrackingView.DataContext = trackingVm;
         EnemyView.DataContext = enemyVm;
         EnemyView.RecognitionRequested += () => EnemyRecognitionRequested?.Invoke();
@@ -196,51 +201,81 @@ public partial class SidePanelWindow : Window
             BanProcessingMaskText.Text = message;
     }
 
-    public void StartUpdateCheck(UpdateService updateService)
+    public async Task StartUpdateCheckAsync()
     {
-        _updateService = updateService;
-        _ = CheckForUpdatesAsync();
+        await Task.Delay(3000);
+        await CheckForUpdatesAsync(isManual: false);
     }
 
-    private async Task CheckForUpdatesAsync()
+    private async void OnCheckUpdate(object sender, RoutedEventArgs e)
     {
-        if (_updateService is null) return;
+        await CheckForUpdatesAsync(isManual: true);
+    }
 
-        // Delay slightly so the main window has time to show first
-        await Task.Delay(3000);
+    private async Task CheckForUpdatesAsync(bool isManual)
+    {
+        if (_isCheckingForUpdates || (!isManual && _hasCheckedForUpdates)) return;
+        _hasCheckedForUpdates = true;
 
-        var info = await _updateService.CheckForUpdateAsync();
-        if (info is null)
+        if (_pendingUpdate is not null && (_downloadTask is { IsCompleted: false } || _isDownloadReady))
         {
-            // Keep the failure visible in the log instead of swallowing it: a silent
-            // updater looks identical to "no new version" and is impossible to diagnose.
-            if (!string.IsNullOrEmpty(_updateService.LastError))
-                AppLogger.Warn("Update", $"Update check failed: {_updateService.LastError}");
+            UpdateBanner.Visibility = Visibility.Visible;
+            UpdateStatusText.Text = _isDownloadReady
+                ? $"新版本 {_pendingUpdate.TagName} 已就绪，点击“立即重启”完成更新"
+                : $"正在下载新版本 {_pendingUpdate.TagName}…";
             return;
         }
 
-        // Skip if user previously asked to skip this version
-        if (_settingsManager is not null)
+        if (_updateService.IsDevBuild)
         {
-            var skipped = await _settingsManager.LoadSkippedVersionAsync();
-            if (skipped == info.TagName) return;
+            UpdateStatusText.Text = "当前为开发测试版（0.0.0），不检查自动更新";
+            return;
         }
 
-        _pendingUpdate = info;
-        Dispatcher.Invoke(() =>
+        _isCheckingForUpdates = true;
+        CheckUpdateButton.IsEnabled = false;
+        CheckUpdateButton.Content = "正在检查…";
+        UpdateStatusText.Text = "正在检查更新…";
+        try
         {
+            var info = await _updateService.CheckForUpdateAsync();
+            if (info is null)
+            {
+                UpdateStatusText.Text = _updateService.LastError is null
+                    ? "当前已是最新版本"
+                    : $"检查失败：{_updateService.LastError}，请稍后重试";
+                if (_updateService.LastError is not null)
+                    AppLogger.Warn("Update", $"Update check failed: {_updateService.LastError}");
+                return;
+            }
+
+            if (!isManual && await _settingsManager.LoadSkippedVersionAsync() == info.TagName)
+            {
+                UpdateStatusText.Text = $"已跳过 {info.TagName}，可点击“检查更新”重新查看";
+                return;
+            }
+
+            _pendingUpdate = info;
+            _isDownloadReady = false;
             UpdateBannerText.Text = $"发现新版本 {info.TagName}";
+            UpdateStatusText.Text = $"正在下载新版本 {info.TagName}…";
+            UpdateActionIcon.Text = "↑ ";
+            UpdateActionText.Text = "查看更新";
+            UpdateBannerProgress.Value = 0;
             UpdateBannerProgress.Visibility = Visibility.Visible;
             UpdateBanner.Visibility = Visibility.Visible;
-        });
-
-        _downloadTask = RunBackgroundDownloadAsync(info);
+            _downloadTask = RunBackgroundDownloadAsync(info);
+        }
+        finally
+        {
+            _isCheckingForUpdates = false;
+            CheckUpdateButton.IsEnabled = true;
+            CheckUpdateButton.Content = "检查更新";
+        }
     }
 
     private async Task RunBackgroundDownloadAsync(UpdateInfo info)
     {
-        if (_updateService is null) return;
-
         var progress = new Progress<double>(value =>
         {
             Dispatcher.Invoke(() =>
@@ -259,6 +294,7 @@ public partial class SidePanelWindow : Window
                 UpdateBannerProgress.Visibility = Visibility.Collapsed;
                 UpdateActionIcon.Text = "↻ ";
                 UpdateActionText.Text = "立即重启";
+                UpdateStatusText.Text = $"新版本 {info.TagName} 已就绪，点击“立即重启”完成更新";
             });
         }
         catch (Exception ex)
@@ -271,6 +307,7 @@ public partial class SidePanelWindow : Window
                 UpdateBannerText.Text = $"下载失败（{reason}），点击重试";
                 UpdateActionIcon.Text = "↺ ";
                 UpdateActionText.Text = "重试";
+                UpdateStatusText.Text = $"下载失败：{reason}，可在更新横幅中重试";
             });
             _isDownloadReady = false;
         }
@@ -284,27 +321,23 @@ public partial class SidePanelWindow : Window
             return;
         }
 
-        // Download failed state — retry
-        if (_downloadTask is { IsCompleted: true, IsFaulted: false } == false && _pendingUpdate is not null && _updateService is not null)
+        if (_pendingUpdate is null) return;
+
+        // Download failures are handled inside RunBackgroundDownloadAsync, so its
+        // task completes normally even when the banner needs a retry.
+        if (_downloadTask is { IsCompleted: true })
         {
-            // If download task ended without success, allow retry
-            if (_downloadTask is { IsCompletedSuccessfully: false } || _downloadTask is null)
-            {
-                Dispatcher.Invoke(() =>
-                {
-                    UpdateBannerText.Text = $"发现新版本 {_pendingUpdate.TagName}";
-                    UpdateActionIcon.Text = "↑ ";
-                    UpdateActionText.Text = "查看更新";
-                    UpdateBannerProgress.Value = 0;
-                    UpdateBannerProgress.Visibility = Visibility.Visible;
-                });
-                _downloadTask = RunBackgroundDownloadAsync(_pendingUpdate);
-                return;
-            }
+            UpdateBannerText.Text = $"发现新版本 {_pendingUpdate.TagName}";
+            UpdateStatusText.Text = $"正在下载新版本 {_pendingUpdate.TagName}…";
+            UpdateActionIcon.Text = "↑ ";
+            UpdateActionText.Text = "查看更新";
+            UpdateBannerProgress.Value = 0;
+            UpdateBannerProgress.Visibility = Visibility.Visible;
+            _downloadTask = RunBackgroundDownloadAsync(_pendingUpdate);
+            return;
         }
 
         // Download in progress — open notes dialog
-        if (_pendingUpdate is null) return;
         var dialog = new UpdateDialog(_pendingUpdate)
         {
             Owner = this
@@ -534,18 +567,20 @@ public partial class SidePanelWindow : Window
 
         LineupView.ShareLineupRequested += async lineup =>
         {
+            string url;
             try
             {
                 ShowToast("正在生成分享链接…");
-                var url = await _lineupShareService.ExportAsync(lineup);
-                Clipboard.SetText(url);
-                ShowToast($"分享链接已复制：{url}");
+                url = await _lineupShareService.ExportAsync(lineup);
             }
-            catch (Exception ex)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
             {
                 AppLogger.Warn("Lineup", $"Share failed: {ex.Message}");
-                ShowToast($"分享失败：{ex.Message}");
+                ShowToast($"生成分享链接失败：{ex.Message}");
+                return;
             }
+            HideToast();
+            new ShareLinkWindow(url, Clipboard.SetText) { Owner = this }.ShowDialog();
         };
 
         LineupView.ImportLineupRequested += async () =>

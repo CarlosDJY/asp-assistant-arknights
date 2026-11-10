@@ -1,5 +1,5 @@
 {
-  "_modificationNotice": "Modified for ASP Assistant Regulation on 2026-11-09; see MODIFICATIONS.md.",
+  "_modificationNotice": "Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.",
   "_categoryNotice": "手工维护的装备功能分类，供装备页“类型”筛选使用；fetch_spdatabase.py 不会覆盖本文件。攻击=攻击力/攻速/伤害/战斗减益；防御=防御力/法抗/阻挡；生存=生命/回复/复活/免控/隐匿/护盾；技力=技力与技能消耗；经济=资金；盟约=盟约层数与同盟约获取；其他=调度中心与商店操作、再部署/晋升等机制类。",
   "categories": {
     "维式重锤": [
