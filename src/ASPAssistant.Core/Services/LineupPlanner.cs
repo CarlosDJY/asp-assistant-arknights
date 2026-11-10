@@ -15,7 +15,7 @@ public sealed class LineupPlanner
     /// <summary>Covenants without a level II.</summary>
     public static readonly IReadOnlySet<string> NoSecond = new HashSet<string> { "独行", "调和", "协防干员" };
     /// <summary>These covenants apply in the preparation area and are not counted as lineup bonuses.</summary>
-    public static readonly IReadOnlySet<string> NoAdditionalScore = new HashSet<string> { "奇迹", "投资人", "远见" };
+    public static readonly IReadOnlySet<string> NoAdditionalScore = new HashSet<string> { "奇迹", "投资人", "远见", "独行", "调和" };
     public const string SoloCovenant = "独行";
     public const int MaxLockedOperators = 9;
     private const int MaxBranches = 48;
@@ -48,7 +48,9 @@ public sealed class LineupPlanner
         if (level < 2 || !HasSecondLevel(covenant)) return new PlannerGoal(covenant.Name, 1, basic, false, isCore);
         if (isCore) return new PlannerGoal(covenant.Name, 2, 6, false, true);
         if (PeopleSecond.Contains(covenant.Name)) return new PlannerGoal(covenant.Name, 2, 3, false, false);
-        return new PlannerGoal(covenant.Name, 2, basic, true, false);
+        // The planner cannot verify stack/elite conditions for these II levels,
+        // so a requested II behaves as the safely verifiable I level.
+        return new PlannerGoal(covenant.Name, 1, basic, false, false);
     }
 
     public IReadOnlySet<string> DefaultTransformAllowed(IReadOnlySet<string>? bannedCovenants = null)

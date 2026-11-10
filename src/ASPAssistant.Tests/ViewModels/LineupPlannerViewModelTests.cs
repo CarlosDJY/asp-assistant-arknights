@@ -187,6 +187,19 @@ public class LineupPlannerViewModelTests
     }
 
     [Fact]
+    public void ManualSecondLevelIsUnavailableToPlanner()
+    {
+        var (vm, _) = Create();
+        var raid = Item(vm, "突袭");
+
+        raid.SecondManual.Should().BeTrue();
+        raid.CanPlanSecond.Should().BeFalse();
+        raid.ToggleLevel2Command.Execute(null);
+        raid.Level.Should().Be(0);
+        raid.SecondRequirement.Should().Be("规划不提供 Ⅱ 级效果");
+    }
+
+    [Fact]
     public async Task ResultOperatorsCarryDetailsAndPlannerNotes()
     {
         var (vm, _) = Create();

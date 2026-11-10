@@ -25,12 +25,13 @@ public partial class PlannerCovenantItem : ObservableObject
     public bool IsCore => Info.BondType == "SEASON";
     public bool HasSecond { get; }
     public bool SecondManual { get; }
-    public string SecondLabel => !HasSecond ? "—" : SecondManual ? "Ⅱ*" : "Ⅱ";
+    public string SecondLabel => CanPlanSecond ? "Ⅱ" : "—";
     public string TypeText => IsCore ? "核心盟约" : "附加盟约";
     public string FirstRequirement => $"{LineupPlanner.CreateGoal(Info, 1).Count} 人";
     public string SecondRequirement => !HasSecond ? "没有 Ⅱ 级"
-        : SecondManual ? $"规划只保证 {LineupPlanner.CreateGoal(Info, 2).Count} 人，叠层 / 精锐等条件需自行确认"
+        : SecondManual ? "规划不提供 Ⅱ 级效果"
         : $"{LineupPlanner.CreateGoal(Info, 2).Count} 人";
+    public bool CanPlanSecond => HasSecond && !SecondManual;
     public bool CanTransformInto => !LineupPlanner.NoTransform.Contains(Name);
     /// <summary>In-game effect texts (data/covenant_effects.json).</summary>
     public IReadOnlyList<CovenantEffect> Effects => Info.Effects;
@@ -67,7 +68,7 @@ public partial class PlannerCovenantItem : ObservableObject
             if (!HasSecond) return text + "（没有 Ⅱ 级）";
             var second = LineupPlanner.CreateGoal(Info, 2);
             return text + (SecondManual
-                ? $"\nⅡ：只保证 {second.Count} 人，叠层/精锐等条件需人工确认"
+                ? "\n规划不提供Ⅱ级效果"
                 : $"\nⅡ：{second.Count} 人");
         }
     }
@@ -100,7 +101,7 @@ public partial class PlannerCovenantItem : ObservableObject
     private void ToggleLevel1() => _onToggle(this, 1);
 
     [RelayCommand]
-    private void ToggleLevel2() { if (HasSecond) _onToggle(this, 2); }
+    private void ToggleLevel2() { if (CanPlanSecond) _onToggle(this, 2); }
 }
 
 public sealed partial class PlannerLockedOperator : ObservableObject
@@ -617,8 +618,6 @@ public partial class LineupPlannerViewModel : ObservableObject
 
         var unsolved = VariantCells.Where(c => !c.HasResults).Select(c => $"{c.People} 人·{c.Transforms} 转").ToList();
         var hint = unsolved.Count == 0 ? "" : $"{string.Join("、", unsolved)}无解";
-        if (result.Variants.SelectMany(v => v.Lineups).Any(l => l.Goals.Any(g => g.Manual)))
-            hint += (hint.Length > 0 ? "；" : "") + "Ⅱ* 只保证人数，叠层/精锐条件需自行确认";
         ResultHint = hint;
     }
 
@@ -700,11 +699,8 @@ public partial class LineupPlannerViewModel : ObservableObject
                     level = 2;
             }
 
-            var manualSecond = LineupPlanner.IsSecondLevelManual(covenant)
-                && count >= first.Count;
             var text = $"{covenant.Name}{(level == 2 ? "Ⅱ" : "Ⅰ")} {count}人";
-            if (manualSecond) text += " · Ⅱ待核";
-            pills.Add(new PlannerGoalPill(text, manualSecond));
+            pills.Add(new PlannerGoalPill(text, false));
         }
         return pills;
     }

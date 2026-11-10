@@ -280,8 +280,8 @@ public class LineupPlannerTests
     [Theory]
     [InlineData("乌萨斯", "SEASON", 2, 6, false)]
     [InlineData("不屈", "REGULAR", 2, 3, false)]
-    [InlineData("突袭", "REGULAR", 2, 2, true)]
-    [InlineData("绝技", "REGULAR", 2, 2, true)]
+    [InlineData("突袭", "REGULAR", 2, 2, false)]
+    [InlineData("绝技", "REGULAR", 2, 2, false)]
     [InlineData("独行", "REGULAR", 2, 1, false)]
     public void CreateGoal_MapsSecondLevelRules(string name, string bondType, int level, int expectedCount, bool manual)
     {
