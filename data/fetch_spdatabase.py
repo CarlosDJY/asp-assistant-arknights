@@ -195,7 +195,8 @@ def process_operators(
         shop_entry = char_shop_dict.get(chess_id)
         if not shop_entry:
             continue
-        if shop_entry["isHidden"]:
+        strategy_id = "band_mech" if shop_entry["charId"] == "char_618_acrbot" else ""
+        if shop_entry["isHidden"] and not strategy_id:
             continue
 
         char_id = shop_entry["charId"]
@@ -233,6 +234,8 @@ def process_operators(
                 "traits": elite_traits,
             },
         }
+        if strategy_id:
+            operator["requiredStrategyId"] = strategy_id
         operators.append(operator)
 
     return operators
@@ -341,7 +344,7 @@ def build_job_change_equipment_map(
     season_data: dict,
     bond_info_dict: dict,
 ) -> dict[str, str]:
-    """从棋子的 giveBondId 构建装备 → 核心盟约映射。"""
+    """从棋子的 giveBondId 构建装备 → 核心或附加盟约映射。"""
     result: dict[str, str] = {}
     for item_id, shop_entry in season_data["trapShopChessDatas"].items():
         if shop_entry["itemType"] != "EQUIP":
@@ -350,8 +353,6 @@ def build_job_change_equipment_map(
         if not chess["giveBondId"]:
             continue
         bond = bond_info_dict[chess["giveBondId"]]
-        if bond["bondType"] != "SEASON":
-            continue
         effect = season_data["effectInfoDataDict"][chess["effectId"]]
         result[effect["effectName"]] = bond["name"]
 

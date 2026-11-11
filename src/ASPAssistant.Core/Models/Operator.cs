@@ -32,6 +32,9 @@ public class Operator
     [JsonPropertyName("tier")]
     public int Tier { get; set; }
 
+    [JsonPropertyName("requiredStrategyId")]
+    public string RequiredStrategyId { get; set; } = "";
+
     [JsonPropertyName("coreCovenants")]
     public List<string> CoreCovenants { get; set; } = [];
 

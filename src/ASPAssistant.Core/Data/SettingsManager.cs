@@ -2,6 +2,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ASPAssistant.Core.Models;
+using ASPAssistant.Core.Services;
 
 namespace ASPAssistant.Core.Data;
 
@@ -9,11 +10,7 @@ public class SettingsManager
 {
     private readonly string _settingsDir;
     private readonly SemaphoreSlim _sidePanelPositionLock = new(1, 1);
-    // Tracking is saved on every collection change (a route import adds ~15 entries at once).
-    // Only one write runs at a time and it always writes the newest snapshot, so overlapping
-    // writes can neither fail with “file in use” nor leave an older list on disk.
-    private string? _pendingTrackingJson;
-    private int _trackingWriterActive;
+    private readonly SemaphoreSlim _trackingLock = new(1, 1);
     private static readonly JsonSerializerOptions ThemeJsonOptions = new()
     {
         Converters = { new JsonStringEnumConverter<GameShopTheme>(allowIntegerValues: false) }
@@ -194,36 +191,45 @@ public class SettingsManager
 
     public async Task SaveTrackingEntriesAsync(List<TrackingEntry> entries)
     {
-        Volatile.Write(ref _pendingTrackingJson, JsonSerializer.Serialize(entries, JsonOptions));
-        while (Volatile.Read(ref _pendingTrackingJson) is not null
-               && Interlocked.CompareExchange(ref _trackingWriterActive, 1, 0) == 0)
+        Directory.CreateDirectory(_settingsDir);
+        var path = Path.Combine(_settingsDir, "tracking.json");
+        var json = JsonSerializer.Serialize(entries, JsonOptions);
+        await _trackingLock.WaitAsync();
+        var temporary = path + $".{Guid.NewGuid():N}.tmp";
+        try
         {
-            try
-            {
-                Directory.CreateDirectory(_settingsDir);
-                var path = Path.Combine(_settingsDir, "tracking.json");
-                while (Interlocked.Exchange(ref _pendingTrackingJson, null) is { } json)
-                {
-                    await File.WriteAllTextAsync(path + ".tmp", json);
-                    File.Move(path + ".tmp", path, overwrite: true);
-                }
-            }
-            finally
-            {
-                Volatile.Write(ref _trackingWriterActive, 0);
-            }
-            // A snapshot queued between the last write and releasing the writer is picked up by this loop.
+            await File.WriteAllTextAsync(temporary, json);
+            File.Move(temporary, path, true);
         }
+        finally { _trackingLock.Release(); File.Delete(temporary); }
     }
 
-    public async Task<List<TrackingEntry>> LoadTrackingEntriesAsync()
+    public async Task<List<TrackingEntry>> LoadTrackingEntriesAsync(LineupEquipmentService equipmentRules)
     {
         var path = Path.Combine(_settingsDir, "tracking.json");
         if (!File.Exists(path))
             return [];
 
         var json = await File.ReadAllTextAsync(path);
-        return JsonSerializer.Deserialize<List<TrackingEntry>>(json, JsonOptions) ?? [];
+        var entries = JsonSerializer.Deserialize<List<TrackingEntry>>(json, JsonOptions) ?? [];
+        var changed = false;
+        foreach (var entry in entries.Where(e => e.Type == TrackingType.Operator))
+        {
+            var slot = new LineupSlot { OperatorName = entry.Name, Equipments = entry.Equipments,
+                IsElite = entry.IsElite, TransformedCovenant = entry.TransformedCovenant };
+            if (!equipmentRules.UpgradeSlot(slot)) continue;
+            entry.TransformedCovenant = slot.TransformedCovenant;
+            changed = true;
+        }
+        if (changed)
+        {
+            foreach (var name in entries.Where(e => e.Type == TrackingType.Operator).SelectMany(e => e.Equipments).Distinct().ToList())
+                if (!entries.Any(e => e.Type == TrackingType.Equipment && e.Name == name))
+                    entries.Add(new TrackingEntry { Name = name, Type = TrackingType.Equipment, IsManual = false });
+            File.Copy(path, path + $".pre-equipment-{Guid.NewGuid():N}.bak");
+            await SaveTrackingEntriesAsync(entries);
+        }
+        return entries;
     }
 
     public async Task<string?> LoadSkippedVersionAsync()

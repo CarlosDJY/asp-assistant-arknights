@@ -12,10 +12,11 @@ public partial class PlannerCovenantItem : ObservableObject
 {
     private readonly Action<PlannerCovenantItem, int> _onToggle;
 
-    public PlannerCovenantItem(CovenantInfo info, Action<PlannerCovenantItem, int> onToggle)
+    public PlannerCovenantItem(CovenantInfo info, Action<PlannerCovenantItem, int> onToggle, bool canTransformInto)
     {
         Info = info;
         _onToggle = onToggle;
+        CanTransformInto = canTransformInto;
         HasSecond = LineupPlanner.HasSecondLevel(info);
         SecondManual = LineupPlanner.IsSecondLevelManual(info);
     }
@@ -41,7 +42,7 @@ public partial class PlannerCovenantItem : ObservableObject
     /// <summary>Banned additional covenant with fewer available holders than Ⅰ needs.</summary>
     public bool FirstUnreachable => IsBanned && !IsCore && AvailableMembers < LineupPlanner.CreateGoal(Info, 1).Count;
     public int AvailableMembers => Members.Count(m => !m.IsUnavailable);
-    public bool CanTransformInto => !LineupPlanner.NoTransform.Contains(Name);
+    public bool CanTransformInto { get; }
     /// <summary>In-game effect texts (data/covenant_effects.json).</summary>
     public IReadOnlyList<CovenantEffect> Effects => Info.Effects;
     public bool HasEffects => Info.Effects.Count > 0;
@@ -182,13 +183,14 @@ public sealed partial class PlannerLineupItem : ObservableObject
     public IReadOnlyList<PlannerGoalPill> Goals { get; init; } = [];
     public string LineupName { get; init; } = "";
 
-    public Lineup ToLineup() => new()
+    public Lineup ToLineup(LineupEquipmentService equipmentRules) => new()
     {
         Name = LineupName,
         Slots = Source.Operators.Select(o => new LineupSlot
         {
             OperatorName = o.Name,
-            TransformedCovenant = o.TransformedCovenant ?? ""
+            Equipments = o.TransformedCovenant is null ? [] :
+                [LineupEquipmentService.Shapeshifter, equipmentRules.EquipmentFor(o.TransformedCovenant)]
         }).ToList()
     };
 }
@@ -276,15 +278,20 @@ public partial class LineupPlannerViewModel : ObservableObject
     private bool _dirty;
     private bool _isActive;
 
-    public LineupPlannerViewModel(LineupPlanner planner, IReadOnlyList<Operator> operators, BanViewModel banVm)
+    private readonly LineupEquipmentService _equipmentRules;
+
+    public LineupPlannerViewModel(LineupPlanner planner, IReadOnlyList<Operator> operators, BanViewModel banVm, LineupEquipmentService equipmentRules)
     {
+        _equipmentRules = equipmentRules;
         _planner = planner;
-        _routePlanner = new LineupRoutePlanner(operators, planner.Covenants);
         _banVm = banVm;
-        _operators = operators;
-        _operatorByName = operators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        // Strategy-only pieces (“暴躁铁皮”) never appear in the shop pool, so neither planner uses them.
+        _operators = operators.Where(o => o.RequiredStrategyId.Length == 0).ToList();
+        _routePlanner = new LineupRoutePlanner(_operators, planner.Covenants);
+        _operatorByName = _operators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
         foreach (var c in planner.Covenants)
-            (c.BondType == "SEASON" ? CoreCovenants : ExtraCovenants).Add(new PlannerCovenantItem(c, OnToggleLevel));
+            (c.BondType == "SEASON" ? CoreCovenants : ExtraCovenants).Add(new PlannerCovenantItem(c, OnToggleLevel,
+                _equipmentRules.CanTransformInto(c.Name) && !LineupPlanner.NoTransform.Contains(c.Name)));
         foreach (var p in PeopleOptions)
             foreach (var t in TransformOptions)
                 VariantCells.Add(new PlannerVariantCell { People = p, Transforms = t });
@@ -478,13 +485,13 @@ public partial class LineupPlannerViewModel : ObservableObject
     [RelayCommand]
     private void SaveLineup(PlannerLineupItem? item)
     {
-        if (item is not null) SaveRequested?.Invoke(item.ToLineup());
+        if (item is not null) SaveRequested?.Invoke(item.ToLineup(_equipmentRules));
     }
 
     [RelayCommand]
     private void TrackLineup(PlannerLineupItem? item)
     {
-        if (item is not null) TrackRequested?.Invoke(item.ToLineup());
+        if (item is not null) TrackRequested?.Invoke(item.ToLineup(_equipmentRules));
     }
 
     private void RemoveLocked(PlannerLockedOperator item)
@@ -500,6 +507,7 @@ public partial class LineupPlannerViewModel : ObservableObject
     public void SetAvailableCovenants(IEnumerable<string> names)
     {
         _availableCovenants = names.ToHashSet(StringComparer.Ordinal);
+        if (_availableCovenants.Count == 0) OnlyCurrentRun = false;
         foreach (var c in AllCovenants) c.IsAvailable = _availableCovenants.Contains(c.Name);
         ApplyVisibility();
         UpdateRunInfo();
@@ -721,7 +729,7 @@ public partial class LineupPlannerViewModel : ObservableObject
             BannedCovenants = bannedCovenants,
             BannedOperators = new HashSet<string>(_banVm.BannedNames, StringComparer.Ordinal),
             LockedOperators = LockedOperators.Select(l => l.Name).ToHashSet(StringComparer.Ordinal),
-            TransformAllowed = _planner.DefaultTransformAllowed(bannedCovenants),
+            TransformAllowed = _planner.DefaultTransformAllowed(bannedCovenants).Where(_equipmentRules.CanTransformInto).ToHashSet(),
             PeopleOptions = PeopleOptions,
             TransformOptions = TransformOptions
         };

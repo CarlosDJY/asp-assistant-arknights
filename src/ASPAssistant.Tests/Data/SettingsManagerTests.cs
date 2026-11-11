@@ -7,6 +7,16 @@ namespace ASPAssistant.Tests.Data;
 
 public class SettingsManagerTests : IDisposable
 {
+    [Fact]
+    public async Task RapidTrackingSavesAreSerializedAndLeaveCompleteLatestJson()
+    {
+        await Task.WhenAll(Enumerable.Range(0, 20).Select(i => _manager.SaveTrackingEntriesAsync(
+            [new() { Name = $"目标{i}", Type = TrackingType.Operator }])));
+        var loaded = await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules);
+        loaded.Should().ContainSingle().Which.Name.Should().Be("目标19");
+        Directory.GetFiles(_tempDir, "*.tmp").Should().BeEmpty();
+    }
+
     private readonly string _tempDir;
     private readonly SettingsManager _manager;
 
@@ -33,12 +43,13 @@ public class SettingsManagerTests : IDisposable
         };
 
         await _manager.SaveTrackingEntriesAsync(entries);
-        var loaded = await _manager.LoadTrackingEntriesAsync();
+        var loaded = await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules);
 
-        loaded.Should().HaveCount(2);
+        loaded.Should().HaveCount(4);
         loaded.Should().Contain(e => e.Name == "角峰" && e.Type == TrackingType.Operator);
         loaded.Should().Contain(e => e.Name == "不屈弹射器" && e.Type == TrackingType.Equipment);
-        loaded.Single(e => e.Name == "角峰").TransformedCovenant.Should().Be("炎");
+        loaded.Single(e => e.Name == "角峰").Equipments.Should().Equal("变形同构体", "炎国短刀");
+        loaded.Single(e => e.Name == "角峰").TransformedCovenant.Should().BeNull();
     }
 
     [Fact]
@@ -52,9 +63,9 @@ public class SettingsManagerTests : IDisposable
             }).ToList())).ToList();
         await Task.WhenAll(saves);
         // The last caller may return while an earlier caller is still writing its snapshot.
-        for (var i = 0; i < 50 && (await _manager.LoadTrackingEntriesAsync()).Count != 20; i++) await Task.Delay(20);
+        for (var i = 0; i < 50 && (await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules)).Count != 20; i++) await Task.Delay(20);
 
-        var loaded = await _manager.LoadTrackingEntriesAsync();
+        var loaded = await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules);
         loaded.Should().HaveCount(20);
         loaded[1].Role.Should().Be(TrackingRole.Transition);
         loaded[1].Stages.Should().Be("开局");
@@ -64,13 +75,13 @@ public class SettingsManagerTests : IDisposable
     public async Task OldTrackingEntriesDefaultToNoPlannedTransformation()
     {
         await File.WriteAllTextAsync(Path.Combine(_tempDir, "tracking.json"), """[{"name":"角峰","type":0}]""");
-        (await _manager.LoadTrackingEntriesAsync()).Should().ContainSingle().Which.TransformedCovenant.Should().BeEmpty();
+        (await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules)).Should().ContainSingle().Which.TransformedCovenant.Should().BeNull();
     }
 
     [Fact]
     public async Task LoadTrackingEntries_NoFile_ReturnsEmpty()
     {
-        var loaded = await _manager.LoadTrackingEntriesAsync();
+        var loaded = await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules);
         loaded.Should().BeEmpty();
     }
 

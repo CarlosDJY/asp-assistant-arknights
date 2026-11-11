@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ASPAssistant.Core.Models;
+using ASPAssistant.Core.Services;
 
 namespace ASPAssistant.Core.ViewModels;
 
@@ -95,16 +96,17 @@ public partial class TrackingViewModel : ObservableObject
 
     private static TrackingEntry Copy(TrackingEntry e, bool expired) => new()
     {
-        Name = e.Name, Type = e.Type, TransformedCovenant = e.TransformedCovenant, Role = e.Role,
-        Stages = e.Stages, ExpiresAt = e.ExpiresAt, IsExpired = expired
+        Name = e.Name, Type = e.Type, TransformedCovenant = e.TransformedCovenant, Equipments = [.. e.Equipments],
+        IsElite = e.IsElite, IsManual = e.IsManual, Role = e.Role, Stages = e.Stages, ExpiresAt = e.ExpiresAt, IsExpired = expired
     };
 
     public (int Operators, int Equipment) TrackLineup(Lineup lineup)
     {
         if (!TrackMultipleLineups) ClearAllTracking();
-        var previousOperators = TrackedOperators.Count;
-        var previousEquipment = TrackedEquipment.Count;
-        foreach (var slot in lineup.Slots)
+        var previousOperators = TrackedOperators.Select(e => e.Name).ToHashSet();
+        var previousEquipment = TrackedEquipment.Select(e => e.Name).ToHashSet();
+        foreach (var slot in lineup.Slots.Concat(lineup.MidSlots).Concat(lineup.EarlySlots).Concat(lineup.SupportSlots)
+            .DistinctBy(slot => slot.OperatorName))
         {
             if (!string.IsNullOrEmpty(slot.OperatorName))
             {
@@ -112,17 +114,16 @@ public partial class TrackingViewModel : ObservableObject
                 var entry = new TrackingEntry
                 {
                     Name = slot.OperatorName, Type = TrackingType.Operator,
-                    TransformedCovenant = slot.TransformedCovenant
+                    TransformedCovenant = slot.TransformedCovenant, Equipments = [.. slot.Equipments], IsElite = slot.IsElite
                 };
                 if (existing is null) TrackedOperators.Add(entry);
-                else if (existing.TransformedCovenant != slot.TransformedCovenant || existing.Role != TrackingRole.Final)
+                else if (existing.TransformedCovenant != slot.TransformedCovenant || existing.IsElite != slot.IsElite
+                    || !existing.Equipments.SequenceEqual(slot.Equipments) || existing.Role != TrackingRole.Final)
                     TrackedOperators[TrackedOperators.IndexOf(existing)] = entry;
             }
-            foreach (var equipment in slot.Equipments)
-                if (!string.IsNullOrEmpty(equipment))
-                    AddTracking(equipment, TrackingType.Equipment);
         }
-        return (TrackedOperators.Count - previousOperators, TrackedEquipment.Count - previousEquipment);
+        RefreshEquipmentRequirements();
+        return (TrackedOperators.Count(e => !previousOperators.Contains(e.Name)), TrackedEquipment.Count(e => !previousEquipment.Contains(e.Name)));
     }
 
     /// <summary>
@@ -130,7 +131,7 @@ public partial class TrackingViewModel : ObservableObject
     /// operators only used on the way as <see cref="TrackingRole.Transition"/> (with the stages that use them).
     /// An operator already tracked as 大成 stays 大成. Returns (new 大成, new 过渡) counts.
     /// </summary>
-    public (int Final, int Transition) TrackRoute(PlannedRoute route)
+    public (int Final, int Transition) TrackRoute(PlannedRoute route, LineupEquipmentService? equipmentRules = null)
     {
         if (!TrackMultipleLineups) ClearAllTracking();
         var finalStage = route.Stages.LastOrDefault(s => s.IsFinal) ?? route.Stages.LastOrDefault();
@@ -140,13 +141,16 @@ public partial class TrackingViewModel : ObservableObject
         foreach (var op in finalStage.Operators)
         {
             var existing = TrackedOperators.FirstOrDefault(e => e.Name == op.Name);
-            var entry = new TrackingEntry
-            {
-                Name = op.Name, Type = TrackingType.Operator, Role = TrackingRole.Final,
-                TransformedCovenant = transforms[op.Name]
-            };
+            var entry = new TrackingEntry { Name = op.Name, Type = TrackingType.Operator, Role = TrackingRole.Final };
+            // A planned transformation is tracked as its equipment (变形同构体 + the covenant's job-change gear).
+            var covenant = transforms[op.Name];
+            if (covenant.Length > 0 && equipmentRules?.CanTransformInto(covenant) == true)
+                entry.Equipments = [LineupEquipmentService.Shapeshifter, equipmentRules.EquipmentFor(covenant)];
+            else if (covenant.Length > 0)
+                entry.TransformedCovenant = covenant;
             if (existing is null) { TrackedOperators.Add(entry); newFinal++; }
-            else if (existing.Role != TrackingRole.Final || existing.TransformedCovenant != entry.TransformedCovenant)
+            else if (existing.Role != TrackingRole.Final || existing.TransformedCovenant != entry.TransformedCovenant
+                     || !existing.Equipments.SequenceEqual(entry.Equipments))
                 TrackedOperators[TrackedOperators.IndexOf(existing)] = entry;
         }
 
@@ -185,11 +189,17 @@ public partial class TrackingViewModel : ObservableObject
             if (existing is null) { TrackedOperators.Add(entry); newTransition++; }
             else TrackedOperators[TrackedOperators.IndexOf(existing)] = entry;
         }
+        RefreshEquipmentRequirements();
         return (newFinal, newTransition);
     }
 
     public void AddTracking(string name, TrackingType type)
     {
+        if (type == TrackingType.Equipment && TrackedEquipment.FirstOrDefault(e => e.Name == name) is { IsManual: false } automatic)
+        {
+            TrackedEquipment[TrackedEquipment.IndexOf(automatic)] = new TrackingEntry { Name = name, Type = type };
+            return;
+        }
         if (IsTracked(name))
             return;
 
@@ -206,12 +216,21 @@ public partial class TrackingViewModel : ObservableObject
         if (opEntry != null)
         {
             TrackedOperators.Remove(opEntry);
+            RefreshEquipmentRequirements();
             return;
         }
 
         var eqEntry = TrackedEquipment.FirstOrDefault(e => e.Name == name);
         if (eqEntry != null)
+        {
             TrackedEquipment.Remove(eqEntry);
+            foreach (var entry in TrackedOperators.Where(e => e.Equipments.Contains(name)).ToList())
+            {
+                var without = Copy(entry, entry.IsExpired);
+                without.Equipments = entry.Equipments.Where(e => e != name).ToList();
+                TrackedOperators[TrackedOperators.IndexOf(entry)] = without;
+            }
+        }
     }
 
     public void ClearAllTracking()
@@ -220,14 +239,30 @@ public partial class TrackingViewModel : ObservableObject
         TrackedEquipment.Clear();
     }
 
-    public void ClearPlannedTransformation(string name)
+    public void ClearPlannedTransformation(string name, string equipmentName, LineupEquipmentService equipmentRules)
     {
         var entry = TrackedOperators.Single(e => e.Name == name);
-        TrackedOperators[TrackedOperators.IndexOf(entry)] = new TrackingEntry
+        var slot = new LineupSlot { OperatorName = name, Equipments = [.. entry.Equipments], IsElite = entry.IsElite };
+        if (equipmentName.Length > 0)
         {
-            Name = name, Type = TrackingType.Operator, Role = entry.Role, Stages = entry.Stages,
-            ExpiresAt = entry.ExpiresAt, IsExpired = entry.IsExpired
-        };
+            var index = equipmentRules.Transformations(slot).FindIndex(t => t.EquipmentName == equipmentName);
+            equipmentRules.SetTransformation(slot, index, "");
+        }
+        var cleared = Copy(entry, entry.IsExpired);
+        cleared.TransformedCovenant = null;
+        cleared.Equipments = slot.Equipments;
+        TrackedOperators[TrackedOperators.IndexOf(entry)] = cleared;
+        RefreshEquipmentRequirements();
+    }
+
+    private void RefreshEquipmentRequirements()
+    {
+        var required = TrackedOperators.SelectMany(e => e.Equipments).ToHashSet();
+        foreach (var entry in TrackedEquipment.Where(e => !e.IsManual && !required.Contains(e.Name)).ToList())
+            TrackedEquipment.Remove(entry);
+        foreach (var name in required)
+            if (!TrackedEquipment.Any(e => e.Name == name))
+                TrackedEquipment.Add(new TrackingEntry { Name = name, Type = TrackingType.Equipment, IsManual = false });
     }
 
     public bool IsTracked(string name)
@@ -247,6 +282,7 @@ public partial class TrackingViewModel : ObservableObject
             else
                 TrackedEquipment.Add(entry);
         }
+        RefreshEquipmentRequirements();
         RefreshExpiry();
     }
 }

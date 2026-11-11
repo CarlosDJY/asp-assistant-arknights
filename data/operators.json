@@ -3692,6 +3692,32 @@
           }
         ]
       }
+    },
+    {
+      "name": "“暴躁铁皮”",
+      "iconPath": "icons/operators/“暴躁铁皮”.png",
+      "tier": 5,
+      "coreCovenants": [],
+      "additionalCovenants": [
+        "协防干员"
+      ],
+      "normal": {
+        "traits": [
+          {
+            "traitType": "作战能力",
+            "traitDescription": "<战斗中>攻击力和生命上限+60%"
+          }
+        ]
+      },
+      "elite": {
+        "traits": [
+          {
+            "traitType": "作战能力",
+            "traitDescription": "<战斗中>攻击力和生命上限+120%"
+          }
+        ]
+      },
+      "requiredStrategyId": "band_mech"
     }
   ]
 }

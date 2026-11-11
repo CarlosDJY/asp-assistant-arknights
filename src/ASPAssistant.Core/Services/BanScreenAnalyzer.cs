@@ -85,7 +85,7 @@ public sealed class BanScreenAnalyzer
         _ocrStrategy = ocrStrategy;
         _enemyRecognizer = enemyRecognizer;
         _informationDetector = new InformationScreenDetector(ocr, ocrStrategy);
-        _operators = operators;
+        _operators = operators.Where(o => o.RequiredStrategyId.Length == 0).ToList();
         _coreCovenantNames = coreCovenantNames;
         _additionalCovenantNames = additionalCovenantNames;
     }

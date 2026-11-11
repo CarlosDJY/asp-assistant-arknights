@@ -11,6 +11,7 @@
         <converters:TrackedEquipmentConverter x:Key="TrackedEquipment" />
         <converters:LocalPathToImageConverter x:Key="PathToImage" />
 
+        <converters:TrackedTransformationsConverter x:Key="TrackedTransformations" />
         <DataTemplate DataType="{x:Type models:Equipment}">
             <controls:EquipmentCell IsTrackingList="True" TrackingToggled="OnTrackedEquipmentToggled" />
         </DataTemplate>

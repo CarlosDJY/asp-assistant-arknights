@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using ASPAssistant.Core.Models;
 using ASPAssistant.Core.ViewModels;
+using ASPAssistant.Core.Services;
 
 namespace ASPAssistant.App.Windows;
 
@@ -69,6 +70,11 @@ public partial class LineupEditorWindow : Window
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
     {
+        if (_vm.ValidationError.Length > 0)
+        {
+            MessageBox.Show(this, _vm.ValidationError, "请调整阵容", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         Result = _vm.ToLineup();
         DialogResult = true;
     }
@@ -110,11 +116,14 @@ public partial class LineupEditorWindow : Window
     {
         _slotCards.Clear();
         SlotsHost.Items.Clear();
+        SpecialSlotsHost.Items.Clear();
         for (int i = 0; i < (_editingStrategies ? _vm.StrategySlots.Count : _vm.Slots.Count); i++)
         {
             var card = CreateSlotCard(i);
             _slotCards.Add(card);
-            SlotsHost.Items.Add(card);
+            if (!_editingStrategies && _vm.Slots[i].OperatorName == LineupEquipmentService.MechName)
+                SpecialSlotsHost.Items.Add(card);
+            else SlotsHost.Items.Add(card);
         }
     }
 
@@ -192,8 +201,7 @@ public partial class LineupEditorWindow : Window
         removeBtn.Click += (_, _) =>
         {
             _vm.SetSlotOperator(slotIndex, "");
-            RefreshSlotCard(border, slotIndex);
-            RefreshCovenantPanel();
+            RefreshEditor();
         };
         DockPanel.SetDock(removeBtn, Dock.Right);
         nameRow.Children.Add(removeBtn);
@@ -210,17 +218,41 @@ public partial class LineupEditorWindow : Window
         nameRow.Children.Add(nameText);
         rightStack.Children.Add(nameRow);
 
+        headerDock.Children.Add(rightStack);
+        stack.Children.Add(headerDock);
+
+        if (slot.OperatorName == LineupEquipmentService.MechName)
+        {
+            var elite = new CheckBox
+            {
+                Content = "精锐", IsChecked = slot.IsElite,
+                FontSize = 10, Foreground = (Brush)FindResource("TextPrimaryBrush"), Margin = new Thickness(0, 6, 0, 2)
+            };
+            elite.Checked += (_, _) => { _vm.SetSlotElite(slotIndex, true); RefreshSlotCard(border, slotIndex); RefreshCovenantPanel(); };
+            elite.Unchecked += (_, _) => { _vm.SetSlotElite(slotIndex, false); RefreshSlotCard(border, slotIndex); RefreshCovenantPanel(); };
+            stack.Children.Add(elite);
+            stack.Children.Add(new TextBlock
+            {
+                Text = !_vm.HasMechStrategy ? "需添加森蚺的“暴躁铁皮”策略" : slot.IsElite ? "精锐：6 装备 / 5 转职" : "普通：4 装备 / 3 转职",
+                FontSize = 10, TextWrapping = TextWrapping.Wrap,
+                Foreground = (Brush)FindResource(_vm.HasMechStrategy ? "TextSecondaryBrush" : "DangerBrush")
+            });
+        }
+
         // Equipment chips (2 slots)
         var equipPanel = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
-        for (int slotI = 0; slotI < LineupEditorViewModel.MaxEquipPerSlot; slotI++)
+        for (int slotI = 0; slotI < LineupEquipmentService.VisibleEquipmentSlots(slot); slotI++)
         {
             string? eqName = slotI < slot.Equipments.Count ? slot.Equipments[slotI] : null;
             var chip = new Button
             {
                 Content = eqName ?? "+ 装备",
                 Style = (Style)FindResource("ChipButton"),
-                ToolTip = eqName ?? "添加装备",
+                ToolTip = slotI >= LineupEquipmentService.Capacity(slot) ? "需要精锐状态；已有装备可点击移除" : eqName ?? "添加装备",
+                IsEnabled = slotI < LineupEquipmentService.Capacity(slot) || eqName is not null,
             };
+            System.Windows.Automation.AutomationProperties.SetName(chip, $"装备槽{slotI + 1}");
+            ToolTipService.SetShowOnDisabled(chip, true);
             int captured = slotI;
             chip.Click += (_, _) => PickEquipment(slotIndex, captured);
             if (eqName is not null)
@@ -235,27 +267,48 @@ public partial class LineupEditorWindow : Window
             }
             equipPanel.Children.Add(chip);
         }
-        rightStack.Children.Add(equipPanel);
+        stack.Children.Add(equipPanel);
 
-        headerDock.Children.Add(rightStack);
-        stack.Children.Add(headerDock);
-
-        if (slot.TransformedCovenant.Length > 0)
+        var transformations = _vm.EquipmentRules.Transformations(slot);
+        var transformPanel = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+        for (var i = 0; i < LineupEquipmentService.VisibleTransformationSlots(slot); i++)
         {
+            var index = i;
+            var current = i < transformations.Count ? transformations[i] : null;
             var transform = new Button
             {
-                Content = $"转职：{slot.TransformedCovenant} ✕",
-                Style = (Style)FindResource("ChipButton"), Tag = "active",
+                Content = current is null ? "+ 转职" : $"转职：{current.Covenant}",
+                Style = (Style)FindResource("ChipButton"), Tag = current is null ? null : "active",
                 HorizontalAlignment = HorizontalAlignment.Left,
-                Margin = new Thickness(0, 6, 0, 0), ToolTip = "取消计划转职",
+                ToolTip = i >= LineupEquipmentService.Capacity(slot) - 1 ? "需精锐后启用" : current?.EquipmentName ?? "选择转职盟约对应的装备",
+                IsEnabled = i < LineupEquipmentService.Capacity(slot) - 1 || current is not null,
             };
-            transform.Click += (_, _) =>
+            System.Windows.Automation.AutomationProperties.SetName(transform, $"转职槽{i + 1}");
+            ToolTipService.SetShowOnDisabled(transform, true);
+            transform.Click += (_, _) => PickTransformation(slotIndex, index);
+            transformPanel.Children.Add(transform);
+            if (current is not null)
             {
-                _vm.ClearSlotTransformation(slotIndex);
+                var clear = new Button
+                {
+                    Content = "✕", Style = (Style)FindResource("ChipButton"), ToolTip = "取消本次转职",
+                    Tag = current.EquipmentName, Padding = new Thickness(4, 2, 4, 2)
+                };
+                clear.Click += (_, _) => { _vm.ClearSlotTransformation(slotIndex, index); RefreshSlotCard(border, slotIndex); RefreshCovenantPanel(); };
+                transformPanel.Children.Add(clear);
+            }
+        }
+        stack.Children.Add(transformPanel);
+        if (!string.IsNullOrEmpty(slot.TransformedCovenant))
+        {
+            var legacy = new Button { Content = $"清除旧转职：{slot.TransformedCovenant}", Style = (Style)FindResource("ChipButton"), ToolTip = "该旧转职没有对应装备，请重新选择" };
+            legacy.Click += (_, _) =>
+            {
+                _vm.ClearLegacyTransformation(slotIndex);
                 RefreshSlotCard(border, slotIndex);
                 RefreshCovenantPanel();
             };
-            stack.Children.Add(transform);
+            stack.Children.Add(legacy);
         }
 
         // Tags
@@ -399,15 +452,14 @@ public partial class LineupEditorWindow : Window
     private void PickOperator(int slotIndex)
     {
         var current = _vm.Slots[slotIndex].OperatorName;
-        var dlg = new OperatorPickerWindow(_vm.AllOperators, current)
+        var dlg = new OperatorPickerWindow(_vm.AllOperators, current, _vm.StrategySlots.Select(s => s.StrategyId).ToHashSet())
         {
             Owner = this,
         };
         if (dlg.ShowDialog() == true)
         {
             _vm.SetSlotOperator(slotIndex, dlg.Result ?? "");
-            RefreshSlotCard(_slotCards[slotIndex], slotIndex);
-            RefreshCovenantPanel();
+            RefreshEditor();
         }
     }
 
@@ -430,6 +482,41 @@ public partial class LineupEditorWindow : Window
 
         _vm.SetSlotEquipment(slotIndex, equipIndex, picked, dlg.IsCoreEquipment);
 
+        RefreshSlotCard(_slotCards[slotIndex], slotIndex);
+        RefreshCovenantPanel();
+    }
+
+    private void PickTransformation(int slotIndex, int transformationIndex)
+    {
+        var choices = _vm.AllEquipment.Where(e => _vm.EquipmentRules.EquipmentToCovenant.ContainsKey(e.Name))
+            .OrderBy(e => e.Tier).ThenBy(e => e.Name)
+            .Select(e => new SimplePickerDialog.PickerItem(e.Name,
+                $"{_vm.EquipmentRules.EquipmentToCovenant[e.Name]} · {e.Name}", e.IconPath, null, e.Normal.EffectDescription));
+        var current = _vm.EquipmentRules.Transformations(_vm.Slots[slotIndex]);
+        var picker = new SimplePickerDialog("选择转职装备", choices,
+            transformationIndex < current.Count ? current[transformationIndex].EquipmentName : null,
+            "会同步配置变形同构体及所选装备") { Owner = this };
+        if (picker.ShowDialog() != true || picker.Result is null) return;
+        if (picker.Result.Length == 0)
+        {
+            _vm.ClearSlotTransformation(slotIndex, transformationIndex);
+        }
+        else
+        {
+            var proposed = _vm.PreviewTransformation(slotIndex, transformationIndex, picker.Result);
+            var replaced = new List<string>();
+            while (proposed.Equipments.Count > LineupEquipmentService.Capacity(proposed))
+            {
+                var replace = new SimplePickerDialog("装备位不足，请选择要替换的装备",
+                    proposed.Equipments.Where(e => e != LineupEquipmentService.Shapeshifter && e != picker.Result)
+                        .Select(e => new SimplePickerDialog.PickerItem(e, e, _vm.AllEquipment.FirstOrDefault(x => x.Name == e)?.IconPath)),
+                    null, "原装备会在确认转职后替换；取消则保留原配置") { Owner = this };
+                if (replace.ShowDialog() != true || string.IsNullOrEmpty(replace.Result)) return;
+                replaced.Add(replace.Result);
+                proposed.Equipments.Remove(replace.Result);
+            }
+            _vm.SetSlotTransformation(slotIndex, transformationIndex, picker.Result, replaced);
+        }
         RefreshSlotCard(_slotCards[slotIndex], slotIndex);
         RefreshCovenantPanel();
     }
@@ -464,7 +551,10 @@ public partial class LineupEditorWindow : Window
         // The ItemsControl re-binds against ActiveStats automatically.
         CovenantStatsList.ItemsSource = null;
         CovenantStatsList.ItemsSource = _vm.ActiveStats;
-        EditorHint.Text = $"正在编辑：{(_editingStrategies ? "策略" : _vm.CurrentPhase.ToString())} · 列表预览与追踪使用后期阵容";
+        EditorHint.Text = _vm.ValidationError.Length > 0 ? _vm.ValidationError :
+            $"正在编辑：{(_editingStrategies ? "策略" : _vm.CurrentPhase.ToString())} · 列表预览与追踪使用后期阵容";
+        EditorHint.ToolTip = _vm.ValidationError.Length > 0 ? _vm.ValidationError : null;
+        EditorHint.SetResourceReference(TextBlock.ForegroundProperty, _vm.ValidationError.Length > 0 ? "DangerBrush" : "TextSecondaryBrush");
     }
 
     private void OnCovenantRowLoaded(object sender, RoutedEventArgs e)

@@ -22,7 +22,7 @@
     </UserControl.Resources>
 
     <DockPanel>
-        <!-- Run banner: this run's bans · 重新录入 · ⋯ (清除盟约高亮 / 清除本局 Ban 位) -->
+        <!-- Run banner: this run's bans · 重新录入 · ⋯ (只看本局盟约 / 清除录入 / 清除本局 Ban 位) -->
         <Border DockPanel.Dock="Top" Margin="10,10,10,0" Padding="10,8" Background="{DynamicResource CardBackgroundBrush}"
                 BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}">
             <DockPanel>
@@ -35,7 +35,12 @@
                             AutomationProperties.Name="更多本局操作" ToolTip="更多本局操作" Click="OnRunMenuClicked">
                         <Button.ContextMenu>
                             <ContextMenu Placement="Bottom">
-                                <MenuItem x:Name="ClearHighlightsButton" Header="清除盟约高亮" Click="OnClearHighlightsClicked" />
+                                <MenuItem x:Name="OnlyCurrentRunToggle" Header="只看本局盟约" IsCheckable="True"
+                                          IsChecked="{Binding OnlyCurrentRun}" IsEnabled="{Binding HasRunInfo}"
+                                          ToolTip="筛选里只列出本局录入的盟约" />
+                                <Separator />
+                                <MenuItem x:Name="ClearHighlightsButton" Header="清除录入" Click="OnClearHighlightsClicked"
+                                          ToolTip="清除本局盟约录入及规划限制" />
                                 <MenuItem x:Name="ClearBansButton" Header="清除本局 Ban 位" Foreground="{DynamicResource DangerBrush}" Click="OnClearBansClicked" />
                             </ContextMenu>
                         </Button.ContextMenu>

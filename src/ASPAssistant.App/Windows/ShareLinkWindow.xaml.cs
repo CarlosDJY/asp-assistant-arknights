@@ -10,10 +10,10 @@ public partial class ShareLinkWindow : Window
     private readonly Action<string> _copyText;
     private bool _closed;
 
-    public ShareLinkWindow(string url, Action<string> copyText)
+    public ShareLinkWindow(string lineupName, string url, Action<string> copyText)
     {
         InitializeComponent();
-        LinkBox.Text = url;
+        LinkBox.Text = $"<{lineupName}> {url}";
         _copyText = copyText;
         Closed += (_, _) => _closed = true;
         Loaded += async (_, _) => await CopyLinkAsync();

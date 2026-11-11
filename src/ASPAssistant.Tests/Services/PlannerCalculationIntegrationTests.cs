@@ -26,7 +26,7 @@ public class PlannerCalculationIntegrationTests
         planned.Counts["炎"].Should().Be(3);
         planned.Counts["调和"].Should().Be(1);
         planned.Operators.Single(o => o.Name == "魔王").IsHarmony.Should().BeTrue();
-        var editor = new LineupEditorViewModel(new PlannerLineupItem { Source = planned }.ToLineup(), operators, [],
+        var editor = new LineupEditorViewModel(new PlannerLineupItem { Source = planned }.ToLineup(_calculator.EquipmentRules), operators, [],
             new CovenantCalculator(operators, covenants, mappings));
         editor.ActiveStats.Single(s => s.Name == "炎").Count.Should().Be(3);
         editor.ActiveStats.Single(s => s.Name == "调和").Count.Should().Be(1);
@@ -45,10 +45,10 @@ public class PlannerCalculationIntegrationTests
         var directory = Path.Combine(Path.GetTempPath(), $"planner_transform_{Guid.NewGuid():N}");
         try
         {
-            var store = new LineupStore(directory);
-            await store.SaveAsync(new PlannerLineupItem { Source = planned }.ToLineup());
+            var store = new LineupStore(directory, _calculator.EquipmentRules);
+            await store.SaveAsync(new PlannerLineupItem { Source = planned }.ToLineup(_calculator.EquipmentRules));
             var loaded = (await store.LoadAllAsync()).Single();
-            var imported = await new LineupShareService().ImportAsync(System.Text.Json.JsonSerializer.Serialize(loaded));
+            var imported = await new LineupShareService(_calculator.EquipmentRules, Path.Combine(directory, "share-links")).ImportAsync(System.Text.Json.JsonSerializer.Serialize(loaded));
             var editor = new LineupEditorViewModel(imported, Operators, [], _calculator);
             editor.ActiveStats.Single(s => s.Name == "炎").Count.Should().Be(planned.Counts["炎"]);
 
@@ -56,19 +56,19 @@ public class PlannerCalculationIntegrationTests
             tracking.TrackLineup(editor.ToLineup());
             var settings = new SettingsManager(directory);
             await settings.SaveTrackingEntriesAsync(tracking.AllEntries.ToList());
-            tracking.LoadEntries(await settings.LoadTrackingEntriesAsync());
-            tracking.TrackedOperators.Single(e => e.Name == "甲").TransformedCovenant.Should().Be("炎");
-            tracking.ClearPlannedTransformation("甲");
-            tracking.TrackedOperators.Single(e => e.Name == "甲").TransformedCovenant.Should().BeEmpty();
-            editor.Slots[0].TransformedCovenant.Should().Be("炎");
+            tracking.LoadEntries(await settings.LoadTrackingEntriesAsync(_calculator.EquipmentRules));
+            tracking.TrackedOperators.Single(e => e.Name == "甲").Equipments.Should().Contain("炎转职");
+            tracking.ClearPlannedTransformation("甲", "炎转职", _calculator.EquipmentRules);
+            tracking.TrackedOperators.Single(e => e.Name == "甲").Equipments.Should().BeEmpty();
+            editor.Slots[0].Equipments.Should().Contain("炎转职");
 
-            editor.ClearSlotTransformation(0);
+            editor.ClearSlotTransformation(0, 0);
             editor.ActiveStats.Should().NotContain(s => s.Name == "炎");
             await store.SaveAsync(editor.ToLineup());
-            (await store.LoadAllAsync()).Single().Slots[0].TransformedCovenant.Should().BeEmpty();
+            (await store.LoadAllAsync()).Single().Slots[0].Equipments.Should().BeEmpty();
             editor.Reset();
-            editor.Slots[0].TransformedCovenant.Should().Be("炎");
-            imported.Slots[0].TransformedCovenant.Should().Be("炎");
+            editor.Slots[0].Equipments.Should().Contain("炎转职");
+            imported.Slots[0].Equipments.Should().Contain("炎转职");
         }
         finally
         {
@@ -92,7 +92,7 @@ public class PlannerCalculationIntegrationTests
         new() { Name = "调和", BondType = "REGULAR", ActivateCount = 1 },
     ];
     private readonly CovenantCalculator _calculator = new(Operators, Covenants,
-        new Dictionary<string, string> { ["炎转职"] = "炎" });
+        new Dictionary<string, string> { ["炎转职"] = "炎", ["精准转职"] = "精准" });
 
     [Fact]
     public void TransformedCoreReceivesHarmonyBonus()
@@ -102,6 +102,7 @@ public class PlannerCalculationIntegrationTests
             new() { OperatorName = "甲", TransformedCovenant = "炎" },
             new() { OperatorName = "魔王" },
         ] };
+        _calculator.EquipmentRules.Upgrade(lineup);
         _calculator.Compute(lineup).Single(c => c.Name == "炎").Count.Should().Be(2);
     }
 
@@ -116,6 +117,7 @@ public class PlannerCalculationIntegrationTests
             TransformedCovenant = "炎",
             Equipments = fromEquipment ? [CovenantCalculator.ShapeshifterEquipment, "炎转职"] : [],
         }] };
+        _calculator.EquipmentRules.Upgrade(lineup);
         _calculator.Compute(lineup).Single(c => c.Name == "炎").Count.Should().Be(1);
     }
 
@@ -123,6 +125,7 @@ public class PlannerCalculationIntegrationTests
     public void NativeAdditionalCovenantIsNotCountedAgainByPlannerMetadata()
     {
         var lineup = new Lineup { Slots = [new() { OperatorName = "甲", TransformedCovenant = "精准" }] };
+        _calculator.EquipmentRules.Upgrade(lineup);
         _calculator.Compute(lineup).Single(c => c.Name == "精准").Count.Should().Be(1);
     }
 
@@ -138,10 +141,10 @@ public class PlannerCalculationIntegrationTests
             PeopleOptions = [2], TransformOptions = [1],
         }).Should().ContainSingle().Subject;
         result.Counts["炎"].Should().Be(2);
-        var saved = new PlannerLineupItem { Source = result }.ToLineup();
+        var saved = new PlannerLineupItem { Source = result }.ToLineup(_calculator.EquipmentRules);
         _calculator.Compute(saved).Single(c => c.Name == "炎").Count.Should().Be(result.Counts["炎"]);
         var editor = new LineupEditorViewModel(saved, Operators, [], _calculator);
-        editor.ToLineup().Slots.Single(s => s.OperatorName == "甲").TransformedCovenant.Should().Be("炎");
+        editor.ToLineup().Slots.Single(s => s.OperatorName == "甲").Equipments.Should().Contain("炎转职");
     }
 
     [Theory]
@@ -159,11 +162,11 @@ public class PlannerCalculationIntegrationTests
             PeopleOptions = [8], TransformOptions = [2],
         });
         results.Should().NotBeEmpty();
-        var calculator = new CovenantCalculator(operators, Covenants, new Dictionary<string, string>());
+        var calculator = new CovenantCalculator(operators, Covenants, _calculator.EquipmentRules.EquipmentToCovenant.ToDictionary(p => p.Key, p => p.Value));
         foreach (var result in results)
         {
             result.Counts["炎"].Should().BeGreaterThanOrEqualTo(3);
-            calculator.Compute(new PlannerLineupItem { Source = result }.ToLineup())
+            calculator.Compute(new PlannerLineupItem { Source = result }.ToLineup(_calculator.EquipmentRules))
                 .Single(c => c.Name == "炎").Count.Should().Be(result.Counts["炎"]);
         }
     }

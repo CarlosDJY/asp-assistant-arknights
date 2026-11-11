@@ -28,11 +28,15 @@ public class LineupSlot
     [JsonPropertyName("operatorName")]
     public string OperatorName { get; set; } = "";
 
-    /// <summary>规划器为该干员临时追加的转职盟约。</summary>
+    /// <summary>只用于读取旧版数据；导入时转换为实际装备后清除。</summary>
     [JsonPropertyName("transformedCovenant")]
-    public string TransformedCovenant { get; set; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TransformedCovenant { get; set; }
 
-    /// <summary>装备名列表，最多 2 个。</summary>
+    [JsonPropertyName("isElite")]
+    public bool IsElite { get; set; }
+
+    /// <summary>普通干员最多 2 件；暴躁铁皮普通 4 件、精锐 6 件。</summary>
     [JsonPropertyName("equipments")]
     public List<string> Equipments { get; set; } = [];
 
@@ -52,7 +56,7 @@ public class Lineup
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";
 
-    /// <summary>后期阵容（最多 9 个），也是列表预览和追踪使用的阵容。</summary>
+    /// <summary>后期阵容（最多 9 个），用于列表预览；追踪包含四个阶段，同名干员优先使用后期配置。</summary>
     [JsonPropertyName("slots")]
     public List<LineupSlot> Slots { get; set; } = [];
 

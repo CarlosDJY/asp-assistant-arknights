@@ -21,7 +21,7 @@ public class CovenantCalculator
 
     private readonly Dictionary<string, Operator> _operatorByName;
     private readonly Dictionary<string, CovenantInfo> _covenantByName;
-    private readonly Dictionary<string, string> _jobChangeEquipmentToCovenant;
+    public LineupEquipmentService EquipmentRules { get; }
     private readonly HashSet<string> _coreCovenantSet;
 
     public IReadOnlyList<CovenantInfo> AllCovenants { get; }
@@ -40,7 +40,7 @@ public class CovenantCalculator
             .GroupBy(c => c.Name)
             .ToDictionary(g => g.Key, g => g.First());
 
-        _jobChangeEquipmentToCovenant = new Dictionary<string, string>(jobChangeEquipmentToCovenant);
+        EquipmentRules = new LineupEquipmentService(jobChangeEquipmentToCovenant);
 
         _coreCovenantSet = AllCovenants
             .Where(c => c.BondType == "SEASON")
@@ -62,29 +62,15 @@ public class CovenantCalculator
             {
                 foreach (var c in op.CoreCovenants)
                     slotCore.Add(c);
-
-                if (slot.Equipments.Contains(ShapeshifterEquipment))
+                var additional = op.AdditionalCovenants.ToHashSet();
+                foreach (var transformation in EquipmentRules.Transformations(slot))
                 {
-                    foreach (var eq in slot.Equipments)
-                    {
-                        if (eq == ShapeshifterEquipment) continue;
-                        if (_jobChangeEquipmentToCovenant.TryGetValue(eq, out var cov))
-                            slotCore.Add(cov);
-                    }
+                    if (_coreCovenantSet.Contains(transformation.Covenant)) slotCore.Add(transformation.Covenant);
+                    else additional.Add(transformation.Covenant);
                 }
-
-                foreach (var add in op.AdditionalCovenants)
-                {
+                foreach (var add in additional)
                     if (add == HarmonyCovenant) slotCore.Add(add);
-                    else Add(counts, add, 1);
-                }
-
-                if (_coreCovenantSet.Contains(slot.TransformedCovenant))
-                    slotCore.Add(slot.TransformedCovenant);
-                else if (!string.IsNullOrEmpty(slot.TransformedCovenant)
-                    && !slotCore.Contains(slot.TransformedCovenant)
-                    && !op.AdditionalCovenants.Contains(slot.TransformedCovenant))
-                    Add(counts, slot.TransformedCovenant, 1);
+                    else if (!slotCore.Contains(add)) Add(counts, add, 1);
             }
             perSlotCoreCovenants.Add(slotCore);
         }

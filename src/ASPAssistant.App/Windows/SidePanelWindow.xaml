@@ -16,7 +16,7 @@
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="0" ResizeBorderThickness="5" GlassFrameThickness="0" />
     </WindowChrome.WindowChrome>
-    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+    <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <DockPanel>
             <!-- Custom title bar: logo, terminal level / round status, settings · minimize · close -->
             <Border DockPanel.Dock="Top" Height="36" Background="{DynamicResource TitleBackgroundBrush}"
@@ -25,8 +25,19 @@
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,2,0">
                         <Button x:Name="SettingsButton" Click="OnToggleSettings" Tag="{StaticResource IconSettings}"
-                                AutomationProperties.Name="设置" ToolTip="设置"
-                                Style="{StaticResource TitleBarButton}" />
+                                AutomationProperties.Name="设置" ToolTip="设置">
+                            <Button.Style>
+                                <!-- Highlighted while the settings panel is open -->
+                                <Style TargetType="Button" BasedOn="{StaticResource TitleBarButton}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Visibility, ElementName=SettingsPanel}" Value="Visible">
+                                            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Button.Style>
+                        </Button>
                         <Button Click="OnMinimize" Tag="{StaticResource IconMinimize}" AutomationProperties.Name="最小化" ToolTip="最小化"
                                 Style="{StaticResource TitleBarButton}" />
                         <Button Click="OnClose" Tag="{StaticResource IconClose}" AutomationProperties.Name="关闭" ToolTip="关闭"

@@ -108,18 +108,25 @@ public static class BanCovenantReader
         AppLogger.Info("BanAnalyzer",
             $"{group} raw OCR ({ocrResults.Count}): [{string.Join(", ", ocrResults.Select(r => r.Text))}]");
 
-        var sawHeader = ocrResults.Any(r => NormalizeHeader(r.Text).Contains(headerText));
+        var header = ocrResults.FirstOrDefault(r => NormalizeHeader(r.Text).Contains(headerText));
+        var sawHeader = header is not null;
         if (!sawHeader)
         {
             AppLogger.Warn("BanAnalyzer",
                 $"{group}: header '{headerText}' missing from region {region.Name} (page may be scrolled)");
         }
 
+        double gridTop = header is null ? region.YPercent : (header.Box.Y + header.Box.H) / (double)imgHeight;
+        var nextHeader = ocrResults.FirstOrDefault(r => r.Box.X < imgWidth * .30
+            && r.Box.Y > gridTop * imgHeight && r.Text.Replace(" ", "").Contains("本局禁用"));
+        double gridBottom = nextHeader is null
+            ? region.YPercent + region.HeightPercent : nextHeader.Box.Y / (double)imgHeight;
         var slots = pixels is null
-            ? BanIconGrid.Detect(screenshot, imgWidth, imgHeight, region.YPercent, region.YPercent + region.HeightPercent)
-            : BanIconGrid.Detect(pixels, region.YPercent, region.YPercent + region.HeightPercent);
+            ? BanIconGrid.Detect(screenshot, imgWidth, imgHeight, gridTop, gridBottom)
+            : BanIconGrid.Detect(pixels, gridTop, gridBottom);
 
-        var candidates = MatchCandidates(ocrResults, knownNames, imgWidth);
+        var candidates = MatchCandidates(ocrResults.Where(r => CenterY(r) >= gridTop * imgHeight
+            && CenterY(r) < gridBottom * imgHeight).ToList(), knownNames, imgWidth);
 
         // 整行 OCR 偶尔读不出名字（缩放过、被暗化、字体发糊），但图标位置是稳定的。
         // 这时逐个槽位裁剪名字框，只做“候选名匹配”，比整行识别稳得多。
@@ -161,10 +168,11 @@ public static class BanCovenantReader
         var pending = new List<(BanIconSlot Slot, int X, int Y, int W, int H)>();
         foreach (var slot in slots)
         {
-            if (existing.Any(c => Math.Abs(CenterX(c.Ocr) - slot.CenterX) < pitch * 0.35))
+            int iconHeight = Math.Max(24, slot.Bottom - slot.Top);
+            if (existing.Any(c => Math.Abs(CenterX(c.Ocr) - slot.CenterX) < pitch * 0.35
+                && Math.Abs(CenterY(c.Ocr) - slot.Bottom) <= iconHeight * 0.65))
                 continue;
 
-            int iconHeight = Math.Max(24, slot.Bottom - slot.Top);
             int boxWidth = (int)(pitch * 0.95);
             int boxHeight = (int)(iconHeight * 0.45);
             int boxX = (int)(slot.CenterX - boxWidth / 2.0);
@@ -441,9 +449,10 @@ public static class BanCovenantReader
 
     private static double CenterX(OcrTextResult ocr) => ocr.Box.X + ocr.Box.W / 2.0;
 
-    /// <summary>标题里的「盟」在低分辨率/抗锯齿下常被读成「明」。</summary>
-    private static string NormalizeHeader(string text) =>
-        text.Replace(" ", "").Replace("明", "盟").Replace("約", "约");
+    /// <summary>只修正实测出现过的盟约标题 OCR 错字，不参与盟约名称匹配。</summary>
+    internal static string NormalizeHeader(string text) =>
+        text.Replace(" ", "").Replace("明", "盟").Replace("約", "约")
+            .Replace("核心盘约", "核心盟约").Replace("附加盟药", "附加盟约");
 
     private static double CenterY(OcrTextResult ocr) => ocr.Box.Y + ocr.Box.H / 2.0;
 

@@ -163,12 +163,12 @@ public class LineupEditorViewModelTests
         {
             var vm = Create(Source());
             vm.ToggleSlotTag(0, LineupTag.阵容核心);
-            var store = new LineupStore(directory);
+            var store = new LineupStore(directory, EquipmentTestData.Rules);
             await store.SaveAsync(vm.ToLineup());
             var loaded = (await store.LoadAllAsync()).Single();
             loaded.Slots[0].CoreEquipments.Should().Equal("维式重锤");
             loaded.Slots[0].Tags.Should().Contain(LineupTag.阵容核心);
-            var imported = await new LineupShareService().ImportAsync(JsonSerializer.Serialize(loaded));
+            var imported = await new LineupShareService(EquipmentTestData.Rules, Path.Combine(directory, "share-links")).ImportAsync(JsonSerializer.Serialize(loaded));
             imported.Slots.Should().BeEquivalentTo(loaded.Slots);
         }
         finally
@@ -182,7 +182,7 @@ public class LineupEditorViewModelTests
     [Fact]
     public async Task OldJson_KeepsTagNumbersAndDefaultsToNoCoreEquipment()
     {
-        var imported = await new LineupShareService().ImportAsync(
+        var imported = await new LineupShareService(EquipmentTestData.Rules, Path.GetTempPath()).ImportAsync(
             """{"id":"old","name":"旧阵容","slots":[{"operatorName":"角峰","equipments":["维式重锤"],"tags":[0,3]}]}""");
         imported.Slots[0].CoreEquipments.Should().BeEmpty();
         imported.EarlySlots.Should().BeEmpty();
@@ -289,12 +289,12 @@ public class LineupEditorViewModelTests
                 vm.ToggleSlotTag(0, LineupTag.阵容核心);
             }
             var expected = vm.ToLineup();
-            var store = new LineupStore(directory);
+            var store = new LineupStore(directory, EquipmentTestData.Rules);
             await store.SaveAsync(expected);
             var loaded = (await store.LoadAllAsync()).Single();
             loaded.Should().BeEquivalentTo(expected);
             var handler = new ShareCaptureHandler();
-            var service = new LineupShareService(new HttpClient(handler));
+            var service = new LineupShareService(EquipmentTestData.Rules, Path.Combine(directory, "share-links"), new HttpClient(handler));
             (await service.ExportAsync(loaded)).Should().Be("https://dpaste.com/TEST123");
             var imported = await service.ImportAsync(handler.Json);
             imported.Should().BeEquivalentTo(expected);
@@ -306,8 +306,8 @@ public class LineupEditorViewModelTests
             reopened.ToLineup().EarlySlots[0].CoreEquipments.Should().HaveCount(1);
             var tracking = new TrackingViewModel();
             tracking.TrackLineup(imported);
-            tracking.TrackedOperators.Select(entry => entry.Name).Should().Equal("角峰");
-            tracking.TrackedEquipment.Select(entry => entry.Name).Should().BeEquivalentTo("维式重锤", "坚守盾牌");
+            tracking.TrackedOperators.Select(entry => entry.Name).Should().BeEquivalentTo("角峰", "前期", "中期", "挂件");
+            tracking.TrackedEquipment.Select(entry => entry.Name).Should().BeEquivalentTo("维式重锤", "坚守盾牌", "前期", "中期", "挂件");
         }
         finally
         {
@@ -365,11 +365,11 @@ public class LineupEditorViewModelTests
             vm.ToggleStrategyTag(1, StrategyTag.优选);
             vm.SetStrategy(2, "unknown-shared-strategy");
             vm.ToggleStrategyTag(2, StrategyTag.次选);
-            var store = new LineupStore(directory);
+            var store = new LineupStore(directory, EquipmentTestData.Rules);
             await store.SaveAsync(vm.ToLineup());
             var loaded = (await store.LoadAllAsync()).Single();
             var handler = new ShareCaptureHandler();
-            var share = new LineupShareService(new HttpClient(handler));
+            var share = new LineupShareService(EquipmentTestData.Rules, Path.Combine(directory, "share-links"), new HttpClient(handler));
             await share.ExportAsync(loaded);
             var imported = await share.ImportAsync(handler.Json);
             var reopened = Create(imported);

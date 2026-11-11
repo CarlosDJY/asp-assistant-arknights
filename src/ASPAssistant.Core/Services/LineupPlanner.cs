@@ -28,7 +28,7 @@ public sealed class LineupPlanner
 
     public LineupPlanner(IEnumerable<Operator> operators, IEnumerable<CovenantInfo> covenants)
     {
-        _operators = [.. operators];
+        _operators = [.. operators.Where(o => o.RequiredStrategyId.Length == 0)];
         _covenants = [.. covenants];
         _coreNames = _covenants.Where(c => c.BondType == "SEASON").Select(c => c.Name).ToHashSet(StringComparer.Ordinal);
     }

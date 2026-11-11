@@ -232,5 +232,34 @@ class EnemyFetchTests(unittest.TestCase):
                 download.assert_not_called()
 
 
+class StrategyOperatorTests(unittest.TestCase):
+    def test_strategy_mech_is_kept_but_other_hidden_characters_are_not(self):
+        normal = {"upgradeChessId": "elite", "bondIds": ["emptyShip"], "garrisonIds": []}
+        season = {
+            "charChessDataDict": {"mech": normal, "elite": {"upgradeChessId": None}, "hidden": normal},
+            "charShopChessDatas": {
+                "mech": {"charId": "char_618_acrbot", "chessLevel": 5, "isHidden": True},
+                "hidden": {"charId": "char_hidden", "chessLevel": 3, "isHidden": True},
+            }, "garrisonDataDict": {}
+        }
+        result = fetch.process_operators({"char_618_acrbot": {"name": "“暴躁铁皮”"}}, season,
+                                        {"emptyShip": {"name": "协防干员", "bondType": "REGULAR"}})
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["requiredStrategyId"], "band_mech")
+        self.assertEqual(result[0]["tier"], 5)
+        self.assertEqual(result[0]["additionalCovenants"], ["协防干员"])
+
+    def test_equipment_mapping_includes_additional_covenants(self):
+        season = {
+            "trapShopChessDatas": {"core": {"itemType": "EQUIP"}, "extra": {"itemType": "EQUIP"}},
+            "trapChessDataDict": {"core": {"giveBondId": "fire", "effectId": "knife"},
+                                  "extra": {"giveBondId": "precise", "effectId": "scope"}},
+            "effectInfoDataDict": {"knife": {"effectName": "炎国短刀"}, "scope": {"effectName": "精准狙击镜"}},
+        }
+        result = fetch.build_job_change_equipment_map(season,
+            {"fire": {"name": "炎", "bondType": "SEASON"}, "precise": {"name": "精准", "bondType": "REGULAR"}})
+        self.assertEqual(result, {"炎国短刀": "炎", "精准狙击镜": "精准"})
+
+
 if __name__ == "__main__":
     unittest.main()

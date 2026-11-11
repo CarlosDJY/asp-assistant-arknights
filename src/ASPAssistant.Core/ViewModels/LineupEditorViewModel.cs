@@ -13,7 +13,6 @@ namespace ASPAssistant.Core.ViewModels;
 public partial class LineupEditorViewModel : ObservableObject
 {
     public const int MaxSlots = 9;
-    public const int MaxEquipPerSlot = 2;
     public const int MaxTagsPerSlot = 2;
 
     private readonly CovenantCalculator _calculator;
@@ -29,6 +28,28 @@ public partial class LineupEditorViewModel : ObservableObject
 
     public IReadOnlyList<Operator> AllOperators { get; }
     public IReadOnlyList<Equipment> AllEquipment { get; }
+    public LineupEquipmentService EquipmentRules => _calculator.EquipmentRules;
+    public bool HasMechStrategy => StrategySlots.Any(s => s.StrategyId == LineupEquipmentService.MechStrategy);
+    public bool CanSelectOperator(Operator op) => op.RequiredStrategyId.Length == 0 || StrategySlots.Any(s => s.StrategyId == op.RequiredStrategyId);
+
+    public string ValidationError
+    {
+        get
+        {
+            foreach (var (phase, slots) in _phaseSlots)
+                foreach (var slot in slots.Where(s => s.OperatorName.Length > 0))
+                {
+                    var op = AllOperators.FirstOrDefault(o => o.Name == slot.OperatorName);
+                    if (op is not null && !CanSelectOperator(op))
+                        return $"{phase}的{slot.OperatorName}需要在策略中添加森蚺的“暴躁铁皮”策略";
+                    if (!string.IsNullOrEmpty(slot.TransformedCovenant))
+                        return $"{slot.OperatorName}的旧转职“{slot.TransformedCovenant}”没有对应装备，请重新选择或清除";
+                    if (slot.Equipments.Count > LineupEquipmentService.Capacity(slot))
+                        return $"{slot.OperatorName}的装备超过{LineupEquipmentService.Capacity(slot)}件，请移除多余装备或启用精锐";
+                }
+            return "";
+        }
+    }
 
     public string LineupId { get; }
 
@@ -107,6 +128,9 @@ public partial class LineupEditorViewModel : ObservableObject
         }
         else
         {
+            var op = AllOperators.FirstOrDefault(o => o.Name == operatorName);
+            if (op is not null && !CanSelectOperator(op))
+                throw new InvalidOperationException("必须在策略中添加森蚺的“暴躁铁皮”策略");
             var slot = Slots[slotIndex];
             slot.OperatorName = operatorName;
             // 触发 ItemsControl 刷新（LineupSlot 是 POCO，集合变更通知更可靠）
@@ -115,10 +139,44 @@ public partial class LineupEditorViewModel : ObservableObject
         Recalculate();
     }
 
-    public void ClearSlotTransformation(int slotIndex)
+    public void ClearSlotTransformation(int slotIndex, int transformationIndex)
     {
         var slot = CloneSlot(Slots[slotIndex]);
-        slot.TransformedCovenant = "";
+        EquipmentRules.SetTransformation(slot, transformationIndex, "");
+        Slots[slotIndex] = slot;
+        Recalculate();
+    }
+
+    public void ClearLegacyTransformation(int slotIndex)
+    {
+        var slot = CloneSlot(Slots[slotIndex]);
+        slot.TransformedCovenant = null;
+        Slots[slotIndex] = slot;
+        Recalculate();
+    }
+
+    public LineupSlot PreviewTransformation(int slotIndex, int transformationIndex, string equipmentName)
+    {
+        var slot = CloneSlot(Slots[slotIndex]);
+        EquipmentRules.SetTransformation(slot, transformationIndex, equipmentName);
+        return slot;
+    }
+
+    public void SetSlotTransformation(int slotIndex, int transformationIndex, string equipmentName, IReadOnlyList<string> replacedEquipment)
+    {
+        var slot = PreviewTransformation(slotIndex, transformationIndex, equipmentName);
+        slot.Equipments.RemoveAll(replacedEquipment.Contains);
+        slot.CoreEquipments.RemoveAll(e => !slot.Equipments.Contains(e));
+        if (slot.Equipments.Count > LineupEquipmentService.Capacity(slot))
+            throw new InvalidOperationException("装备位不足，请先选择需要替换的装备");
+        Slots[slotIndex] = slot;
+        Recalculate();
+    }
+
+    public void SetSlotElite(int slotIndex, bool isElite)
+    {
+        var slot = CloneSlot(Slots[slotIndex]);
+        slot.IsElite = isElite;
         Slots[slotIndex] = slot;
         Recalculate();
     }
@@ -137,8 +195,8 @@ public partial class LineupEditorViewModel : ObservableObject
         }
         else
         {
-            if (slot.Equipments.Count >= MaxEquipPerSlot)
-                slot.Equipments.RemoveAt(0); // 顶替最早的
+            if (slot.Equipments.Count >= LineupEquipmentService.Capacity(slot))
+                throw new InvalidOperationException("装备位已满，请选择需要替换的装备");
             slot.Equipments.Add(equipName);
         }
         slot.CoreEquipments.RemoveAll(name => !slot.Equipments.Contains(name));
@@ -149,6 +207,9 @@ public partial class LineupEditorViewModel : ObservableObject
     public void SetSlotEquipment(int slotIndex, int equipmentIndex, string equipmentName, bool isCore)
     {
         var slot = CloneSlot(Slots[slotIndex]);
+        if (equipmentName.Length > 0 && equipmentIndex >= slot.Equipments.Count
+            && slot.Equipments.Count >= LineupEquipmentService.Capacity(slot))
+            throw new InvalidOperationException("装备位已满，请选择需要替换的装备");
         if (equipmentIndex < slot.Equipments.Count)
             slot.Equipments.RemoveAt(equipmentIndex);
         if (equipmentName.Length > 0)
@@ -189,6 +250,8 @@ public partial class LineupEditorViewModel : ObservableObject
             StrategyId = strategyId,
             Tags = strategyId.Length == 0 ? [] : [.. StrategySlots[slotIndex].Tags],
         };
+        OnPropertyChanged(nameof(HasMechStrategy));
+        OnPropertyChanged(nameof(ValidationError));
     }
 
     public void ToggleStrategyTag(int slotIndex, StrategyTag tag)
@@ -204,6 +267,8 @@ public partial class LineupEditorViewModel : ObservableObject
     {
         for (var i = 0; i < StrategySlots.Count; i++)
             StrategySlots[i] = new LineupStrategySlot();
+        OnPropertyChanged(nameof(HasMechStrategy));
+        OnPropertyChanged(nameof(ValidationError));
     }
 
     public void ToggleSlotTag(int slotIndex, LineupTag tag)
@@ -238,6 +303,7 @@ public partial class LineupEditorViewModel : ObservableObject
         ActiveStats = new ObservableCollection<CovenantStat>(visible);
         ActivatedCount = allStats.Count(s => s.Activated);
         FilledSlotCount = Slots.Count(s => !string.IsNullOrEmpty(s.OperatorName));
+        OnPropertyChanged(nameof(ValidationError));
     }
 
     public Lineup ToLineup() => new()
@@ -260,6 +326,7 @@ public partial class LineupEditorViewModel : ObservableObject
     {
         OperatorName = s.OperatorName,
         TransformedCovenant = s.TransformedCovenant,
+        IsElite = s.IsElite,
         Equipments   = [.. s.Equipments],
         CoreEquipments = [.. s.CoreEquipments],
         Tags         = [.. s.Tags],

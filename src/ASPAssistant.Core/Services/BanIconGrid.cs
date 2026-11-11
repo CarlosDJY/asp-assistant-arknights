@@ -43,7 +43,7 @@ public static class BanIconGrid
     private const int MinColumnsPerRow = 4;
 
     /// <summary>Horizontal scanning window, as fractions of the screenshot width.</summary>
-    private const double ScanLeftPercent = 0.04;
+    private const double ScanLeftPercent = 0.00;
     private const double ScanRightPercent = 0.70;
 
     /// <summary>Half width of the green sample, as a fraction of the column pitch.</summary>
@@ -164,7 +164,8 @@ public static class BanIconGrid
             }
             else if (!light && runStart >= 0)
             {
-                if (x - runStart > minSpan)
+                // 右侧地图可能伸入扫描区；被右边界截断的亮带不是完整盟约图标。
+                if (x < scanRight && x - runStart > minSpan)
                     centers.Add((runStart + x) / 2.0);
                 runStart = -1;
             }

@@ -17,7 +17,7 @@ public class FilterMatchAllTests
     private async Task<(OperatorBrowseViewModel Vm, List<ASPAssistant.Core.Models.Operator> Operators)>
         BuildOperatorVmAsync()
     {
-        var operators = await _store.LoadOperatorsAsync();
+        var operators = (await _store.LoadOperatorsAsync()).Where(o => o.RequiredStrategyId.Length == 0).ToList();
         var vm = new OperatorBrowseViewModel();
         vm.LoadOperators(operators);
         return (vm, operators);

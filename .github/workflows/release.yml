@@ -67,6 +67,108 @@ jobs:
           $zip = "publish/ASPAssistant-${{ github.ref_name }}-win-x64.zip"
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $([IO.Path]::GetFileName($zip))" | Set-Content -LiteralPath "publish/SHA256SUMS.txt" -Encoding ascii
+      - name: Verify package
+        shell: pwsh
+        env:
+          PACKAGE_TAG: ${{ github.ref_name }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Set-StrictMode -Version Latest
+
+          $tag = $env:PACKAGE_TAG
+          $expected = $tag.TrimStart('v')
+          $zip = "publish/ASPAssistant-$tag-win-x64.zip"
+          $zipInfo = Get-Item -LiteralPath $zip
+          $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          $checksum = Get-Content -LiteralPath 'publish/SHA256SUMS.txt' -Raw
+          if ($checksum.Trim() -cne "$hash  $($zipInfo.Name)") {
+            throw 'ZIP 实算 SHA256 或文件名与 SHA256SUMS.txt 不一致'
+          }
+
+          $runnerTemp = (Get-Item -LiteralPath $env:RUNNER_TEMP).FullName
+          $verify = Join-Path $runnerTemp ("aspa-package-verify-" + [Guid]::NewGuid().ToString('N'))
+          New-Item -ItemType Directory -Path $verify | Out-Null
+          try {
+            Expand-Archive -LiteralPath $zip -DestinationPath $verify
+
+            foreach ($file in @('LICENSE', 'LICENSE.upstream', 'NOTICE')) {
+              if (-not (Test-Path -LiteralPath (Join-Path $verify $file) -PathType Leaf)) {
+                throw "ZIP 根目录缺少许可文件 $file"
+              }
+            }
+            if (@(Get-ChildItem -LiteralPath $verify -Recurse -File -Filter 'MODIFICATIONS.md').Count -gt 0) {
+              throw '包内不应包含仅在本机维护的 MODIFICATIONS.md'
+            }
+
+            $exe = Join-Path $verify 'ASPAssistant.App.exe'
+            if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) {
+              throw 'ZIP 根目录缺少 ASPAssistant.App.exe'
+            }
+            $vi = (Get-Item -LiteralPath $exe).VersionInfo
+            # Accept .0 and +commit suffixes without matching 1.3.10 against 1.3.1.
+            $versionPrefix = "^$([regex]::Escape($expected))(?:[.+]|$)"
+            if ($vi.FileVersion -notmatch $versionPrefix) {
+              throw "FileVersion=$($vi.FileVersion) 与 tag $expected 不一致，请检查发布版本参数与 csproj 的 <Version>"
+            }
+            if ($vi.ProductVersion -notmatch $versionPrefix) {
+              throw "ProductVersion=$($vi.ProductVersion) 与 tag $expected 不一致"
+            }
+
+            $bosses = Get-Content -LiteralPath (Join-Path $verify 'data/bosses.json') -Raw | ConvertFrom-Json
+            $types = Get-Content -LiteralPath (Join-Path $verify 'data/enemy_types.json') -Raw | ConvertFrom-Json
+            if ($bosses.bosses -isnot [array] -or $bosses.bosses.Count -lt 1) {
+              throw 'data/bosses.json 的 bosses 必须是非空数组'
+            }
+            $bossCount = $bosses.bosses.Count
+            if ($types.types -isnot [pscustomobject]) {
+              throw 'data/enemy_types.json 的 types 必须是类型对象'
+            }
+            $typeProps = @($types.types.PSObject.Properties)
+            if ($typeProps.Count -lt 1) { throw 'data/enemy_types.json 里没有类型数据' }
+            $variantCount = 0
+            foreach ($property in $typeProps) {
+              if ($property.Value.firstHalfVariants -isnot [array] -or $property.Value.secondHalfVariants -isnot [array]) {
+                throw "敌人类型 $($property.Name) 的 firstHalfVariants / secondHalfVariants 必须是数组"
+              }
+              $variantCount += $property.Value.firstHalfVariants.Count
+              $variantCount += $property.Value.secondHalfVariants.Count
+            }
+            if ($variantCount -lt 1) { throw 'data/enemy_types.json 里没有任何敌人变体' }
+
+            $iconsDir = Join-Path $verify 'data/icons'
+            $iconCount = @(Get-ChildItem -LiteralPath $iconsDir -Recurse -File -Filter '*.png').Count
+            if ($iconCount -lt 1) { throw 'data/icons 下没有任何 PNG' }
+            foreach ($dll in @('msvcp140.dll', 'vcruntime140.dll', 'vcruntime140_1.dll')) {
+              if (-not (Test-Path -LiteralPath (Join-Path $verify $dll) -PathType Leaf)) {
+                throw "ZIP 根目录缺少 $dll"
+              }
+            }
+
+            $fileCount = @(Get-ChildItem -LiteralPath $verify -Recurse -File).Count
+            $lines = @(
+              '===== PACKAGE MANIFEST ====='
+              "tag            : $tag"
+              "zip            : $($zipInfo.Name) ($([math]::Round($zipInfo.Length / 1MB, 2)) MiB)"
+              "SHA256         : $hash"
+              "entries        : $fileCount"
+              "FileVersion    : $($vi.FileVersion)"
+              "ProductVersion : $($vi.ProductVersion)"
+              "bosses         : $bossCount"
+              "types          : $($typeProps.Count)"
+              "variants       : $variantCount"
+              "icons(png)     : $iconCount"
+              '============================'
+            )
+            $lines | ForEach-Object { Write-Host $_ }
+            $lines | Set-Content -LiteralPath 'publish/PACKAGE-MANIFEST.txt' -Encoding utf8
+          }
+          finally {
+            $verify = (Resolve-Path -LiteralPath $verify).Path
+            if ([IO.Path]::GetDirectoryName($verify) -ne $runnerTemp) {
+              throw '解包目录不在 RUNNER_TEMP 下，拒绝清理'
+            }
+            Remove-Item -LiteralPath $verify -Recurse -Force
+          }
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -75,4 +177,5 @@ jobs:
           files: |
             publish/ASPAssistant-${{ github.ref_name }}-win-x64.zip
             publish/SHA256SUMS.txt
+            publish/PACKAGE-MANIFEST.txt
           fail_on_unmatched_files: true

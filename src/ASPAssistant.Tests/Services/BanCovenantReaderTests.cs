@@ -2,6 +2,7 @@ using System.Text.Json;
 using ASPAssistant.Core.GameModes.GarrisonProtocol;
 using ASPAssistant.Core.Services;
 using FluentAssertions;
+using Moq;
 
 namespace ASPAssistant.Tests.Services;
 
@@ -255,6 +256,78 @@ public class BanCovenantReaderTests
 
         fractions.Take(5).Should().OnlyContain(f => f > 0.3);
         fractions.Skip(5).Should().OnlyContain(f => f < 0.05);
+    }
+
+    [Fact]
+    public async Task FirstRowLabelsDoNotPreventRecoveringTheSameColumnsInSecondRow()
+    {
+        var (coreNames, additionalNames) = LoadCovenantNames();
+        var secondRow = Sample1Additional().Skip(10).ToList();
+        var compositeCalls = 0;
+        var ocr = new Mock<IOcrEngine>();
+        ocr.Setup(e => e.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .Returns((byte[] _, int x, int y, int _, int height) =>
+            {
+                IReadOnlyList<OcrTextResult> texts;
+                if (x == 0 && y == 0)
+                {
+                    compositeCalls++;
+                    texts = secondRow.Select((label, index) => new OcrTextResult(label.Text,
+                        (5, index * height / secondRow.Count + 5, 50, 15))).ToList();
+                }
+                else
+                    texts = y < 300 ? Sample1Core() : Sample1Additional().Take(10).ToList();
+                return Task.FromResult(texts);
+            });
+
+        var read = await BanCovenantReader.ReadAsync(ocr.Object, new GarrisonOcrStrategy(),
+            LoadSample("ban-sample-1920x1080.png"), Width, Height, coreNames, additionalNames);
+
+        compositeCalls.Should().Be(1);
+        read.Additional.Select(c => c.Name).Should().BeEquivalentTo(additionalNames);
+        read.UnnamedAdditional.Should().BeEmpty();
+        read.Additional.Where(c => c.IsBanned).Select(c => c.Name).Should()
+            .BeEquivalentTo("精准", "灵巧", "坚守", "奇迹", "奥术");
+    }
+
+    [Fact]
+    public void RightClippedMapBorderIsNotAnEleventhCoreIcon()
+    {
+        var sample = LoadSample("ban-sample-1920x1080.png");
+        var core = BanIconGrid.Detect(sample, Width, Height, .16, .40);
+        core.Should().HaveCount(10);
+        using var input = new MemoryStream(sample);
+        using var bitmap = new System.Drawing.Bitmap(input);
+        using (var graphics = System.Drawing.Graphics.FromImage(bitmap))
+            graphics.FillRectangle(System.Drawing.Brushes.Gray, 1320, core[0].Top, 80, core[0].Bottom - core[0].Top);
+        using var output = new MemoryStream();
+        bitmap.Save(output, System.Drawing.Imaging.ImageFormat.Png);
+
+        var detected = BanIconGrid.Detect(output.ToArray(), Width, Height, .16, .40);
+
+        detected.Should().HaveCount(10);
+        detected.Select(s => s.CenterX).Should().Equal(core.Select(s => s.CenterX));
+    }
+
+    [Theory]
+    [InlineData("添核心盘约", "附加盟药", true)]
+    [InlineData("核心明約", "附加盟約", true)]
+    [InlineData("协议数据库", "成就统计", false)]
+    public async Task SectionReaderAndInformationDetectorAgreeOnObservedHeaderTypos(string core, string additional, bool expected)
+    {
+        var ocr = new Mock<IOcrEngine>();
+        ocr.Setup(e => e.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<int>()))
+            .ReturnsAsync([new(core, (100, 180, 140, 25)), new(additional, (100, 500, 140, 25))]);
+        var (coreNames, additionalNames) = LoadCovenantNames();
+        var strategy = new GarrisonOcrStrategy();
+        var sample = LoadSample("ban-sample-1920x1080.png");
+
+        var read = await BanCovenantReader.ReadAsync(ocr.Object, strategy, sample, Width, Height, coreNames, additionalNames);
+
+        read.SawCoreHeader.Should().Be(expected);
+        read.SawAdditionalHeader.Should().Be(expected);
+        read.UnnamedCore.Should().NotBeEmpty("correcting titles must not bypass missing-name checks");
+        (await new InformationScreenDetector(ocr.Object, strategy).IsInformationScreenAsync(sample, Width, Height)).Should().Be(expected);
     }
 
     /// <summary>

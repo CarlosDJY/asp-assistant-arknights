@@ -1191,9 +1191,18 @@
             <Setter.Value>
                 <ControlTemplate TargetType="MenuItem">
                     <Border x:Name="bg" Background="Transparent" CornerRadius="{DynamicResource RowCornerRadius}" Padding="10,5" MinWidth="120">
-                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+                        <DockPanel>
+                            <!-- tick for checkable items (e.g. 只看本局盟约) -->
+                            <Path x:Name="check" DockPanel.Dock="Right" Width="10" Height="8" Margin="12,0,0,0" VerticalAlignment="Center"
+                                  Stretch="Uniform" Data="M 2.5 7 L 5.5 10 L 11 3.5" StrokeThickness="1.8" Visibility="Collapsed"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stroke="{DynamicResource AccentBrush}" />
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+                        </DockPanel>
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="check" Property="Visibility" Value="Visible" />
+                        </Trigger>
                         <Trigger Property="IsHighlighted" Value="True">
                             <Setter TargetName="bg" Property="Background" Value="{DynamicResource NeutralHoverBrush}" />
                         </Trigger>
@@ -1201,6 +1210,16 @@
                             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
                         </Trigger>
                     </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="Separator" x:Key="{x:Static MenuItem.SeparatorStyleKey}">
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Separator">
+                    <Border Height="1" Margin="6,3" Background="{DynamicResource LineBrush}" />
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

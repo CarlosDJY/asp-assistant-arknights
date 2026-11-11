@@ -17,12 +17,12 @@ public class GarrisonOcrStrategy : IOcrStrategy
         // Ban screen: scan the left faction panel for covenant OCR pre-filter.
         new("BanFactionPanel", XPercent: 0.05, YPercent: 0.00, WidthPercent: 0.25, HeightPercent: 0.90),
         // Ban screen: the covenant panels are read from ONE un-scrolled screenshot.
-        // Measured on 1920×1080 confirm-info captures: 核心盟约 header at y≈0.18, its icon
-        // row at y≈0.27–0.33 and its names at y≈0.36; 附加盟约 header at y≈0.44, its names
-        // at y≈0.62 and y≈0.80. Bands stop before the 本局禁用干员 / chat area so that
-        // section titles never get matched as covenants.
+        // Broad search bands include the titles and both icon-name rows. The reader
+        // bounds the grid by the detected titles, including 本局禁用干员 when visible.
         new("BanCoreSection", XPercent: 0.00, YPercent: 0.16, WidthPercent: 0.70, HeightPercent: 0.24),
-        new("BanAdditionalSection", XPercent: 0.00, YPercent: 0.43, WidthPercent: 0.70, HeightPercent: 0.42),
+        // The 100% UI puts second-row labels below 85% of the client height.
+        // The reader bounds the grid by the detected section titles.
+        new("BanAdditionalSection", XPercent: 0.00, YPercent: 0.43, WidthPercent: 0.70, HeightPercent: 0.57),
     ];
 
     public IReadOnlyList<OcrRegionDefinition> GetScanRegions() => Regions;

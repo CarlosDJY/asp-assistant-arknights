@@ -24,7 +24,17 @@ public class TrackingEntry
     public TrackingType Type { get; set; }
 
     [JsonPropertyName("transformedCovenant")]
-    public string TransformedCovenant { get; set; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TransformedCovenant { get; set; }
+
+    [JsonPropertyName("equipments")]
+    public List<string> Equipments { get; set; } = [];
+
+    [JsonPropertyName("isElite")]
+    public bool IsElite { get; set; }
+
+    [JsonPropertyName("isManual")]
+    public bool IsManual { get; set; } = true;
 
     [JsonPropertyName("role")]
     public TrackingRole Role { get; set; } = TrackingRole.Final;

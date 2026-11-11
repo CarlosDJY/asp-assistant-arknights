@@ -191,6 +191,12 @@ public partial class SidePanelWindow : Window
         TrackingView.ClearAllTrackingRequested += () => trackingVm.ClearAllTracking();
 
         OperatorView.ClearBansRequested += () => banVm.ClearBans();
+        OperatorView.ClearRunRequested += () =>
+        {
+            banVm.SetCovenantBans([]);
+            operatorVm.ClearCovenantHighlights();
+            PlannerVm.OnlyCurrentRun = false;
+        };
         OperatorView.ManualScanRequested += () => ManualScanRequested?.Invoke();
         OperatorView.BanToggleRequested += (name, banned) => BanToggleRequested?.Invoke(name, banned);
 
@@ -585,7 +591,7 @@ public partial class SidePanelWindow : Window
 
     private void OnTitleBarDrag(object sender, MouseButtonEventArgs e)
     {
-        if (e.LeftButton == MouseButtonState.Pressed)
+        if (_positionSettings.FreeMovement && e.LeftButton == MouseButtonState.Pressed)
             DragMove();
     }
 
@@ -810,17 +816,18 @@ public partial class SidePanelWindow : Window
             string url;
             try
             {
-                ShowToast("正在生成分享链接…");
+                ShowToast("正在准备分享链接…");
                 url = await _lineupShareService.ExportAsync(lineup);
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or InvalidOperationException)
+            catch (Exception ex) when (ex is HttpRequestException or OperationCanceledException or InvalidOperationException
+                or IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
             {
                 AppLogger.Warn("Lineup", $"Share failed: {ex.Message}");
                 ShowToast($"生成分享链接失败：{ex.Message}");
                 return;
             }
             HideToast();
-            new ShareLinkWindow(url, Clipboard.SetText) { Owner = this }.ShowDialog();
+            new ShareLinkWindow(lineup.Name, url, Clipboard.SetText) { Owner = this }.ShowDialog();
         };
 
         LineupView.ImportLineupRequested += async () =>
@@ -876,7 +883,7 @@ public partial class SidePanelWindow : Window
 
     private void WirePlannerView()
     {
-        PlannerVm = new LineupPlannerViewModel(_lineupPlanner, _allOperators, BanVm)
+        PlannerVm = new LineupPlannerViewModel(_lineupPlanner, _allOperators, BanVm, LineupVm.Calculator.EquipmentRules)
         {
             TrackedOperatorsProvider = () => TrackingVm.TrackedOperators.Select(e => e.Name).ToList(),
             RunOnUiThread = action =>
@@ -914,7 +921,7 @@ public partial class SidePanelWindow : Window
         {
             try
             {
-                var added = TrackingVm.TrackRoute(route);
+                var added = TrackingVm.TrackRoute(route, LineupVm.Calculator.EquipmentRules);
                 ShowToast($"已追踪道中路线：新增 {added.Final} 名大成干员 / {added.Transition} 名过渡干员");
             }
             catch (Exception ex)

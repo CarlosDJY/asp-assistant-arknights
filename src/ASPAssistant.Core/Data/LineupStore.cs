@@ -1,5 +1,6 @@
 using System.Text.Json;
 using ASPAssistant.Core.Models;
+using ASPAssistant.Core.Services;
 
 namespace ASPAssistant.Core.Data;
 
@@ -10,6 +11,7 @@ namespace ASPAssistant.Core.Data;
 public class LineupStore
 {
     private readonly string _dir;
+    private readonly LineupEquipmentService _equipmentRules;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -17,9 +19,10 @@ public class LineupStore
         PropertyNameCaseInsensitive = true,
     };
 
-    public LineupStore(string lineupsDir)
+    public LineupStore(string lineupsDir, LineupEquipmentService equipmentRules)
     {
         _dir = lineupsDir;
+        _equipmentRules = equipmentRules;
     }
 
     public async Task<List<Lineup>> LoadAllAsync()
@@ -31,19 +34,25 @@ public class LineupStore
         var result = new List<Lineup>();
         foreach (var file in files)
         {
+            Lineup? lineup;
             try
             {
                 var json = await File.ReadAllTextAsync(file);
-                var lineup = JsonSerializer.Deserialize<Lineup>(json, JsonOptions);
-                if (lineup is null) continue;
-                if (string.IsNullOrEmpty(lineup.Id))
-                    lineup.Id = Path.GetFileNameWithoutExtension(file);
-                result.Add(lineup);
+                lineup = JsonSerializer.Deserialize<Lineup>(json, JsonOptions);
             }
-            catch (Exception ex)
+            catch (JsonException ex)
             {
                 AppLogger.Warn("LineupStore", $"Failed to load {file}: {ex.Message}");
+                continue;
             }
+            if (lineup is null) continue;
+            if (string.IsNullOrEmpty(lineup.Id)) lineup.Id = Path.GetFileNameWithoutExtension(file);
+            if (_equipmentRules.Upgrade(lineup))
+            {
+                File.Copy(file, file + $".pre-equipment-{Guid.NewGuid():N}.bak");
+                await WriteAsync(file, lineup);
+            }
+            result.Add(lineup);
         }
         return [.. result.OrderByDescending(l => l.UpdatedAt)];
     }
@@ -55,9 +64,21 @@ public class LineupStore
             lineup.Id = Guid.NewGuid().ToString("N");
         lineup.UpdatedAt = DateTime.UtcNow;
 
-        var path = Path.Combine(_dir, $"{lineup.Id}.json");
-        var json = JsonSerializer.Serialize(lineup, JsonOptions);
-        await File.WriteAllTextAsync(path, json);
+        var path = Path.GetFullPath(Path.Combine(_dir, $"{lineup.Id}.json"));
+        if (Path.GetDirectoryName(path) != Path.GetFullPath(_dir))
+            throw new InvalidDataException("阵容 ID 不能包含目录路径");
+        await WriteAsync(path, lineup);
+    }
+
+    private static async Task WriteAsync(string path, Lineup lineup)
+    {
+        var temporary = path + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(lineup, JsonOptions));
+            File.Move(temporary, path, true);
+        }
+        finally { File.Delete(temporary); }
     }
 
     public Task DeleteAsync(string id)

@@ -34,7 +34,7 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
         if (sameBand)
         {
             var texts = await ScanAsync(screenshot, width, height, coreBand);
-            var normalized = texts.Select(t => Normalize(t.Text)).ToList();
+            var normalized = texts.Select(t => BanCovenantReader.NormalizeHeader(t.Text)).ToList();
             return normalized.Any(t => t.Contains("核心盟约")) && normalized.Any(t => t.Contains("附加盟约"));
         }
 
@@ -42,8 +42,8 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
         var additionalTask = ScanAsync(screenshot, width, height, additionalBand);
         await Task.WhenAll(coreTask, additionalTask);
 
-        return (await coreTask).Select(t => Normalize(t.Text)).Any(t => t.Contains("核心盟约"))
-            && (await additionalTask).Select(t => Normalize(t.Text)).Any(t => t.Contains("附加盟约"));
+        return (await coreTask).Select(t => BanCovenantReader.NormalizeHeader(t.Text)).Any(t => t.Contains("核心盟约"))
+            && (await additionalTask).Select(t => BanCovenantReader.NormalizeHeader(t.Text)).Any(t => t.Contains("附加盟约"));
     }
 
     private Task<IReadOnlyList<OcrTextResult>> ScanAsync(
@@ -51,9 +51,6 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
         ocr.RecognizeRegionAsync(screenshot,
             (int)(width * band.X), (int)(height * band.Y),
             (int)(width * band.W), (int)(height * band.H));
-
-    /// <summary>标题里的「盟」在低分辨率/抗锯齿下常被读成「明」，统一归一化后再比较。</summary>
-    private static string Normalize(string text) => text.Replace(" ", "").Replace("明", "盟").Replace("約", "约");
 
     public async Task<bool> IsOpeningScreenAsync(byte[] screenshot, int width, int height)
     {

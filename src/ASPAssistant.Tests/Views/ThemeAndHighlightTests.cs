@@ -106,8 +106,9 @@ public class ThemeAndHighlightTests
                 var store = new JsonDataStore(Path.Combine(AppContext.BaseDirectory, "TestData", "Regulation"));
                 var vm = new OperatorBrowseViewModel();
                 var operators = store.LoadOperatorsAsync().GetAwaiter().GetResult();
-                vm.LoadOperators(operators);
+                vm.LoadOperators(operators.Where(o => o.RequiredStrategyId.Length == 0).ToList());
                 var view = new OperatorBrowseView { DataContext = vm };
+                view.ClearRunRequested += () => vm.ClearCovenantHighlights();
                 host.Content = view;
                 var toggle = (System.Windows.Controls.Primitives.ToggleButton)view.FindName("FilterToggle");
                 toggle.IsChecked = true;
@@ -174,7 +175,7 @@ public class ThemeAndHighlightTests
                         ((CheckBox)view.FindName("OtherCovenantMatchAllToggle")).IsChecked.Should().BeFalse();
                         vm.ActiveFilterTags.Should().BeEmpty();
                         vm.ActiveFilterCount.Should().Be(0);
-                        vm.FilteredOperators.Should().BeEquivalentTo(operators);
+                        vm.FilteredOperators.Should().BeEquivalentTo(operators.Where(o => o.RequiredStrategyId.Length == 0));
                         vm.HighlightedCovenants.Should().BeEquivalentTo("乌萨斯", "奥术");
                     }
 
@@ -239,7 +240,7 @@ public class ThemeAndHighlightTests
                 var equipmentVm = new EquipmentBrowseViewModel();
                 equipmentVm.LoadEquipment(equipment,
                     operators.SelectMany(o => o.CoreCovenants.Concat(o.AdditionalCovenants)), manualJobChanges, mappings);
-                var lineupVm = new LineupViewModel(new LineupStore(Path.Combine(output, "lineups")),
+                var lineupVm = new LineupViewModel(new LineupStore(Path.Combine(output, "lineups"), new LineupEquipmentService(mappings)),
                     new CovenantCalculator(operators, covenants, mappings));
                 var trackingVm = new TrackingViewModel();
                 trackingVm.AddTracking("烈夏", TrackingType.Operator);
@@ -252,7 +253,7 @@ public class ThemeAndHighlightTests
                 using var failedShareHttp = new HttpClient(new FailedShareHandler());
                 var sidePanel = new SidePanelWindow(vm, equipmentVm, trackingVm,
                     new GameStateViewModel(), new BanViewModel(), enemyVm,
-                    lineupVm, new LineupShareService(failedShareHttp), operators, equipment, strategies, new SettingsManager(output), GameShopTheme.Terminal,
+                    lineupVm, new LineupShareService(lineupVm.Calculator.EquipmentRules, Path.Combine(output, "share-links"), failedShareHttp), operators, equipment, strategies, new SettingsManager(output), GameShopTheme.Terminal,
                     new SidePanelPositionSettings(), new LineupPlanner(operators, covenants), covenants);
                 try
                 {
@@ -328,7 +329,7 @@ public class ThemeAndHighlightTests
                     savedFree.FreeMovement.Should().BeTrue();
                     var restoredFree = new SidePanelWindow(vm, equipmentVm, trackingVm,
                         new GameStateViewModel(), new BanViewModel(), enemyVm, lineupVm,
-                        new LineupShareService(failedShareHttp), operators, equipment, strategies,
+                        new LineupShareService(lineupVm.Calculator.EquipmentRules, Path.Combine(output, "share-links"), failedShareHttp), operators, equipment, strategies,
                         new SettingsManager(output), GameShopTheme.Terminal, savedFree)
                     { Opacity = 0, ShowActivated = false, ShowInTaskbar = false };
                     try
@@ -361,7 +362,7 @@ public class ThemeAndHighlightTests
                     followedBounds.Height.Should().Be(manualBounds.Height);
                     var restoredFollow = new SidePanelWindow(vm, equipmentVm, trackingVm,
                         new GameStateViewModel(), new BanViewModel(), enemyVm, lineupVm,
-                        new LineupShareService(failedShareHttp), operators, equipment, strategies,
+                        new LineupShareService(lineupVm.Calculator.EquipmentRules, Path.Combine(output, "share-links"), failedShareHttp), operators, equipment, strategies,
                         new SettingsManager(output), GameShopTheme.Terminal, savedFollow)
                     { Opacity = 0, ShowActivated = false, ShowInTaskbar = false };
                     try
@@ -430,6 +431,28 @@ public class ThemeAndHighlightTests
                         Canvas.GetTop(marker).Should().BeApproximately(overlay.ActualHeight * 0.8 - 29, 0.001);
                         (User32.GetWindowLong(overlayHwnd, User32.GWL_EXSTYLE) & User32.WS_EX_NOACTIVATE).Should().NotBe(0);
                         User32.GetForegroundWindow().Should().NotBe(sideHwnd).And.NotBe(overlayHwnd);
+                        var cachedShop = new List<ShopItem>
+                        {
+                            new() { Id = "old-target", Name = "角峰", OcrRegion = (.2, .8, .1, .03) },
+                            new() { Id = "new-target", Name = "隐现", OcrRegion = (.4, .8, .1, .03) },
+                            new() { Id = "equipment-target", Name = "坚守盾牌", OcrRegion = (.6, .8, .1, .03) }
+                        };
+                        Core.GameState.GameStateUpdater.UpdateShopTracking(cachedShop,
+                            [new() { Name = "角峰", Type = TrackingType.Operator }]);
+                        overlay.UpdateShopItems(cachedShop);
+                        WaitForUi(() => canvas.Children.OfType<Grid>().Count() == 1, "the old test marker must finish fading out");
+                        var oldTarget = canvas.Children.OfType<Grid>().Single();
+                        Core.GameState.GameStateUpdater.UpdateShopTracking(cachedShop,
+                            [new() { Name = "隐现", Type = TrackingType.Operator }, new() { Name = "坚守盾牌", Type = TrackingType.Equipment }]);
+                        overlay.UpdateShopItems(cachedShop);
+                        WaitForUi(() => canvas.Children.OfType<Grid>().Count() == 2 && !canvas.Children.Contains(oldTarget),
+                            "switching tracking must replace old highlights using the same shop results");
+                        var markerPositions = canvas.Children.OfType<Grid>().Select(Canvas.GetLeft).Order().ToArray();
+                        markerPositions[0].Should().BeApproximately(overlay.ActualWidth * .5 - 27, .001);
+                        markerPositions[1].Should().BeApproximately(overlay.ActualWidth * .7 - 27, .001);
+                        Core.GameState.GameStateUpdater.UpdateShopTracking(cachedShop, []);
+                        overlay.UpdateShopItems(cachedShop);
+                        WaitForUi(() => !canvas.Children.OfType<Grid>().Any(), "clearing tracking must remove every highlight");
                     }
                     finally { overlay.Close(); }
 
@@ -446,9 +469,10 @@ public class ThemeAndHighlightTests
                     var content = (Border)sidePanel.Content;
                     var tabs = Descendants<TabControl>(content).Single();
                     var settingsButton = (Button)sidePanel.FindName("SettingsButton");
-                    settingsButton.Content.Should().Be("⚙");
+                    settingsButton.Content.Should().BeOfType<System.Windows.Shapes.Path>();
                     sidePanel.FindName("ThemeToggleButton").Should().BeNull();
                     var settingsPanel = (Border)sidePanel.FindName("SettingsPanel");
+                    settingsPanel.Effect.Should().BeNull();
                     var uiThemes = (ListBox)sidePanel.FindName("UiThemeSelector");
                     var gameThemes = (ListBox)sidePanel.FindName("GameThemeSelector");
                     var multiToggle = (CheckBox)sidePanel.FindName("MultiLineupTrackingToggle");
@@ -479,7 +503,12 @@ public class ThemeAndHighlightTests
                     {
                         ThemeManager.Apply(ASPAssistant.Core.Models.GameShopTheme.Terminal, !isLight);
                         settingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
                         settingsPanel.Visibility.Should().Be(Visibility.Visible);
+                        ((SolidColorBrush)settingsPanel.Background).Color.Should().Be(((SolidColorBrush)application.FindResource("PanelBackgroundBrush")).Color);
+                        ((SolidColorBrush)settingsButton.Background).Color.Should().Be(((SolidColorBrush)application.FindResource("AccentTintBrush")).Color);
+                        ((SolidColorBrush)((System.Windows.Shapes.Path)settingsButton.Content).Fill).Color.Should()
+                            .Be(((SolidColorBrush)application.FindResource("AccentBrush")).Color);
                         uiThemes.SelectedIndex = isLight ? 1 : 0;
                         WaitForPreferenceSave(uiThemes);
                         ThemeManager.IsLight.Should().Be(isLight);
@@ -501,8 +530,13 @@ public class ThemeAndHighlightTests
                         content.Arrange(new Rect(0, 0, 310, 900));
                         content.UpdateLayout();
                         Save(content, Path.Combine(output, isLight ? "light-settings.png" : "dark-settings.png"));
-                        settingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        Descendants<Button>(settingsPanel).Single(button => Equals(button.ToolTip, "收起设置"))
+                            .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
                         settingsPanel.Visibility.Should().Be(Visibility.Collapsed);
+                        ((SolidColorBrush)settingsButton.Background).Color.Should().Be(Colors.Transparent);
+                        ((SolidColorBrush)((System.Windows.Shapes.Path)settingsButton.Content).Fill).Color.Should()
+                            .Be(((SolidColorBrush)application.FindResource("TextPrimaryBrush")).Color);
                         for (var i = 0; i < tabs.Items.Count; i++)
                         {
                             tabs.SelectedIndex = i;
@@ -511,6 +545,50 @@ public class ThemeAndHighlightTests
                             content.UpdateLayout();
                             Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
                             var page = (UserControl)((TabItem)tabs.Items[i]).Content;
+                            if (page is OperatorBrowseView operatorPage)
+                            {
+                                var operatorFilters = (System.Windows.Controls.Primitives.ToggleButton)operatorPage.FindName("FilterToggle");
+                                var filtersWereOpen = operatorFilters.IsChecked;
+                                operatorFilters.IsChecked = true;
+                                var previousAvailable = vm.HighlightedCovenants.ToArray();
+                                var previousBans = sidePanel.BanVm.BannedCovenants.ToArray();
+                                var previousOnly = vm.OnlyCurrentRun;
+                                var previousPlannerOnly = sidePanel.PlannerVm.OnlyCurrentRun;
+                                sidePanel.BanVm.SetCovenantBans(["炎"]);
+                                vm.SetAvailableCovenants(["维多利亚", "精准"]);
+                                var only = (CheckBox)operatorPage.FindName("OnlyCurrentRunToggle");
+                                only.IsEnabled.Should().BeTrue();
+                                only.IsChecked = true;
+                                sidePanel.PlannerVm.OnlyCurrentRun = true;
+                                content.UpdateLayout();
+                                ((ListBox)operatorPage.FindName("CoreCovenantFilterList")).Items.Cast<string>()
+                                    .Should().Contain("维多利亚").And.NotContain("炎");
+                                sidePanel.Width = 280;
+                                content.Measure(new Size(280, 900));
+                                content.Arrange(new Rect(0, 0, 280, 900));
+                                content.UpdateLayout();
+                                only.ActualWidth.Should().BeGreaterThan(40);
+                                (only.TranslatePoint(new Point(), operatorPage).X + only.ActualWidth).Should().BeLessThanOrEqualTo(operatorPage.ActualWidth);
+                                Save(content, Path.Combine(output, isLight ? "light-operator-current-run.png" : "dark-operator-current-run.png"));
+                                sidePanel.Width = 310;
+                                content.Measure(new Size(310, 900));
+                                content.Arrange(new Rect(0, 0, 310, 900));
+                                content.UpdateLayout();
+                                var clearRun = (Button)operatorPage.FindName("ClearHighlightsButton");
+                                clearRun.Content.Should().Be("清除录入");
+                                clearRun.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                                content.UpdateLayout();
+                                only.IsEnabled.Should().BeFalse();
+                                only.IsChecked.Should().BeFalse();
+                                sidePanel.BanVm.BannedCovenants.Should().BeEmpty();
+                                sidePanel.PlannerVm.HasRunInfo.Should().BeFalse();
+                                sidePanel.PlannerVm.OnlyCurrentRun.Should().BeFalse();
+                                sidePanel.BanVm.SetCovenantBans(previousBans);
+                                vm.SetAvailableCovenants(previousAvailable);
+                                vm.OnlyCurrentRun = previousOnly;
+                                sidePanel.PlannerVm.OnlyCurrentRun = previousPlannerOnly;
+                                operatorFilters.IsChecked = filtersWereOpen;
+                            }
                             page.ActualWidth.Should().BeGreaterThan(290);
                             ((SolidColorBrush)page.Background).Color.Should().Be(isLight
                                 ? Color.FromRgb(247, 249, 252) : Color.FromRgb(26, 26, 46));
@@ -855,7 +933,7 @@ public class ThemeAndHighlightTests
                                         && !operators.Single(o => o.Name == "烈夏").CoreCovenants.Contains(c.Name)).Name;
                                     var plannedLineup = new Lineup { Slots =
                                     [
-                                        new() { OperatorName = "烈夏", TransformedCovenant = target },
+                                        new() { OperatorName = "烈夏", Equipments = ["变形同构体", lineupVm.Calculator.EquipmentRules.EquipmentFor(target)] },
                                         new() { OperatorName = "魔王" }
                                     ] };
                                     trackingVm.TrackLineup(plannedLineup);
@@ -865,7 +943,7 @@ public class ThemeAndHighlightTests
                                         .Should().BeEquivalentTo(lineupVm.Calculator.Compute(plannedLineup)
                                             .Where(s => s.Count > 0).ToDictionary(s => s.Name, s => s.Count));
                                     var cancelTransform = Descendants<Button>(trackingView)
-                                        .Single(b => b.DataContext is TrackingEntry { Name: "烈夏" } && b.Content as string == target);
+                                        .Single(b => b.Tag as string == "烈夏" && b.DataContext is EquipmentTransformation t && t.Covenant == target);
                                     cancelTransform.Visibility.Should().Be(Visibility.Visible);
                                     Descendants<TextBlock>(cancelTransform).Should().Contain(t => t.Text.Contains($"转职：{target}"));
                                     (cancelTransform.TranslatePoint(new Point(), trackingView).X + cancelTransform.ActualWidth)
@@ -873,9 +951,9 @@ public class ThemeAndHighlightTests
                                     Save(content, Path.Combine(output, isLight ? "light-tracking-transform.png" : "dark-tracking-transform.png"));
                                     cancelTransform.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                                     content.UpdateLayout();
-                                    trackingVm.TrackedOperators.Single(e => e.Name == "烈夏").TransformedCovenant.Should().BeEmpty();
+                                    trackingVm.TrackedOperators.Single(e => e.Name == "烈夏").Equipments.Should().BeEmpty();
                                     chips.Items.Cast<TrackedCovenantChip>().Should().NotContain(c => c.Name == target);
-                                    plannedLineup.Slots[0].TransformedCovenant.Should().Be(target);
+                                    plannedLineup.Slots[0].Equipments.Should().Contain(lineupVm.Calculator.EquipmentRules.EquipmentFor(target));
                                 }
                                 finally
                                 {
@@ -900,7 +978,7 @@ public class ThemeAndHighlightTests
                         const string sharedUrl = "https://dpaste.com/TEST12345";
                         var attempts = 0;
                         var copiedText = "";
-                        var shareWindow = new ShareLinkWindow(sharedUrl, text =>
+                        var shareWindow = new ShareLinkWindow("测试阵容", sharedUrl, text =>
                         {
                             attempts++;
                             if (attempts < 3) throw new COMException("Clipboard busy", unchecked((int)0x800401D0));
@@ -915,7 +993,7 @@ public class ThemeAndHighlightTests
                             WaitForUi(() => copyTask.IsCompleted, "a temporary clipboard lock should recover");
                             copyTask.GetAwaiter().GetResult();
                             attempts.Should().Be(3);
-                            copiedText.Should().Be(sharedUrl);
+                            copiedText.Should().Be($"<测试阵容> {sharedUrl}");
                             ((TextBlock)shareWindow.FindName("CopyStatusText")).Text.Should().Contain("已复制");
                             copyButton.IsEnabled.Should().BeTrue();
                         }
@@ -923,7 +1001,7 @@ public class ThemeAndHighlightTests
 
                         var clipboardBusy = true;
                         attempts = 0;
-                        var fallbackWindow = new ShareLinkWindow(sharedUrl, _ =>
+                        var fallbackWindow = new ShareLinkWindow("测试阵容", sharedUrl, _ =>
                         {
                             attempts++;
                             if (clipboardBusy) throw new COMException("Clipboard busy", unchecked((int)0x800401D0));
@@ -935,9 +1013,9 @@ public class ThemeAndHighlightTests
                             copyTask.GetAwaiter().GetResult();
                             attempts.Should().Be(3);
                             var linkBox = (TextBox)fallbackWindow.FindName("LinkBox");
-                            linkBox.Text.Should().Be(sharedUrl);
+                            linkBox.Text.Should().Be($"<测试阵容> {sharedUrl}");
                             linkBox.IsReadOnly.Should().BeTrue();
-                            linkBox.SelectionLength.Should().Be(sharedUrl.Length);
+                            linkBox.SelectionLength.Should().Be(linkBox.Text.Length);
                             ((TextBlock)fallbackWindow.FindName("CopyStatusText")).Text.Should().Contain("链接已生成").And.Contain("手动复制");
                             var dialogContent = (Border)fallbackWindow.Content;
                             dialogContent.Measure(new Size(460, 230));
@@ -1023,21 +1101,70 @@ public class ThemeAndHighlightTests
                             Descendants<TextBlock>((Border)slots.Items[0]).Should().Contain(t => t.Text == "众志合一");
                             editorVm.SelectPhase(LineupPhase.后期);
                             editorVm.SetSlotOperator(0, "烈夏");
-                            editorVm.Slots[0].TransformedCovenant = "炎";
+                            editorVm.SetSlotEquipment(0, 0, "变形同构体", false);
+                            editorVm.SetSlotEquipment(0, 1, "炎国短刀", false);
                             editorVm.Recalculate();
                             ((Button)phaseTabs.Children[2]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                             editorContent.UpdateLayout();
                             var transformedCard = (Border)slots.Items[0];
                             var cancelTransform = Descendants<Button>(transformedCard)
-                                .Single(b => b.Content as string == "转职：炎 ✕");
+                                .Single(b => b.Tag as string == "炎国短刀");
                             (cancelTransform.TranslatePoint(new Point(), transformedCard).X + cancelTransform.ActualWidth)
                                 .Should().BeLessThanOrEqualTo(transformedCard.ActualWidth);
                             Save(editorContent, Path.Combine(output, isLight ? "light-editor-transform.png" : "dark-editor-transform.png"));
                             cancelTransform.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                            editorVm.ToLineup().Slots.Single().TransformedCovenant.Should().BeEmpty();
+                            editorVm.ToLineup().Slots.Single().Equipments.Should().BeEmpty();
                             editorVm.ActiveStats.Should().NotContain(s => s.Name == "炎");
+                            editorVm.SetStrategy(0, "band_mech");
+                            editorVm.SetSlotOperator(0, LineupEquipmentService.MechName);
+                            ((Button)phaseTabs.Children[2]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            editorContent.UpdateLayout();
+                            var specialSlots = (ItemsControl)editor.FindName("SpecialSlotsHost");
+                            specialSlots.Items.Count.Should().Be(1);
+                            var mechCard = (Border)specialSlots.Items[0];
+                            Descendants<Button>(mechCard).Count(b => System.Windows.Automation.AutomationProperties.GetName(b).StartsWith("装备槽"))
+                                .Should().Be(6);
+                            Descendants<Button>(mechCard).Count(b => System.Windows.Automation.AutomationProperties.GetName(b).StartsWith("转职槽"))
+                                .Should().Be(5);
+                            Descendants<Button>(mechCard).Count(b => !b.IsEnabled).Should().Be(4);
+                            Save(editorContent, Path.Combine(output, isLight ? "light-mech-normal.png" : "dark-mech-normal.png"));
+                            Descendants<CheckBox>(mechCard).Single().IsChecked = true;
+                            editorContent.UpdateLayout();
+                            Descendants<Button>(mechCard).Should().OnlyContain(b => b.IsEnabled);
+                            foreach (var transfer in new[] { "炎国短刀", "维式重锤", "萨尔贡浓茶", "叙拉古正装", "乌萨斯呼吸器" }.Select((name, index) => (name, index)))
+                                editorVm.SetSlotTransformation(0, transfer.index, transfer.name, []);
+                            ((Button)phaseTabs.Children[2]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            editorContent.UpdateLayout();
+                            Save(editorContent, Path.Combine(output, isLight ? "light-mech-elite.png" : "dark-mech-elite.png"));
+                            editorVm.ValidationError.Should().BeEmpty();
                         }
                         finally { editor.Close(); }
+
+                        foreach (var strategySelected in new[] { false, true })
+                        {
+                            var operatorPicker = new OperatorPickerWindow(operators, "",
+                                strategySelected ? new HashSet<string> { "band_mech" } : new HashSet<string>());
+                            try
+                            {
+                                ((OperatorBrowseViewModel)operatorPicker.DataContext).SearchText = "暴躁铁皮";
+                                var pickerContent = (Border)operatorPicker.Content;
+                                pickerContent.SetResourceReference(Border.BackgroundProperty, "PanelBackgroundBrush");
+                                pickerContent.Measure(new Size(760, 620));
+                                pickerContent.Arrange(new Rect(0, 0, 760, 620));
+                                pickerContent.UpdateLayout();
+                                var list = (ListBox)operatorPicker.FindName("OperatorsList");
+                                list.Items.Count.Should().Be(1);
+                                var item = (ListBoxItem)list.ItemContainerGenerator.ContainerFromIndex(0);
+                                item.IsEnabled.Should().Be(strategySelected);
+                                if (!strategySelected)
+                                {
+                                    item.ToolTip.Should().Be("必须在策略中添加森蚺策略");
+                                    ToolTipService.GetShowOnDisabled(item).Should().BeTrue();
+                                }
+                                Save(pickerContent, Path.Combine(output, $"{(isLight ? "light" : "dark")}-mech-picker-{strategySelected}.png"));
+                            }
+                            finally { operatorPicker.Close(); }
+                        }
 
                         var strategyPicker = new SimplePickerDialog("选择策略", strategies.Select(s => new SimplePickerDialog.PickerItem(
                             s.Id, $"{s.Name} · {s.Initiator}", s.IconPath, null, s.Description)), null);
@@ -1054,7 +1181,7 @@ public class ThemeAndHighlightTests
                         finally { strategyPicker.Close(); }
                     }
                     var closeAttempts = 0;
-                    var closingShareWindow = new ShareLinkWindow("https://dpaste.com/TEST12345", _ =>
+                    var closingShareWindow = new ShareLinkWindow("测试阵容", "https://dpaste.com/TEST12345", _ =>
                     {
                         closeAttempts++;
                         throw new COMException("Clipboard busy", unchecked((int)0x800401D0));

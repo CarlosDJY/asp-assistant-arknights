@@ -12,6 +12,10 @@ public static class AppLogger
 {
     private static string? _logFilePath;
     private static readonly object _lock = new();
+    private static Func<bool> _isGamePresent = static () => true;
+
+    public static void SetGamePresenceCheck(Func<bool> isGamePresent) =>
+        Volatile.Write(ref _isGamePresent, isGamePresent);
 
     /// <summary>
     /// Call once at application startup. Creates the log directory, prunes old logs,
@@ -62,7 +66,7 @@ public static class AppLogger
     {
         try
         {
-            if (_logFilePath is null) return null;
+            if (!Volatile.Read(ref _isGamePresent)() || _logFilePath is null) return null;
             var dir = Path.GetDirectoryName(_logFilePath)!;
             var path = Path.Combine(dir, $"{prefix}-{DateTime.Now:HHmmssfff}{extension}");
             File.WriteAllBytes(path, bytes);
@@ -77,6 +81,7 @@ public static class AppLogger
 
     private static void WriteLine(string level, string component, string message)
     {
+        if (level != "ERROR" && !Volatile.Read(ref _isGamePresent)()) return;
         var line = $"[{DateTime.Now:HH:mm:ss.fff}] [{level}] [{component}] {message}";
         System.Diagnostics.Debug.WriteLine(line);
 

@@ -19,7 +19,7 @@ public class LineupPlannerViewModelTests
             new() { Name = "炎", BondType = "SEASON", ActivateCount = 3 },
             new() { Name = "独行", BondType = "REGULAR", ActivateCount = 1 }
         ];
-        var vm = new LineupPlannerViewModel(new LineupPlanner(operators, covenants), operators, new BanViewModel())
+        var vm = new LineupPlannerViewModel(new LineupPlanner(operators, covenants), operators, new BanViewModel(), EquipmentTestData.Rules)
         { DebounceMilliseconds = 0 };
         Item(vm, "炎").ToggleLevel1Command.Execute(null);
         Item(vm, "独行").ToggleLevel1Command.Execute(null);
@@ -50,7 +50,7 @@ public class LineupPlannerViewModelTests
             new CovenantInfo { Name = "突袭", BondType = "REGULAR", ActivateCount = 2 },
         };
         var bans = new BanViewModel();
-        var vm = new LineupPlannerViewModel(new LineupPlanner(operators, covenants), operators, bans) { DebounceMilliseconds = 0 };
+        var vm = new LineupPlannerViewModel(new LineupPlanner(operators, covenants), operators, bans, EquipmentTestData.Rules) { DebounceMilliseconds = 0 };
         return (vm, bans);
     }
 
@@ -276,7 +276,7 @@ public class LineupPlannerViewModelTests
             new CovenantInfo { Name = "精准", BondType = "REGULAR", ActivateCount = 2 }
         };
         var vm = new LineupPlannerViewModel(
-            new LineupPlanner(operators, covenants), operators, new BanViewModel()) { DebounceMilliseconds = 0 };
+            new LineupPlanner(operators, covenants), operators, new BanViewModel(), EquipmentTestData.Rules) { DebounceMilliseconds = 0 };
         vm.IsActive = true;
         vm.AllCovenants.Single(c => c.Name == "炎").ToggleLevel1Command.Execute(null);
         await vm.PendingSearch!;

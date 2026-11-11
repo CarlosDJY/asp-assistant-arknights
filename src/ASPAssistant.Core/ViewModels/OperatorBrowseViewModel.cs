@@ -74,14 +74,19 @@ public partial class OperatorBrowseViewModel : ObservableObject
     private IReadOnlySet<string> _highlightedCovenants = new HashSet<string>();
 
     [ObservableProperty]
+    private bool _onlyCurrentRun;
+
+    public bool HasRunInfo => HighlightedCovenants.Count > 0;
+
+    [ObservableProperty]
     private string? _selectedTraitTypeFilter;
 
     [ObservableProperty]
     private string? _selectedTriggerTimingFilter;
 
     public List<int?> AvailableTiers { get; private set; } = [];
-    public List<string?> AvailableCoreCovenants { get; private set; } = [];
-    public List<string?> AvailableOtherCovenants { get; private set; } = [];
+    public ObservableCollection<string?> AvailableCoreCovenants { get; private set; } = [];
+    public ObservableCollection<string?> AvailableOtherCovenants { get; private set; } = [];
     public List<string?> AvailableTraitTypes { get; private set; } = [];
     public List<string?> AvailableTriggerTimings { get; private set; } = [];
 
@@ -190,11 +195,6 @@ public partial class OperatorBrowseViewModel : ObservableObject
         ApplyFilters();
     }
 
-    partial void OnHighlightedCovenantsChanged(IReadOnlySet<string> value)
-    {
-        foreach (var chip in CoreChips.Concat(OtherChips)) chip.IsHighlighted = value.Contains(chip.Value);
-    }
-
     private static readonly string[] RomanLabels = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ"];
 
     private void BuildChips()
@@ -286,6 +286,55 @@ public partial class OperatorBrowseViewModel : ObservableObject
 
     public void ClearCovenantHighlights()
         => HighlightedCovenants = new HashSet<string>();
+
+    partial void OnHighlightedCovenantsChanged(IReadOnlySet<string> value)
+    {
+        if (value.Count == 0) OnlyCurrentRun = false;
+        OnPropertyChanged(nameof(HasRunInfo));
+        RefreshCovenantChoices();
+        foreach (var chip in CoreChips.Concat(OtherChips)) chip.IsHighlighted = value.Contains(chip.Value);
+    }
+
+    partial void OnOnlyCurrentRunChanged(bool value) => RefreshCovenantChoices();
+
+    private void RefreshCovenantChoices()
+    {
+        var core = _allOperators.SelectMany(o => o.CoreCovenants).Where(c => c.Length > 0).ToHashSet();
+        var other = _allOperators.SelectMany(o => o.AdditionalCovenants).Where(c => c.Length > 0 && !core.Contains(c));
+        UpdateChoices(AvailableCoreCovenants, ["", .. core.Where(c => !OnlyCurrentRun || HighlightedCovenants.Contains(c)).Order()]);
+        UpdateChoices(AvailableOtherCovenants, ["", .. other.Where(c => !OnlyCurrentRun || HighlightedCovenants.Contains(c)).Distinct().Order()]);
+        _selectedCoreCovenantFilters.RemoveWhere(c => !AvailableCoreCovenants.Contains(c));
+        _selectedOtherCovenantFilters.RemoveWhere(c => !AvailableOtherCovenants.Contains(c));
+        // 只看本局: the covenant chips follow the choices, keeping existing chips (and their state) in place
+        SyncCovenantChips(CoreChips, AvailableCoreCovenants, FilterChipKind.CoreCovenant);
+        SyncCovenantChips(OtherChips, AvailableOtherCovenants, FilterChipKind.OtherCovenant);
+        RefreshChipCounts();
+        ApplyFilters();
+    }
+
+    private void SyncCovenantChips(ObservableCollection<FilterChip> chips, IEnumerable<string?> choices, FilterChipKind kind)
+    {
+        var wanted = choices.Where(c => !string.IsNullOrEmpty(c)).Select(c => c!).ToList();
+        foreach (var chip in chips.Where(c => !wanted.Contains(c.Value)).ToList()) chips.Remove(chip);
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var index = chips.ToList().FindIndex(c => c.Value == wanted[i]);
+            if (index < 0)
+                chips.Insert(i, new FilterChip(kind, wanted[i], wanted[i], OnChipToggled) { IsHighlighted = HighlightedCovenants.Contains(wanted[i]) });
+            else if (index != i) chips.Move(index, i);
+        }
+    }
+
+    private static void UpdateChoices(ObservableCollection<string?> choices, List<string?> wanted)
+    {
+        foreach (var item in choices.Where(c => !wanted.Contains(c)).ToList()) choices.Remove(item);
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            var oldIndex = choices.IndexOf(wanted[i]);
+            if (oldIndex < 0) choices.Insert(i, wanted[i]);
+            else if (oldIndex != i) choices.Move(oldIndex, i);
+        }
+    }
 
     partial void OnSearchTextChanged(string value) => ApplyFilters();
     partial void OnCoreCovenantMatchAllChanged(bool value) => ApplyFilters();

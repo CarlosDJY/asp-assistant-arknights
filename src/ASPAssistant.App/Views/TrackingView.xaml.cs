@@ -31,6 +31,9 @@ public partial class TrackingView : UserControl
     private INotifyCollectionChanged? _operators;
     private INotifyCollectionChanged? _equipment;
     private CovenantCalculator? _calculator;
+    public static readonly DependencyProperty EquipmentRulesProperty = DependencyProperty.Register(
+        nameof(EquipmentRules), typeof(LineupEquipmentService), typeof(TrackingView));
+    public LineupEquipmentService EquipmentRules => (LineupEquipmentService)GetValue(EquipmentRulesProperty);
 
     public TrackingView()
     {
@@ -47,6 +50,7 @@ public partial class TrackingView : UserControl
     public void SetCovenantCalculator(CovenantCalculator calculator)
     {
         _calculator = calculator;
+        SetValue(EquipmentRulesProperty, calculator.EquipmentRules);
         RefreshSummary();
     }
 
@@ -92,7 +96,7 @@ public partial class TrackingView : UserControl
         {
             Slots = operators.Where(e => e.Role == TrackingRole.Final).Select(e => new LineupSlot
             {
-                OperatorName = e.Name, TransformedCovenant = e.TransformedCovenant
+                OperatorName = e.Name, Equipments = e.Equipments, IsElite = e.IsElite
             }).ToList()
         };
         var tally = (_calculator?.Compute(lineup) ?? []).Where(s => s.Count > 0)
@@ -102,7 +106,8 @@ public partial class TrackingView : UserControl
         TrackedCovenantChips.Visibility = tally.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
         var db = OperatorDatabase;
-        var cells = operators.Select(e => TrackedCell.From(e, db.GetValueOrDefault(e.Name))).ToList();
+        var rules = EquipmentRules;
+        var cells = operators.Select(e => TrackedCell.From(e, db.GetValueOrDefault(e.Name), rules)).ToList();
         Fill(FinalSection, FinalCells, FinalCount, cells.Where(c => c.Kind == TrackedCellKind.Final).ToList());
         Fill(TransitionSection, TransitionCells, TransitionCount, cells.Where(c => c.Kind == TrackedCellKind.Transition).ToList());
         var past = cells.Where(c => c.Kind == TrackedCellKind.Past).ToList();
@@ -136,9 +141,12 @@ public partial class TrackingView : UserControl
         if ((sender as FrameworkElement)?.DataContext is TrackedCell cell) RemoveTrackingRequested?.Invoke(cell.Name);
     }
 
+    /// <summary>Removes the planned transformation(s): 变形同构体 + job-change gear, or a v1.5 covenant without gear.</summary>
     private void OnCellClearTransform(object sender, RoutedEventArgs e)
     {
-        if ((sender as FrameworkElement)?.DataContext is TrackedCell cell) _vm?.ClearPlannedTransformation(cell.Name);
+        if (_vm is null || (sender as FrameworkElement)?.DataContext is not TrackedCell cell) return;
+        foreach (var t in cell.Transformations) _vm.ClearPlannedTransformation(cell.Name, t.EquipmentName, EquipmentRules);
+        if (cell.LegacyCovenant.Length > 0) _vm.ClearPlannedTransformation(cell.Name, "", EquipmentRules);
     }
 
     public void SetEquipment(IReadOnlyList<Equipment> equipment)
@@ -166,26 +174,35 @@ public sealed record TrackedCovenantChip(string Name, int Count, bool IsCore);
 public enum TrackedCellKind { Final, Transition, Past }
 
 /// <summary>One tracked operator on the tracking page: grouped by role, ringed in the shop marker color.</summary>
-public sealed record TrackedCell(string Name, TrackedCellKind Kind, string Sub, Operator? Operator, string TransformedCovenant)
+public sealed record TrackedCell(string Name, TrackedCellKind Kind, string Sub, Operator? Operator,
+    IReadOnlyList<EquipmentTransformation> Transformations, string LegacyCovenant)
 {
     public string Initial => Name.Length > 0 ? Name[..1] : "";
     public string IconPath => Operator?.IconPath ?? "";
     public bool HasDetails => Operator is not null;
-    public bool HasTransform => !string.IsNullOrEmpty(TransformedCovenant);
+    public bool HasTransform => Transformations.Count > 0 || LegacyCovenant.Length > 0;
+    /// <summary>Transformation target(s), e.g. “不屈” or “不屈、精准” (暴躁铁皮 can hold several).</summary>
+    public string TransformedCovenant => string.Join("、",
+        Transformations.Select(t => t.Covenant).Append(LegacyCovenant).Where(c => c.Length > 0).Distinct());
 
-    public static TrackedCell From(TrackingEntry entry, Operator? op)
+    public static TrackedCell From(TrackingEntry entry, Operator? op, LineupEquipmentService? rules)
     {
         var kind = entry.IsExpired ? TrackedCellKind.Past
             : entry.IsTransition ? TrackedCellKind.Transition : TrackedCellKind.Final;
+        IReadOnlyList<EquipmentTransformation> transformations = rules?.Transformations(new LineupSlot
+        {
+            OperatorName = entry.Name, Equipments = entry.Equipments, IsElite = entry.IsElite
+        }) ?? [];
+        var cell = new TrackedCell(entry.Name, kind, "", op, transformations, entry.TransformedCovenant ?? "");
         string sub;
         if (kind != TrackedCellKind.Final && !string.IsNullOrEmpty(entry.Stages)) sub = entry.Stages;
         else
         {
             var covenants = op is null ? new List<string>() : [.. op.CoreCovenants, .. op.AdditionalCovenants];
             var text = string.Join(" · ", covenants.Distinct());
-            sub = !string.IsNullOrEmpty(entry.TransformedCovenant) ? $"转职 {entry.TransformedCovenant}" + (text.Length > 0 ? $" · {text}" : "")
+            sub = cell.HasTransform ? $"转职 {cell.TransformedCovenant}" + (text.Length > 0 ? $" · {text}" : "")
                 : text.Length > 0 ? text : op is null ? "无数据" : "";
         }
-        return new TrackedCell(entry.Name, kind, sub, op, entry.TransformedCovenant);
+        return cell with { Sub = sub };
     }
 }

@@ -132,6 +132,8 @@
 
                     <!-- 9 slot cards in 3x3 grid -->
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                    <ItemsControl x:Name="SpecialSlotsHost" />
                     <ItemsControl x:Name="SlotsHost">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -139,6 +141,7 @@
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
+                    </StackPanel>
                     </ScrollViewer>
                 </DockPanel>
 

@@ -58,7 +58,7 @@ public partial class App : Application
         // Prevents background Task exceptions from being silently swallowed.
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
-            AppLogger.Warn("App", $"Unobserved task exception: {args.Exception}");
+            AppLogger.Error("App", "Unobserved task exception", args.Exception);
             args.SetObserved();
         };
 
@@ -182,16 +182,16 @@ public partial class App : Application
         AppLogger.Info("App", $"Loaded {equipment.Count} equipment items");
 
 
-        var trackingEntries = await _settingsManager.LoadTrackingEntriesAsync();
-        AppLogger.Info("App", $"Loaded {trackingEntries.Count} tracking entries");
-
         var (covenantInfos, jobChangeEquipmentToCovenant) = await dataStore.LoadCovenantsAsync();
         var strategies = await dataStore.LoadStrategiesAsync();
         AppLogger.Info("App",
             $"Loaded {covenantInfos.Count} covenants, "
             + $"{jobChangeEquipmentToCovenant.Count} job-change equipment mappings");
 
-        var lineupStore = new LineupStore(Path.Combine(settingsDir, "lineups"));
+        var covenantCalculator = new CovenantCalculator(operators, covenantInfos, jobChangeEquipmentToCovenant);
+        var trackingEntries = await _settingsManager.LoadTrackingEntriesAsync(covenantCalculator.EquipmentRules);
+        AppLogger.Info("App", $"Loaded {trackingEntries.Count} tracking entries");
+        var lineupStore = new LineupStore(Path.Combine(settingsDir, "lineups"), covenantCalculator.EquipmentRules);
         var lineups = await lineupStore.LoadAllAsync();
         AppLogger.Info("App", $"Loaded {lineups.Count} saved lineups");
 
@@ -206,7 +206,7 @@ public partial class App : Application
         var enemyVm = new EnemyViewModel();
 
         var operatorVm = new OperatorBrowseViewModel();
-        operatorVm.LoadOperators(operators);
+        operatorVm.LoadOperators(operators.Where(o => o.RequiredStrategyId.Length == 0).ToList());
         operatorVm.SetBanChecker(banVm.IsBanned);
         operatorVm.SetCovenantBanChecker(banVm.IsCovenantBanned);
 
@@ -227,10 +227,9 @@ public partial class App : Application
 
         var gameStateVm = new GameStateViewModel();
 
-        var covenantCalculator = new CovenantCalculator(operators, covenantInfos, jobChangeEquipmentToCovenant);
         var lineupVm = new LineupViewModel(lineupStore, covenantCalculator);
         lineupVm.LoadLineups(lineups);
-        var lineupShareService = new LineupShareService();
+        var lineupShareService = new LineupShareService(covenantCalculator.EquipmentRules, Path.Combine(settingsDir, "share-links"));
 
         // GameState
         var gameState = new Core.GameState.GameState();
@@ -241,8 +240,11 @@ public partial class App : Application
         // Services
         var captureService = new ScreenCaptureService();
         var ocrEngine = new MaaOcrEngine(dataDir);
-        var shopReader = new ShopReader(ocrEngine,
-            operators.Select(o => o.Name).Concat(equipment.Select(e => e.Name)).Distinct().ToList()) { Theme = gameTheme };
+        // The shop reader matches the whole catalogue; highlighting against tracking happens afterwards,
+        // so switching the tracked lineup updates markers without waiting for a new scan.
+        var shopNames = operators.Where(o => o.RequiredStrategyId.Length == 0).Select(o => o.Name)
+            .Concat(equipment.Select(e => e.Name)).Distinct().ToList();
+        var shopReader = new ShopReader(ocrEngine, shopNames) { Theme = gameTheme };
         // Covenant groups come from covenants.json (bondType), not from the operator roster:
         // a covenant with no operator in the local data set (a new season addition) must
         // still be recognised on the ban screen.
@@ -263,8 +265,7 @@ public partial class App : Application
 
         var enemyRecognizer = new EnemyRecognizer(ocrEngine, garrisonMode.OcrStrategy, bossDataService);
         _ocrScanner = new OcrScannerService(
-            captureService, garrisonMode.OcrStrategy, shopReader, ocrEngine, gameState,
-            () => Dispatcher.Invoke(() => trackingVm.ActiveEntries.Select(e => e.Name).Distinct().ToList()),
+            captureService.CaptureScreen, garrisonMode.OcrStrategy, shopReader, ocrEngine, gameState, shopNames,
             intervalMs: 500)
         {
             TerminalReader = new TerminalLevelReader(ocrEngine),
@@ -590,6 +591,7 @@ public partial class App : Application
         _windowTracker.Start();
         _ocrScanner.Start();
         AppLogger.Info("App", "Startup complete");
+        AppLogger.SetGamePresenceCheck(() => _windowTracker.IsGameFound);
 
         // Start background update check
         _ = _sidePanel.StartUpdateCheckAsync();
@@ -598,10 +600,12 @@ public partial class App : Application
 
     private void RefreshOverlayTracking(TrackingViewModel trackingVm)
     {
-        if (_overlay is null || _lastShopItems.Count == 0) return;
+        if (_overlay is null) return;
         Core.GameState.GameStateUpdater.UpdateShopTracking(
             _lastShopItems, trackingVm.ActiveEntries.ToList());
         Dispatcher.Invoke(() => _overlay.UpdateShopItems(_lastShopItems));
+        if (_lastShopItems.Count == 0 && trackingVm.AllEntries.Count > 0)
+            _ = _ocrScanner!.ScanNowAsync();
     }
 
     protected override void OnExit(ExitEventArgs e)

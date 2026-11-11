@@ -7,7 +7,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
     <!-- Version is overridden by CI via -p:Version=x.y.z during release builds -->
-    <Version>1.5.0</Version>
+    <Version>1.6.0</Version>
     <AssemblyTitle>ASP Assistant · Arknights</AssemblyTitle>
     <Product>ASP Assistant · Arknights</Product>
     <!-- Custom entry point with OS version guard (Program.cs); overrides WPF auto-generated Main -->

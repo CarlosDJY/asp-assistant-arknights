@@ -1,4 +1,5 @@
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -25,9 +26,14 @@ public class LineupShareService
     };
 
     private readonly HttpClient _http;
+    private readonly LineupEquipmentService _equipmentRules;
+    private readonly string _cacheDirectory;
+    private readonly SemaphoreSlim _exportGate = new(1, 1);
 
-    public LineupShareService(HttpClient? httpClient = null)
+    public LineupShareService(LineupEquipmentService equipmentRules, string cacheDirectory, HttpClient? httpClient = null)
     {
+        _equipmentRules = equipmentRules;
+        _cacheDirectory = cacheDirectory;
         _http = httpClient ?? new HttpClient
         {
             Timeout = TimeSpan.FromSeconds(15),
@@ -38,26 +44,72 @@ public class LineupShareService
         }
     }
 
-    /// <summary>把阵容序列化后上传到 dpaste，返回短链接 URL（如 https://dpaste.com/XXXXX）。</summary>
+    /// <summary>返回阵容短链接；相同内容在首次生成后的 30 天内复用本地记录。</summary>
     public async Task<string> ExportAsync(Lineup lineup, CancellationToken ct = default)
     {
         var json = JsonSerializer.Serialize(lineup, JsonOptions);
-
-        using var content = new FormUrlEncodedContent(new[]
+        var fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         {
-            new KeyValuePair<string, string>("content", json),
-            new KeyValuePair<string, string>("syntax", "json"),
-            new KeyValuePair<string, string>("expiry_days", ExpiryDays.ToString()),
-        });
+            lineup.Name, lineup.Slots, lineup.EarlySlots, lineup.MidSlots, lineup.SupportSlots, lineup.Strategies
+        }, JsonOptions)));
 
-        using var response = await _http.PostAsync(DpasteEndpoint, content, ct);
-        response.EnsureSuccessStatusCode();
+        await _exportGate.WaitAsync(ct);
+        try
+        {
+            Directory.CreateDirectory(_cacheDirectory);
+            var path = Path.Combine(_cacheDirectory, fingerprint + ".json");
+            CachedLink? cached;
+            try
+            {
+                cached = JsonSerializer.Deserialize<CachedLink>(await File.ReadAllTextAsync(path, ct), JsonOptions)
+                    ?? throw new InvalidDataException("分享链接缓存为空");
+            }
+            catch (FileNotFoundException)
+            {
+                cached = null;
+            }
+            if (cached is not null)
+            {
+                if (string.IsNullOrEmpty(cached.Url) || DpasteUrlRegex.Match(cached.Url).Value != cached.Url
+                    || cached.CreatedAt == default)
+                    throw new InvalidDataException("分享链接缓存内容无效");
+                if (DateTimeOffset.UtcNow - cached.CreatedAt < TimeSpan.FromDays(30))
+                    return cached.Url;
+            }
 
-        var body = (await response.Content.ReadAsStringAsync(ct)).Trim();
-        var match = DpasteUrlRegex.Match(body);
-        if (!match.Success)
-            throw new InvalidOperationException($"dpaste 响应不含可识别的 URL：{body}");
-        return match.Value;
+            using var content = new FormUrlEncodedContent(new[]
+            {
+                new KeyValuePair<string, string>("content", json),
+                new KeyValuePair<string, string>("syntax", "json"),
+                new KeyValuePair<string, string>("expiry_days", ExpiryDays.ToString()),
+            });
+
+            using var response = await _http.PostAsync(DpasteEndpoint, content, ct);
+            response.EnsureSuccessStatusCode();
+
+            var body = (await response.Content.ReadAsStringAsync(ct)).Trim();
+            var match = DpasteUrlRegex.Match(body);
+            if (!match.Success)
+                throw new InvalidOperationException($"dpaste 响应不含可识别的 URL：{body}");
+            var temporary = path + $".{Guid.NewGuid():N}.tmp";
+            try
+            {
+                await File.WriteAllTextAsync(temporary, JsonSerializer.Serialize(new CachedLink
+                {
+                    Url = match.Value, CreatedAt = DateTimeOffset.UtcNow
+                }, JsonOptions), ct);
+                File.Move(temporary, path, true);
+            }
+            finally { File.Delete(temporary); }
+            return match.Value;
+        }
+        finally { _exportGate.Release(); }
+    }
+
+    private sealed class CachedLink
+    {
+        public required string Url { get; init; }
+        public required DateTimeOffset CreatedAt { get; init; }
     }
 
     /// <summary>
@@ -72,26 +124,25 @@ public class LineupShareService
         urlOrJson = urlOrJson.Trim();
 
         string json;
-        var match = DpasteUrlRegex.Match(urlOrJson);
-        if (match.Success)
-        {
-            // 取 raw 文本视图
-            var rawUrl = match.Value.TrimEnd('/') + ".txt";
-            json = await _http.GetStringAsync(rawUrl, ct);
-        }
-        else if (urlOrJson.StartsWith("{"))
+        if (urlOrJson.StartsWith("{"))
         {
             json = urlOrJson;
         }
         else
         {
-            throw new ArgumentException("导入内容必须是 dpaste.com 短链接或阵容 JSON 字符串");
+            var match = DpasteUrlRegex.Match(Regex.Replace(urlOrJson, @"^<[^\r\n]*>\s*", ""));
+            if (!match.Success)
+                throw new ArgumentException("导入内容必须是 dpaste.com 短链接或阵容 JSON 字符串");
+            // 取 raw 文本视图
+            var rawUrl = match.Value.TrimEnd('/') + ".txt";
+            json = await _http.GetStringAsync(rawUrl, ct);
         }
 
         var lineup = JsonSerializer.Deserialize<Lineup>(json, JsonOptions)
                      ?? throw new InvalidOperationException("无法解析阵容 JSON");
         if (string.IsNullOrEmpty(lineup.Id))
             lineup.Id = Guid.NewGuid().ToString("N");
+        _equipmentRules.Upgrade(lineup);
         return lineup;
     }
 }

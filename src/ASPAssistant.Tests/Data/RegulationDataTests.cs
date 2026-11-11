@@ -15,7 +15,9 @@ public class RegulationDataTests
     {
         var operators = await _store.LoadOperatorsAsync();
 
-        operators.Should().HaveCount(141);
+        operators.Should().HaveCount(142);
+        operators.Count(o => o.RequiredStrategyId.Length == 0).Should().Be(141);
+        operators.Single(o => o.Name == "“暴躁铁皮”").RequiredStrategyId.Should().Be("band_mech");
         operators.Should().OnlyHaveUniqueItems(o => o.Name);
         operators.Single(o => o.Name == "塔露拉").CoreCovenants.Should().Contain("乌萨斯");
         operators.Single(o => o.Name == "车尔尼").CoreCovenants.Should().Contain("莱塔尼亚");
@@ -26,7 +28,8 @@ public class RegulationDataTests
     [Fact]
     public async Task Operators_LoadProfilesWithSkillsAndRoles()
     {
-        var operators = await _store.LoadOperatorsAsync();
+        // Strategy-only pieces such as “暴躁铁皮” have no recruitable profile or skill.
+        var operators = (await _store.LoadOperatorsAsync()).Where(o => o.RequiredStrategyId.Length == 0).ToList();
 
         operators.Should().OnlyContain(o => o.Profile != null && o.Normal.Skill != null && o.Elite.Skill != null);
         var by = operators.ToDictionary(o => o.Name);
