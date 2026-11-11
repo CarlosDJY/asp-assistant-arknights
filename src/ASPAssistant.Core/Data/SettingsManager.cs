@@ -58,10 +58,14 @@ public class SettingsManager
             AppLogger.Warn("Settings", "侧栏外观配置无法解析，使用默认值");
             return new SidebarAppearance();
         }
-        var appearance = new SidebarAppearance();
-        if (File.Exists(Path.Combine(_settingsDir, "light-theme.json")) && await LoadLightThemeAsync())
-            appearance.Night[GameShopTheme.Terminal] = false;
-        return appearance;
+        // Older installs followed the 模式主题 with 终端 at night unless light-theme.json said otherwise.
+        if (File.Exists(Path.Combine(_settingsDir, "light-theme.json")))
+            return new SidebarAppearance
+            {
+                FollowModeTheme = true,
+                Night = { [GameShopTheme.Terminal] = !await LoadLightThemeAsync() }
+            };
+        return new SidebarAppearance();
     }
 
     private sealed record SavedTerminalLevel(int Level, DateTime SavedAtUtc);

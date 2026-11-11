@@ -261,7 +261,7 @@
                                             </ListBox>
                                             <StackPanel VerticalAlignment="Center">
                                                 <TextBlock Text="日间 / 夜间" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                <TextBlock Text="每套主题单独记住；终端默认夜间" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                <TextBlock Text="每套主题单独记住" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             </StackPanel>
                                         </DockPanel>
                                         <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" />

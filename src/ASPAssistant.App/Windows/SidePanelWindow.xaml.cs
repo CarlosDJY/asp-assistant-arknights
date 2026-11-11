@@ -509,12 +509,14 @@ public partial class SidePanelWindow : Window
 
             var hwnd = new WindowInteropHelper(this).EnsureHandle();
             var current = User32.ReadWindowRect(hwnd);
-            if (_positionSettings.FreeMovement)
+            if (_positionSettings.FreeMovement && _positionSettings.Placement is not null)
             {
                 var work = User32.GetMonitorGeometry(current.Left + current.Width / 2, current.Top + current.Height / 2).WorkArea;
                 User32.SetWindowBounds(hwnd, WindowGeometry.ClampBounds(current, work));
                 return;
             }
+            // Free movement without a saved place yet (first start): dock beside the game once, then remember it.
+            var firstFreePlacement = _positionSettings.FreeMovement;
             var offset = _positionSettings.FollowOffsetDip;
             var scale = User32.GetWindowDpiScale(hwnd);
             var monitor = offset is null
@@ -543,10 +545,24 @@ public partial class SidePanelWindow : Window
                 ? WindowGeometry.SidePanelBounds(gameRect, monitor.WorkArea, scale, _preferredWidthDip, _userHeightDip, isFullscreen)
                 : WindowGeometry.FollowBounds(gameRect, monitor.WorkArea, scale, _preferredWidthDip, _userHeightDip, isFullscreen, offset);
             User32.SetWindowBounds(hwnd, target);
+            if (firstFreePlacement)
+            {
+                _positionSettings = _positionSettings with { Placement = CaptureSidePanelPlacement() };
+                _ = SavePositionQuietlyAsync();
+            }
         }
         finally
         {
             _isProgrammaticChange = false;
+        }
+    }
+
+    private async Task SavePositionQuietlyAsync()
+    {
+        try { await _settingsManager.SaveSidePanelPositionAsync(_positionSettings); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            AppLogger.Warn("Settings", $"Could not save side panel position: {ex.Message}");
         }
     }
 
@@ -775,10 +791,8 @@ public partial class SidePanelWindow : Window
 
     private void OnClose(object sender, RoutedEventArgs e)
     {
-        var confirm = MessageBox.Show(this,
-            "确定要关闭 ASP Assistant · Arknights 吗？\n关闭后识别、悬浮提示与快捷键都会停止。",
-            "退出确认", MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No);
-        if (confirm != MessageBoxResult.Yes) return;
+        if (!ConfirmDialog.Ask(this, "退出确认", "确定要关闭 ASP Assistant · Arknights 吗？\n关闭后识别、悬浮提示与快捷键都会停止。", "关闭"))
+            return;
 
         User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, HotkeyIdManualScan);
         Application.Current.Shutdown();
@@ -792,13 +806,8 @@ public partial class SidePanelWindow : Window
         LineupView.EditLineupRequested += lineup => OpenEditor(lineup);
         LineupView.DeleteLineupRequested += async lineup =>
         {
-            var ok = MessageBox.Show(
-                this,
-                $"确定删除阵容“{lineup.Name}”？此操作不可撤销。",
-                "删除阵容",
-                MessageBoxButton.OKCancel,
-                MessageBoxImage.Warning);
-            if (ok != MessageBoxResult.OK) return;
+            if (!ConfirmDialog.Ask(this, "删除阵容", $"确定删除阵容“{lineup.Name}”？此操作不可撤销。", "删除", danger: true))
+                return;
             try
             {
                 await LineupVm.DeleteAsync(lineup);

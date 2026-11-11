@@ -20,6 +20,8 @@ public sealed class LineupPlanner
     public const int MaxLockedOperators = 9;
     /// <summary>Active 聚合 counts as a 奶位 like a healer.</summary>
     public const string HealingCovenant = "聚合";
+    /// <summary>暴躁铁皮's own covenant.</summary>
+    public const string MechCovenant = "协防干员";
     private const int MaxBranches = 48;
 
     private readonly IReadOnlyList<Operator> _operators;
@@ -127,6 +129,10 @@ public sealed class LineupPlanner
         private readonly CancellationToken _ct;
         private readonly Dictionary<string, int> _rarity;
         private readonly HashSet<string> _seen = new(StringComparer.Ordinal);
+        /// <summary>暴躁铁皮 (takes one place): transformations it can carry (0 without the strategy).</summary>
+        private readonly int _mechCap;
+        /// <summary>Pith's 调和 piece (takes one place, not searched): counts like one more 调和 holder.</summary>
+        private readonly int _extraHarmony;
         private readonly HashSet<string> _goalNames;
         private readonly HashSet<string> _additionalNames;
         private readonly bool _hasSoloGoal;
@@ -166,6 +172,8 @@ public sealed class LineupPlanner
             _healerData = _healer.Any(h => h);
             var healing = covenants.FirstOrDefault(c => c.Name == HealingCovenant);
             _healingNeed = healing is null ? 0 : CreateGoal(healing, 1).Count;
+            _mechCap = request.Strategy == PlannerStrategy.Mech ? PlannerStrategies.MechTransformCap(request.MechElite) : 0;
+            _extraHarmony = request.Strategy == PlannerStrategy.Pith ? 1 : 0;
         }
 
         private bool HasHealer(IReadOnlyList<int> team, Dictionary<string, int> counts)
@@ -177,10 +185,12 @@ public sealed class LineupPlanner
         public PlannerVariantResult SolveVariant(int people, int transforms)
         {
             _ct.ThrowIfCancellationRequested();
-            _people = people; _teamSize = Math.Min(people, _ops.Count); _transforms = transforms;
+            // 暴躁铁皮 / Pith take one of the places themselves.
+            var places = people - PlannerStrategies.PiecePlaces(_request.Strategy);
+            _people = people; _teamSize = Math.Min(places, _ops.Count); _transforms = transforms;
             _nodes = 0; _limited = false; _found = [];
             _picked.Clear(); _visited.Clear(); Array.Clear(_used);
-            if (_locked.Count > people) return new PlannerVariantResult(people, transforms, [], false);
+            if (_locked.Count > places) return new PlannerVariantResult(people, transforms, [], false);
             foreach (var i in _locked) { _picked.Add(i); _used[i] = true; }
             _requireHealer = _healerData;
             Visit();
@@ -197,11 +207,12 @@ public sealed class LineupPlanner
                 _found.Select(f => f with { SearchLimited = limited }).ToList(), limited);
         }
 
-        private (Dictionary<string, int> Counts, Dictionary<string, int> Bonus) Count(IReadOnlyList<int> team, IReadOnlyDictionary<int, string> tr)
+        private (Dictionary<string, int> Counts, Dictionary<string, int> Bonus) Count(IReadOnlyList<int> team,
+            IReadOnlyDictionary<int, string> tr, IReadOnlyCollection<string>? mech = null)
         {
             var counts = _covenants.Select(c => c.Name).Distinct(StringComparer.Ordinal)
                 .ToDictionary(n => n, _ => 0, StringComparer.Ordinal);
-            foreach (var target in tr.Values)
+            foreach (var target in tr.Values.Concat(mech ?? []))
                 if (!counts.ContainsKey(target)) counts[target] = 0;
             foreach (var goal in _request.Goals)
                 counts.TryAdd(goal.Name, 0);
@@ -229,6 +240,18 @@ public sealed class LineupPlanner
                     present.Add(t);
                 }
             }
+            // 暴躁铁皮 itself is a 协防干员 (another one activates it).
+            if (_mechCap > 0 && counts.ContainsKey(MechCovenant)) counts[MechCovenant]++;
+            foreach (var t in mech ?? [])
+            {
+                counts[t]++;
+                present.Add(t);
+            }
+            if (_extraHarmony > 0)
+            {
+                harmony += _extraHarmony;
+                if (counts.ContainsKey(CovenantCalculator.HarmonyCovenant)) counts[CovenantCalculator.HarmonyCovenant] += _extraHarmony;
+            }
             var bonus = new Dictionary<string, int>(StringComparer.Ordinal);
             if (harmony > 0)
                 foreach (var g in _request.Goals.Where(g => g.IsCore && present.Contains(g.Name)))
@@ -245,7 +268,7 @@ public sealed class LineupPlanner
         {
             var deficit = Math.Max(0, goal.Count - counts[goal.Name]);
             return goal.IsCore && counts[goal.Name] == 0 && deficit > 0
-                ? Math.Max(1, deficit - _picked.Count(i => _harmony[i]))
+                ? Math.Max(1, deficit - _picked.Count(i => _harmony[i]) - _extraHarmony)
                 : deficit;
         }
 
@@ -361,13 +384,16 @@ public sealed class LineupPlanner
         {
             var team = new List<int>(_picked);
             var tr = new Dictionary<int, string>();
-            var usedHere = new HashSet<int>(team);
+            var mech = new List<string>();
+            int Used() => tr.Count + mech.Count;
 
-            int? FindHolder(string covenant)
+            // 暴躁铁皮 first: it carries several job-change gear on one 变形同构体.
+            bool Assign(string covenant)
             {
+                if (mech.Count < _mechCap && !mech.Contains(covenant)) { mech.Add(covenant); return true; }
                 foreach (var i in team.OrderBy(i => _lockedSet.Contains(i)))
-                    if (!tr.ContainsKey(i) && !_native[i].Contains(covenant)) return i;
-                return null;
+                    if (!tr.ContainsKey(i) && !_native[i].Contains(covenant)) { tr[i] = covenant; return true; }
+                return false;
             }
 
             foreach (var g in _request.Goals)
@@ -375,35 +401,43 @@ public sealed class LineupPlanner
                 var deficit = TransformDeficit(g, nativeCounts);
                 for (var k = 0; k < deficit; k++)
                 {
-                    if (tr.Count >= _transforms || !_allowed.Contains(g.Name)) return false;
-                    if (FindHolder(g.Name) is not int holder) return false;
-                    tr[holder] = g.Name;
+                    if (Used() >= _transforms || !_allowed.Contains(g.Name)) return false;
+                    if (!Assign(g.Name)) return false;
                 }
             }
 
             var forced = 0;
             var goalTargets = _request.Goals.Select(g => g.Name).Where(_allowed.Contains).ToList();
+            while (Used() < _transforms && mech.Count < _mechCap)
+            {
+                var target = goalTargets.FirstOrDefault(n => !mech.Contains(n))
+                    ?? _allowedOrdered.Where(n => !mech.Contains(n))
+                        .OrderByDescending(n => TransformScore(n, team, tr, mech)).FirstOrDefault();
+                if (target is null) break;
+                mech.Add(target); forced++;
+            }
             foreach (var i in team.OrderBy(i => _lockedSet.Contains(i)).ToList())
             {
-                if (tr.Count >= _transforms) break;
+                if (Used() >= _transforms) break;
                 if (tr.ContainsKey(i)) continue;
                 var target = goalTargets.FirstOrDefault(n => !_native[i].Contains(n));
                 target ??= _allowedOrdered
                     .Where(n => !_native[i].Contains(n))
-                    .OrderByDescending(n => TransformScore(n, team, tr))
+                    .OrderByDescending(n => TransformScore(n, team, tr, mech))
                     .FirstOrDefault();
                 if (target is null) continue;
                 tr[i] = target; forced++;
             }
-            if (tr.Count != _transforms) return false;
+            if (Used() != _transforms) return false;
 
-            var (counts, bonus) = Count(team, tr);
+            var (counts, bonus) = Count(team, tr, mech);
             if (_request.Goals.Any(g => counts[g.Name] < g.Count)) return false;
             if (!HasHealer(team, counts)) return false;
             if (_hasSoloGoal && counts[SoloCovenant] != 1) return false;
 
             var key = string.Join(',', team.Select(i => _ops[i].Name).Order(StringComparer.Ordinal)) + '|' +
-                      string.Join(',', tr.Select(x => _ops[x.Key].Name + ':' + x.Value).Order(StringComparer.Ordinal));
+                      string.Join(',', tr.Select(x => _ops[x.Key].Name + ':' + x.Value).Order(StringComparer.Ordinal)) + '|' +
+                      string.Join(',', mech.Order(StringComparer.Ordinal));
             if (!_seen.Add(key)) return true;
 
             var (additionalScore, additionalLevels) = Score(counts);
@@ -422,7 +456,10 @@ public sealed class LineupPlanner
                 ForcedTransforms = forced,
                 HarmonyBonus = bonus,
                 AdditionalScore = additionalScore,
-                AdditionalCovenants = additionalLevels
+                AdditionalCovenants = additionalLevels,
+                Strategy = _request.Strategy,
+                MechCovenants = mech,
+                MechElite = _request.MechElite
             };
             _found.Add(lineup);
             _found = _found
@@ -434,10 +471,11 @@ public sealed class LineupPlanner
             return true;
         }
 
-        private int TransformScore(string covenant, IReadOnlyList<int> team, IReadOnlyDictionary<int, string> tr)
+        private int TransformScore(string covenant, IReadOnlyList<int> team, IReadOnlyDictionary<int, string> tr,
+            IReadOnlyCollection<string> mech)
         {
             if (!_additionalNames.Contains(covenant)) return 0;
-            var (counts, _) = Count(team, tr);
+            var (counts, _) = Count(team, tr, mech);
             var current = counts.GetValueOrDefault(covenant);
             var info = _covenants.FirstOrDefault(c => c.Name == covenant);
             var threshold = info?.ActivateCount ?? 2;

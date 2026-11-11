@@ -277,6 +277,7 @@ public partial class TrackingViewModel : ObservableObject
         TrackedEquipment.Clear();
         foreach (var entry in entries)
         {
+            entry.Stages = RouteStageNames.Normalize(entry.Stages);
             if (entry.Type == TrackingType.Operator)
                 TrackedOperators.Add(entry);
             else

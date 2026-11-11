@@ -157,6 +157,16 @@ public sealed class PlannerOperatorItem
     public bool HasExtraInfo => ExtraInfo.Length > 0;
 }
 
+/// <summary>The run strategy's own piece (暴躁铁皮 / Pith), shown above the lineup; it takes one of the places.</summary>
+public sealed record PlannerStrategyPiece(string Name, string IconPath, string Sub, string Badge)
+{
+    public string Initial => Name.Trim('“', '”').Length > 0 ? Name.Trim('“', '”')[..1] : "?";
+    public bool HasBadge => Badge.Length > 0;
+}
+
+/// <summary>One choice of the 本局策略 selector.</summary>
+public sealed record PlannerStrategyChoice(PlannerStrategy Strategy, string Name, string Icon, string Hint);
+
 /// <summary>An operator who holds a covenant, listed in the covenant hover details.</summary>
 public sealed record PlannerCovenantMember(string Name, string IconPath, int Tier, bool IsUnavailable, Operator Operator)
 {
@@ -182,17 +192,38 @@ public sealed partial class PlannerLineupItem : ObservableObject
     public IReadOnlyList<PlannerOperatorItem> Operators { get; init; } = [];
     public IReadOnlyList<PlannerGoalPill> Goals { get; init; } = [];
     public string LineupName { get; init; } = "";
+    public PlannerStrategyPiece? StrategyPiece { get; init; }
+    public bool HasStrategyPiece => StrategyPiece is not null;
 
     public Lineup ToLineup(LineupEquipmentService equipmentRules) => new()
     {
         Name = LineupName,
-        Slots = Source.Operators.Select(o => new LineupSlot
+        Slots = PlannerLineupItem.Slots(Source.Operators, equipmentRules).Concat(MechSlots(Source, equipmentRules)).ToList(),
+        Strategies = StrategySlots(Source.Strategy)
+    };
+
+    internal static IEnumerable<LineupSlot> Slots(IEnumerable<PlannedOperator> operators, LineupEquipmentService equipmentRules)
+        => operators.Select(o => new LineupSlot
         {
             OperatorName = o.Name,
-            Equipments = o.TransformedCovenant is null ? [] :
+            Equipments = o.TransformedCovenant is null || !equipmentRules.CanTransformInto(o.TransformedCovenant) ? [] :
                 [LineupEquipmentService.Shapeshifter, equipmentRules.EquipmentFor(o.TransformedCovenant)]
-        }).ToList()
-    };
+        });
+
+    /// <summary>暴躁铁皮 with one 变形同构体 and the job-change gear of each covenant it carries.</summary>
+    internal static IEnumerable<LineupSlot> MechSlots(PlannedLineup lineup, LineupEquipmentService equipmentRules)
+    {
+        if (lineup.Strategy != PlannerStrategy.Mech) yield break;
+        var gear = lineup.MechCovenants.Where(equipmentRules.CanTransformInto).Select(equipmentRules.EquipmentFor).ToList();
+        yield return new LineupSlot
+        {
+            OperatorName = LineupEquipmentService.MechName, IsElite = lineup.MechElite,
+            Equipments = gear.Count == 0 ? [] : [LineupEquipmentService.Shapeshifter, .. gear]
+        };
+    }
+
+    internal static List<LineupStrategySlot> StrategySlots(PlannerStrategy strategy)
+        => PlannerStrategies.StrategyId(strategy) is { } id ? [new LineupStrategySlot { StrategyId = id, Tags = [StrategyTag.阵容核心] }] : [];
 }
 
 public sealed partial class PlannerVariantCell : ObservableObject
@@ -236,6 +267,23 @@ public sealed class RouteOperatorItem
 
 public sealed record RouteCovenantPill(string Text, bool IsGoal, bool IsActive);
 
+/// <summary>A small chip on a route stage: a condition (≤ Ⅲ 阶 · 8 人) or a role check (盾 1, red when missing).</summary>
+public sealed record RouteChip(string Text, bool IsRole, bool IsMissing, string ToolTip = "");
+
+/// <summary>One node of the 道中 stepper above the stages.</summary>
+public sealed partial class RouteStepItem : ObservableObject
+{
+    public string Name { get; init; } = "";
+    public int Number { get; init; }
+    /// <summary>Connector to the next node.</summary>
+    public bool HasLine { get; init; }
+    /// <summary>Connector from the previous node.</summary>
+    public bool HasLineIn => Number > 1;
+    [ObservableProperty] private bool _isPast;
+    [ObservableProperty] private bool _isCurrent;
+    public RouteStageItem? Stage { get; init; }
+}
+
 public sealed partial class RouteStageItem : ObservableObject
 {
     /// <summary>Terminal level from which this stage is behind the player (0 = never).</summary>
@@ -245,17 +293,31 @@ public sealed partial class RouteStageItem : ObservableObject
     [ObservableProperty]
     private bool _isPast;
 
+    /// <summary>The stage the player is in now (first one not behind the terminal level).</summary>
+    [ObservableProperty] private bool _isCurrent;
+    /// <summary>Only the current stage is open by default; the others show one row of small avatars.</summary>
+    [ObservableProperty] private bool _isExpanded;
+    [RelayCommand] private void ToggleExpanded() => IsExpanded = !IsExpanded;
+
     public string Title { get; init; } = "";
+    /// <summary>Short name for the stepper: 开局 / 前期 / 四本 / 六本 / 大成.</summary>
+    public string ShortTitle { get; init; } = "";
     public string Subtitle { get; init; } = "";
+    /// <summary>“终端 3”, or empty for 大成.</summary>
+    public string LevelText { get; init; } = "";
     public bool IsFinal { get; init; }
+    public bool IsStacking { get; init; }
     public IReadOnlyList<RouteOperatorItem> Operators { get; init; } = [];
     public IReadOnlyList<RouteCovenantPill> Covenants { get; init; } = [];
+    public IReadOnlyList<RouteChip> Conditions { get; init; } = [];
+    public IReadOnlyList<RouteChip> Roles { get; init; } = [];
+    /// <summary>“换下 莎草、蓝毒”: operators of the previous stage no longer used here.</summary>
     public string ChangeText { get; init; } = "";
     public bool HasChange => ChangeText.Length > 0;
-    /// <summary>“强度 10 分 · 盾 1 · 奶 1 · 叠层手 5”.</summary>
-    public string SummaryText { get; init; } = "";
     public string WarningText { get; init; } = "";
     public bool HasWarning => WarningText.Length > 0;
+    public PlannerStrategyPiece? StrategyPiece { get; init; }
+    public bool HasStrategyPiece => StrategyPiece is not null;
 }
 
 /// <summary>
@@ -264,7 +326,50 @@ public sealed partial class RouteStageItem : ObservableObject
 public partial class LineupPlannerViewModel : ObservableObject
 {
     private static readonly int[] PeopleOptions = [8, 9];
-    private static readonly int[] TransformOptions = [0, 1, 2];
+    private IReadOnlyList<int> TransformOptions => PlannerStrategies.TransformOptions(Strategy);
+
+    /// <summary>The run's strategy (one per run); only 暴躁铁皮 / Pith / 变形同构 change planning.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsMechStrategy), nameof(StrategyHint), nameof(TransformHeaders))]
+    private PlannerStrategy _strategy = PlannerStrategy.Other;
+    /// <summary>暴躁铁皮 is elite: it carries 5 transformations instead of 3.</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(StrategyHint))]
+    private bool _mechElite;
+    public bool IsMechStrategy => Strategy == PlannerStrategy.Mech;
+    public IReadOnlyList<PlannerStrategyChoice> StrategyChoices { get; } =
+    [
+        new(PlannerStrategy.Other, "其他", "—", "其他策略不影响规划"),
+        new(PlannerStrategy.Mech, "暴躁铁皮", "铁", "森蚺：送一个占 1 人口、可挂多件转职装备的棋子"),
+        new(PlannerStrategy.Pith, "优等生", "P", "Pith：开局送一个调和棋子，占 1 人口，一直保留"),
+        new(PlannerStrategy.Shapeshifter, "变形同构", "变", "每 5 回合送一个变形同构体，转职装备仍需购买"),
+    ];
+    public string StrategyHint => Strategy switch
+    {
+        PlannerStrategy.Mech => $"暴躁铁皮占 1 人口，最多转 {PlannerStrategies.MechTransformCap(MechElite)} 个盟约" + (MechElite ? "（精锐）" : "（精锐 5 个）"),
+        PlannerStrategy.Pith => "Pith 占 1 人口：本局已激活的核心盟约各 +1 人",
+        PlannerStrategy.Shapeshifter => "最多送 3 个变形同构体（第 5、10、15 回合），可规划 3 次转职",
+        _ => "带的是其他策略时规划不受影响"
+    };
+    /// <summary>Column headers of the people × transforms matrix (“0 转” …).</summary>
+    public IReadOnlyList<string> TransformHeaders => TransformOptions.Select(t => $"{t} 转").ToList();
+
+    [RelayCommand]
+    private void SelectStrategy(PlannerStrategyChoice? choice)
+    {
+        if (choice is not null) Strategy = choice.Strategy;
+    }
+
+    partial void OnStrategyChanged(PlannerStrategy value)
+    {
+        if (value != PlannerStrategy.Mech) MechElite = false;
+        RequestRecompute();
+    }
+
+    partial void OnMechEliteChanged(bool value)
+    {
+        if (Strategy == PlannerStrategy.Mech) RequestRecompute();
+    }
 
     private readonly LineupPlanner _planner;
     private readonly LineupRoutePlanner _routePlanner;
@@ -272,6 +377,7 @@ public partial class LineupPlannerViewModel : ObservableObject
     private readonly BanViewModel _banVm;
     private readonly IReadOnlyList<Operator> _operators;
     private readonly Dictionary<string, Operator> _operatorByName;
+    private readonly Dictionary<string, string> _allOperatorIcons;
     private IReadOnlySet<string> _availableCovenants = new HashSet<string>();
     private PlannerResult? _lastResult;
     private CancellationTokenSource? _cts;
@@ -289,6 +395,7 @@ public partial class LineupPlannerViewModel : ObservableObject
         _operators = operators.Where(o => o.RequiredStrategyId.Length == 0).ToList();
         _routePlanner = new LineupRoutePlanner(_operators, planner.Covenants);
         _operatorByName = _operators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
+        _allOperatorIcons = operators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First().IconPath, StringComparer.Ordinal);
         foreach (var c in planner.Covenants)
             (c.BondType == "SEASON" ? CoreCovenants : ExtraCovenants).Add(new PlannerCovenantItem(c, OnToggleLevel,
                 _equipmentRules.CanTransformInto(c.Name) && !LineupPlanner.NoTransform.Contains(c.Name)));
@@ -337,12 +444,47 @@ public partial class LineupPlannerViewModel : ObservableObject
     /// <summary>Current terminal level (from the tracking tab; 0 = unknown). Stages behind it are shown as 已过.</summary>
     [ObservableProperty] private int _currentTerminalLevel;
 
-    partial void OnCurrentTerminalLevelChanged(int value)
+    partial void OnCurrentTerminalLevelChanged(int value) => RefreshRouteProgress(expandCurrent: false);
+
+    /// <summary>Marks stages behind the terminal level as 已过 and the first one ahead as current.</summary>
+    private void RefreshRouteProgress(bool expandCurrent)
     {
+        var level = CurrentTerminalLevel;
+        RouteStageItem? current = null;
         foreach (var stage in RouteStages)
-            stage.IsPast = stage.ExpiresAt > 0 && value >= stage.ExpiresAt;
+        {
+            stage.IsPast = stage.ExpiresAt > 0 && level >= stage.ExpiresAt;
+            stage.IsCurrent = false;
+            if (current is null && !stage.IsPast) current = stage;
+        }
+        if (current is not null)
+        {
+            current.IsCurrent = true;
+            if (expandCurrent) current.IsExpanded = true;
+        }
+        foreach (var step in RouteSteps)
+        {
+            step.IsPast = step.Stage?.IsPast == true;
+            step.IsCurrent = ReferenceEquals(step.Stage, current);
+        }
     }
+
     public ObservableCollection<RouteStageItem> RouteStages { get; } = [];
+    public ObservableCollection<RouteStepItem> RouteSteps { get; } = [];
+    /// <summary>Raised when a stepper node is clicked: the view scrolls the stage into view.</summary>
+    public event Action<RouteStageItem>? RouteStageFocusRequested;
+
+    /// <summary>Stepper click: open that stage (only it) and bring it into view.</summary>
+    [RelayCommand]
+    private void SelectRouteStep(RouteStepItem? step)
+    {
+        if (step?.Stage is not { } stage) return;
+        foreach (var s in RouteStages) s.IsExpanded = ReferenceEquals(s, stage);
+        RouteStageFocusRequested?.Invoke(stage);
+    }
+    /// <summary>“伊比利亚 6 · 9 人 · 1 转” under the route title.</summary>
+    [ObservableProperty] private string _routeSubtitle = "";
+    private PlannerLineupItem? _routeItem;
     [ObservableProperty] private bool _onlyCurrentRun;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _hasError;
@@ -604,8 +746,10 @@ public partial class LineupPlannerViewModel : ObservableObject
         ShowRoute = false;
         IsRouteBusy = false;
         RouteStages.Clear();
+        RouteSteps.Clear();
         _currentRoute = null;
         TrackRouteCommand.NotifyCanExecuteChanged();
+        SaveRouteCommand.NotifyCanExecuteChanged();
     }
 
     /// <summary>Tracks every operator of the shown route: 大成 green, 过渡 orange.</summary>
@@ -617,6 +761,28 @@ public partial class LineupPlannerViewModel : ObservableObject
 
     private bool CanTrackRoute() => _currentRoute is not null;
 
+    /// <summary>
+    /// Saves the route as one lineup: 前期 → 前期, 中期 → 中期, 大成 → 后期, and the 后期 (叠层) stackers that
+    /// 大成 does not keep → 挂件. 开局 is not saved.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanTrackRoute))]
+    private void SaveRoute()
+    {
+        if (_currentRoute is null || _routeItem is null) return;
+        var lineup = _routeItem.ToLineup(_equipmentRules);
+        lineup.Name = $"{_routeItem.LineupName} 路线";
+        var finalNames = _routeItem.Source.Operators.Select(o => o.Name).ToHashSet(StringComparer.Ordinal);
+        List<LineupSlot> StageSlots(Func<RouteStage, bool> pick, bool onlyTransition = false)
+            => _currentRoute.Stages.FirstOrDefault(pick) is { } stage
+                ? stage.Operators.Where(o => !onlyTransition || !finalNames.Contains(o.Name))
+                    .Select(o => new LineupSlot { OperatorName = o.Name }).ToList()
+                : [];
+        lineup.EarlySlots = StageSlots(s => s.Definition.Name == "前期");
+        lineup.MidSlots = StageSlots(s => s.Definition.Name == "中期");
+        lineup.SupportSlots = StageSlots(s => s.Definition.Stacking, onlyTransition: true);
+        SaveRequested?.Invoke(lineup);
+    }
+
     /// <summary>Plans 开局 → 大成 transition lineups for one candidate.</summary>
     [RelayCommand]
     private Task ShowRouteFor(PlannerLineupItem? item) => item is null ? Task.CompletedTask : PlanRouteAsync(item);
@@ -627,9 +793,14 @@ public partial class LineupPlannerViewModel : ObservableObject
         var cts = new CancellationTokenSource();
         _routeCts = cts;
         RouteStages.Clear();
+        RouteSteps.Clear();
         _currentRoute = null;
+        _routeItem = item;
         TrackRouteCommand.NotifyCanExecuteChanged();
-        RouteTitle = $"{item.Title} 的道中路线";
+        SaveRouteCommand.NotifyCanExecuteChanged();
+        RouteTitle = $"{item.Title} · 道中路线";
+        RouteSubtitle = string.Join(" · ", item.Source.Goals.Select(g => $"{g.Name} {g.Count}")
+            .Append($"{item.Source.People} 人").Append($"{item.Source.Transforms} 转"));
         ShowRoute = true;
         IsRouteBusy = true;
         var bannedCovenants = new HashSet<string>(_banVm.BannedCovenants, StringComparer.Ordinal);
@@ -646,12 +817,17 @@ public partial class LineupPlannerViewModel : ObservableObject
             if (!ReferenceEquals(_routeCts, cts)) return;
             for (var i = 0; i < route.Stages.Count; i++)
             {
-                var stageItem = BuildStageItem(route.Stages[i], route.ExpiresAt(i));
-                stageItem.IsPast = route.IsPast(i, CurrentTerminalLevel);
+                var stageItem = BuildStageItem(route.Stages[i], route.ExpiresAt(i), item.Source);
                 RouteStages.Add(stageItem);
+                RouteSteps.Add(new RouteStepItem
+                {
+                    Name = stageItem.ShortTitle, Number = i + 1, HasLine = i < route.Stages.Count - 1, Stage = stageItem
+                });
             }
+            RefreshRouteProgress(expandCurrent: true);
             _currentRoute = route;
             TrackRouteCommand.NotifyCanExecuteChanged();
+            SaveRouteCommand.NotifyCanExecuteChanged();
         }
         catch (OperationCanceledException)
         {
@@ -665,7 +841,7 @@ public partial class LineupPlannerViewModel : ObservableObject
     private static readonly string[] Roman = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ"];
     private static string RomanOf(int tier) => tier >= 0 && tier < Roman.Length ? Roman[tier] : tier.ToString();
 
-    private RouteStageItem BuildStageItem(RouteStage stage, int expiresAt)
+    private RouteStageItem BuildStageItem(RouteStage stage, int expiresAt, PlannedLineup final)
     {
         var def = stage.Definition;
         var subtitle = stage.IsFinal
@@ -678,8 +854,11 @@ public partial class LineupPlannerViewModel : ObservableObject
         var ops = stage.Operators.Select(o =>
         {
             var relevant = o.Covenants.Where(goalNames.Contains).ToList();
-            var sub = o.TransformedCovenant is not null ? $"转→{o.TransformedCovenant}"
-                : string.Join(" ", relevant.Count > 0 ? relevant : o.Covenants.Take(1));
+            var roleMarks = new[] { o.IsTank ? "盾" : null, o.IsHealer ? "奶" : null, o.IsStacker ? "叠" : null }.OfType<string>().ToList();
+            // Role marks first (盾 / 奶 / 叠), else the covenant that matters for the targets
+            var sub = o.TransformedCovenant is not null ? $"转职 {o.TransformedCovenant}"
+                : roleMarks.Count > 0 ? string.Join(" · ", roleMarks)
+                : string.Join(" ", relevant.Count > 0 ? relevant.Take(1) : o.Covenants.Take(1));
             var extra = new List<string> { o.Role == RouteOperatorRole.Final ? "最终卡：一路保留到大成" : "过渡卡：大成前会被替换" };
             if (o.ViaTriple) extra.Add($"需要三连获得（终端 {def.TerminalLevel} 只出 {RomanOf(def.MaxTier)} 阶及以下）");
             if (o.IsNew) extra.Add("本阶段新加入");
@@ -700,23 +879,37 @@ public partial class LineupPlannerViewModel : ObservableObject
             };
         }).ToList();
         var sum = stage.Summary;
-        var summaryText = $"强度 {sum.Points} 分 · 盾 {sum.Tanks} · 奶 {sum.Healers}" + (sum.HealingCovenant ? "（+聚合）" : "")
-                          + $" · 叠层手 {sum.Stackers} · 大成盟约约 {sum.FinalLayers:0.#} 层/回合";
-        var pills = stage.Covenants.Select(c =>
+        // Covenants as people (“伊比利亚 4”); target covenants are outlined
+        var pills = stage.Covenants.Where(c => c.IsGoal || c.Level > 0)
+            .OrderByDescending(c => c.IsGoal).ThenByDescending(c => c.Level)
+            .Select(c => new RouteCovenantPill($"{c.Name} {c.Count}", c.IsGoal, c.Level > 0)).ToList();
+        var conditions = new List<RouteChip>();
+        if (!stage.IsFinal && !def.Stacking) conditions.Add(new RouteChip($"≤ {RomanOf(def.MaxTier)} 阶", false, false, $"终端 {def.TerminalLevel} 只出 {RomanOf(def.MaxTier)} 阶及以下"));
+        conditions.Add(new RouteChip($"{def.People} 人", false, false));
+        if (def.TripleSlots > 0) conditions.Add(new RouteChip($"三连 ≤ {def.TripleSlots}", false, false, $"至多 {def.TripleSlots} 张三连 {RomanOf(def.MaxTier + 1)} 阶"));
+        if (def.Stacking) conditions.Add(new RouteChip("叠层", false, false, "保持大成盟约激活、尽量多上叠层手，打 Boss 前换成大成阵容"));
+        var needHealer = def.TerminalLevel >= LineupRoutePlanner.HealerFromTerminal;
+        var hasHealer = sum.Healers > 0 || sum.HealingCovenant;
+        var roles = new List<RouteChip>
         {
-            var level = c.Level switch { 2 => " Ⅱ", 1 => " Ⅰ", _ => "" };
-            var text = c.IsGoal ? $"{c.Name} {c.Count}/{c.Target}{level}" : $"{c.Name} {c.Count}{level}";
-            return new RouteCovenantPill(text, c.IsGoal, c.Level > 0);
-        }).ToList();
-        var added = stage.Operators.Where(o => o.IsNew).Select(o => o.Name).ToList();
-        var change = stage.Removed.Count == 0 ? ""
-            : $"换下 {string.Join("、", stage.Removed)}" + (added.Count > 0 ? $"，换上 {string.Join("、", added)}" : "");
+            new($"盾 {sum.Tanks}", true, sum.Tanks == 0, "盾位：重装或能稳定阻挡的干员"),
+            new(sum.HealingCovenant && sum.Healers == 0 ? "奶 聚合" : $"奶 {sum.Healers}", true, needHealer && !hasHealer,
+                needHealer ? "奶位：医疗干员或激活的聚合" : "三本以后需要奶位"),
+            new($"叠 {sum.Stackers}", true, def.Stacking && sum.Stackers == 0,
+                sum.FinalLayers > 0 ? $"叠层手；为大成盟约每回合约叠 {sum.FinalLayers:0.#} 层" : "叠层手")
+        };
+        var shortTitle = stage.IsFinal ? "大成" : def.Name.Length > 2 ? def.Name[..2] : def.Name;
         return new RouteStageItem
         {
-            Title = def.Name, Subtitle = subtitle, IsFinal = stage.IsFinal, ExpiresAt = expiresAt,
-            Operators = ops, Covenants = pills, ChangeText = change,
-            SummaryText = summaryText,
-            WarningText = string.Join("；", sum.Warnings)
+            Title = stage.IsFinal ? "大成" : def.Name, ShortTitle = shortTitle, Subtitle = subtitle,
+            LevelText = stage.IsFinal ? "打 Boss" : $"终端 {def.TerminalLevel}",
+            IsFinal = stage.IsFinal, IsStacking = def.Stacking, ExpiresAt = expiresAt,
+            Operators = ops, Covenants = pills, Conditions = conditions, Roles = roles,
+            ChangeText = stage.Removed.Count == 0 ? "" : $"换下 {string.Join("、", stage.Removed)}",
+            WarningText = string.Join("；", sum.Warnings),
+            // Pith is there all run; 暴躁铁皮's transformations are done by 后期 (叠层)
+            StrategyPiece = final.Strategy == PlannerStrategy.Pith || final.Strategy == PlannerStrategy.Mech
+                ? StrategyPieceFor(final, transformsDone: def.Stacking || stage.IsFinal) : null
         };
     }
 
@@ -731,7 +924,9 @@ public partial class LineupPlannerViewModel : ObservableObject
             LockedOperators = LockedOperators.Select(l => l.Name).ToHashSet(StringComparer.Ordinal),
             TransformAllowed = _planner.DefaultTransformAllowed(bannedCovenants).Where(_equipmentRules.CanTransformInto).ToHashSet(),
             PeopleOptions = PeopleOptions,
-            TransformOptions = TransformOptions
+            TransformOptions = TransformOptions,
+            Strategy = Strategy,
+            MechElite = MechElite
         };
     }
 
@@ -911,8 +1106,27 @@ public partial class LineupPlannerViewModel : ObservableObject
             }.Where(n => n is not null)) is { Length: > 0 } note ? note : null,
             Operators = ops,
             Goals = goals,
-            LineupName = $"规划 {goalText} {lineup.People}人{lineup.Transforms}转"
+            LineupName = $"规划 {goalText} {lineup.People}人{lineup.Transforms}转",
+            StrategyPiece = StrategyPieceFor(lineup, transformsDone: true)
         };
+    }
+
+    /// <summary>暴躁铁皮 or Pith for a result card / route stage (null for other strategies).</summary>
+    private PlannerStrategyPiece? StrategyPieceFor(PlannedLineup lineup, bool transformsDone)
+    {
+        switch (lineup.Strategy)
+        {
+            case PlannerStrategy.Mech:
+                var icon = _allOperatorIcons.GetValueOrDefault(LineupEquipmentService.MechName, "");
+                var covenants = transformsDone ? lineup.MechCovenants : [];
+                return new PlannerStrategyPiece(LineupEquipmentService.MechName, icon,
+                    covenants.Count > 0 ? $"转职 → {string.Join("、", covenants)}" : "协防干员 · 转职在后期叠层前完成",
+                    covenants.Count > 0 ? $"转×{covenants.Count}" : "");
+            case PlannerStrategy.Pith:
+                return new PlannerStrategyPiece(PlannerStrategies.PithName, "", "调和 · 已激活核心盟约各 +1", "");
+            default:
+                return null;
+        }
     }
 
     private IReadOnlyList<PlannerGoalPill> BuildActivatedCovenantPills(PlannedLineup lineup)

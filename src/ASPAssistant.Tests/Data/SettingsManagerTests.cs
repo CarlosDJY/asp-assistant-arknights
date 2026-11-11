@@ -149,7 +149,8 @@ public class SettingsManagerTests : IDisposable
     public async Task SidePanelPosition_FirstStartUsesDefaultAttachment()
     {
         var settings = await new SettingsManager(Path.Combine(_tempDir, "first-start")).LoadSidePanelPositionAsync();
-        settings.FreeMovement.Should().BeFalse();
+        // Free movement by default; without a placement the panel docks beside the game once.
+        settings.FreeMovement.Should().BeTrue();
         settings.Placement.Should().BeNull();
         settings.FollowOffsetDip.Should().BeNull();
     }

@@ -45,7 +45,7 @@ public class LineupRoutePlannerTests
         var route = Plan();
         var tiers = Operators.ToDictionary(o => o.Name, o => o.Tier);
 
-        route.Stages.Select(s => s.Definition.Name).Should().Equal("开局", "前期", "中期", "四本对对碰", "六本叠层", "大成（打 Boss）");
+        route.Stages.Select(s => s.Definition.Name).Should().Equal("开局", "前期", "中期", "后期", "大成（打 Boss）");
         foreach (var stage in route.Stages.Where(s => !s.IsFinal))
         {
             var def = stage.Definition;

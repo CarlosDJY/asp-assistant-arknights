@@ -19,7 +19,7 @@
             <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancelClick"
-                            Style="{StaticResource CloseButton}" />
+                            Style="{StaticResource DialogCloseButton}" />
                     <TextBlock Style="{StaticResource DialogTitleText}" x:Name="TitleText" Text="输入" />
                 </DockPanel>
             </Border>

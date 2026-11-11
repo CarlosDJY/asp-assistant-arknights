@@ -296,7 +296,12 @@ public class LineupPlannerViewModelTests
         await vm.PlanRouteAsync(vm.VisibleLineups[0]);
 
         vm.ShowRoute.Should().BeTrue();
-        vm.RouteStages.Select(s => s.Title).Should().Equal("开局", "前期", "中期", "四本对对碰", "六本叠层", "大成（打 Boss）");
+        vm.RouteStages.Select(s => s.Title).Should().Equal("开局", "前期", "中期", "后期", "大成");
+        vm.RouteSteps.Select(s => s.Name).Should().Equal("开局", "前期", "中期", "后期", "大成");
+        // Terminal level unknown: 开局 is the current stage and the only one open
+        vm.RouteStages.Count(s => s.IsExpanded).Should().Be(1);
+        vm.RouteStages[0].IsCurrent.Should().BeTrue();
+        vm.RouteStages.SelectMany(s => s.Roles).Should().NotBeEmpty();
         vm.RouteStages[^1].IsFinal.Should().BeTrue();
         vm.RouteStages.SelectMany(s => s.Operators).Should().OnlyContain(o => o.RoleText == "最终" || o.RoleText == "过渡");
 
@@ -304,5 +309,49 @@ public class LineupPlannerViewModelTests
         await vm.PendingSearch!;
         vm.ShowRoute.Should().BeFalse();
         vm.RouteStages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SavedRouteKeepsTheStagesAsLineupPhases()
+    {
+        var (vm, _) = Create();
+        Lineup? saved = null;
+        vm.SaveRequested += l => saved = l;
+        vm.IsActive = true;
+        Item(vm, "炎").ToggleLevel1Command.Execute(null);
+        await vm.PendingSearch!;
+        await vm.PlanRouteAsync(vm.VisibleLineups[0]);
+
+        vm.SaveRouteCommand.Execute(null);
+
+        saved.Should().NotBeNull();
+        saved!.Slots.Select(s => s.OperatorName).Should().BeEquivalentTo(vm.VisibleLineups[0].Source.Operators.Select(o => o.Name));
+        saved.EarlySlots.Select(s => s.OperatorName).Should().Equal(vm.RouteStages.Single(s => s.Title == "前期").Operators.Select(o => o.Name));
+        saved.MidSlots.Select(s => s.OperatorName).Should().Equal(vm.RouteStages.Single(s => s.Title == "中期").Operators.Select(o => o.Name));
+        saved.SupportSlots.Select(s => s.OperatorName).Should().OnlyContain(n => !saved.Slots.Any(f => f.OperatorName == n));
+    }
+
+    [Fact]
+    public async Task MechStrategyIsSavedWithItsTransformations()
+    {
+        var (vm, _) = Create();
+        Lineup? saved = null;
+        vm.SaveRequested += l => saved = l;
+        vm.IsActive = true;
+        vm.Strategy = PlannerStrategy.Mech;
+        Item(vm, "炎").ToggleLevel1Command.Execute(null);
+        await vm.PendingSearch!;
+
+        vm.VariantCells.Select(c => c.Transforms).Distinct().Should().Equal(0, 1, 2, 3);
+        vm.SelectVariantCommand.Execute(vm.VariantCells.First(c => c.Transforms == 1 && c.HasResults));
+        var item = vm.VisibleLineups.FirstOrDefault(l => l.Source.MechCovenants.Count > 0)
+            ?? throw new Xunit.Sdk.XunitException("no lineup uses the mech");
+        item.HasStrategyPiece.Should().BeTrue();
+        vm.SaveLineupCommand.Execute(item);
+
+        saved!.Strategies.Should().ContainSingle(s => s.StrategyId == PlannerStrategies.MechId);
+        var mech = saved.Slots.Single(s => s.OperatorName == LineupEquipmentService.MechName);
+        mech.Equipments.Should().StartWith(LineupEquipmentService.Shapeshifter);
+        mech.Equipments.Should().HaveCount(item.Source.MechCovenants.Count + 1);
     }
 }

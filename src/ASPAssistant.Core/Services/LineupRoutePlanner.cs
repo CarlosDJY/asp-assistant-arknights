@@ -3,7 +3,7 @@ using ASPAssistant.Core.Models;
 namespace ASPAssistant.Core.Services;
 
 /// <summary>
-/// Derives the transition lineups (开局 → 前期 → 中期 → 四本对对碰) that lead to a chosen 大成 lineup.
+/// Derives the transition lineups (开局 → 前期 → 中期 → 后期 (叠层)) that lead to a chosen 大成 lineup.
 /// <para>
 /// Stages are solved backwards from 大成: each earlier stage is the best lineup the terminal can offer
 /// (tier ≤ terminal level, plus a few one-tier-higher operators from 三连) that builds the target covenants
@@ -50,11 +50,11 @@ public sealed class LineupRoutePlanner
     private const double PerTier = 1.5;
     private const double SpeculativeTriple = 6;
     private const double SoloConflict = 60;
-    /// <summary>六本叠层: each 大成 covenant kept active (needed to stack it at all).</summary>
+    /// <summary>后期 (叠层): each 大成 covenant kept active (needed to stack it at all).</summary>
     private const double StackingKeepCovenantActive = 150;
-    /// <summary>六本叠层: per member a target core covenant (or the best target additional covenant) is short of its plan.</summary>
+    /// <summary>后期 (叠层): per member a target core covenant (or the best target additional covenant) is short of its plan.</summary>
     private const double StackingGoalMissing = 400;
-    /// <summary>六本叠层: layers count 3× the normal stage weight.</summary>
+    /// <summary>后期 (叠层): layers count 3× the normal stage weight.</summary>
     private const double StackingLayerWeight = 3;
     private const int MaxImprovementRounds = 60;
 
@@ -78,7 +78,21 @@ public sealed class LineupRoutePlanner
         }, StringComparer.Ordinal);
     }
 
+    // The run's strategy pieces for the route being planned (Plan runs synchronously on one thread).
+    /// <summary>Pith's 调和 piece is there from round 1 in every stage.</summary>
+    [ThreadStatic] private static bool _pith;
+    /// <summary>暴躁铁皮's transformations, counted where the 大成 transformations are (后期 (叠层), 大成).</summary>
+    [ThreadStatic] private static IReadOnlyList<string>? _mech;
+
     public PlannedRoute Plan(RouteRequest request, CancellationToken cancellationToken = default)
+    {
+        _pith = request.Final.HasPith;
+        _mech = request.Final.MechCovenants;
+        try { return PlanCore(request, cancellationToken); }
+        finally { _pith = false; _mech = null; }
+    }
+
+    private PlannedRoute PlanCore(RouteRequest request, CancellationToken cancellationToken)
     {
         var goals = request.Goals.Count > 0 ? request.Goals : request.Final.Goals;
         var finalNames = request.Final.Operators.Select(o => o.Name).ToHashSet(StringComparer.Ordinal);
@@ -88,8 +102,13 @@ public sealed class LineupRoutePlanner
         // Layers are kept for the rest of the run, so stacking what 大成 activates is an investment.
         var finalActive = finalCounts.Where(kv => kv.Value >= ActivateCount(kv.Key)).Select(kv => kv.Key)
             .ToHashSet(StringComparer.Ordinal);
-        // A stacking stage fields as many people as the boss lineup.
-        var stageDefs = request.Stages.Select(d => d.Stacking ? d with { People = request.Final.People } : d).ToList();
+        // A stacking stage fields as many people as the boss lineup; 暴躁铁皮 / Pith take one place in every stage.
+        var piece = PlannerStrategies.PiecePlaces(request.Final.Strategy);
+        var stageDefs = request.Stages.Select(d =>
+        {
+            var def = d.Stacking ? d with { People = request.Final.People } : d;
+            return def with { People = Math.Max(1, def.People - piece) };
+        }).ToList();
         request = new RouteRequest
         {
             Final = request.Final, Goals = request.Goals, BannedCovenants = request.BannedCovenants,
@@ -104,7 +123,7 @@ public sealed class LineupRoutePlanner
             .Where(o => !request.ExcludeMixedBannedOperators || !_planner.IsExcludedByBans(o, request.BannedCovenants))
             .ToList();
 
-        // Backwards: 大成 → 四本 → 中期 → 前期 → 开局.
+        // Backwards: 大成 → 后期 → 中期 → 前期 → 开局.
         var teams = new List<string>[request.Stages.Count];
         IReadOnlySet<string> next = finalNames;
         for (var s = request.Stages.Count - 1; s >= 0; s--)
@@ -140,7 +159,7 @@ public sealed class LineupRoutePlanner
                 .OrderBy(o => finalNames.Contains(o.Name) ? 0 : 1).ThenByDescending(o => o.Tier).ThenBy(o => o.Name, StringComparer.Ordinal)
                 .Select(o => ToRouteOperator(o, finalNames, previous, viaTriple: o.Tier > def.MaxTier, transform: null))
                 .ToList();
-            // Transformations planned for 大成 are already done by 六本叠层.
+            // Transformations planned for 大成 are already done by 后期 (叠层).
             var stageTransforms = def.Stacking ? finalTransforms : NoTransforms;
             if (def.Stacking)
                 ops = [.. ops.Select(o => o with { TransformedCovenant = finalTransforms.GetValueOrDefault(o.Name) })];
@@ -316,6 +335,13 @@ public sealed class LineupRoutePlanner
                 if (IsCore(t)) present.Add(t);
             }
         }
+        if (_mech is { Count: > 0 } mech && !ReferenceEquals(transforms, NoTransforms))
+            foreach (var t in mech)
+            {
+                counts[t] = counts.GetValueOrDefault(t) + 1;
+                if (IsCore(t)) present.Add(t);
+            }
+        if (_pith) harmony++;
         if (harmony > 0)
             foreach (var c in present)
                 counts[c] += harmony;
@@ -498,7 +524,7 @@ public sealed class LineupRoutePlanner
     }
 
     /// <summary>
-    /// 六本叠层 requirement: every target core covenant at its planned count, and at least one target
+    /// 后期 (叠层) requirement: every target core covenant at its planned count, and at least one target
     /// additional covenant at its planned count. Returns the missing members (0 = satisfied).
     /// </summary>
     internal (int Core, int Additional, int Total) StackingGoalShortfall(IReadOnlyDictionary<string, int> counts, IReadOnlyList<PlannerGoal> goals)
@@ -550,7 +576,7 @@ public sealed class LineupRoutePlanner
         private int TripleCount(IEnumerable<Operator> team) => team.Count(o => o.Tier > def.MaxTier);
 
         /// <summary>
-        /// 六本叠层: every 大成 covenant must stay active (only active covenants gain layers), then as many
+        /// 后期 (叠层): every 大成 covenant must stay active (only active covenants gain layers), then as many
         /// layers per round on them as possible. Tank / healer still apply; overlap with the boss lineup is kept.
         /// </summary>
         private double StackingScore(List<Operator> team, Dictionary<string, int> counts)

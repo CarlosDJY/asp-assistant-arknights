@@ -13,7 +13,7 @@
         <DockPanel>
             <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancel" Style="{StaticResource CloseButton}" />
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancel" Style="{StaticResource DialogCloseButton}" />
                     <TextBlock Style="{StaticResource DialogTitleText}" Text="首次启动 · 模式主题设置" />
                 </DockPanel>
             </Border>
@@ -25,7 +25,7 @@
                 <TextBlock Text="请选择游戏中正在使用的模式主题" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
                 <TextBlock Text="主题保持一致，有助于准确识别商店中的干员和装备。"
                            FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12" />
-                <ListBox x:Name="ThemeSelector" SelectionMode="Single" SelectedIndex="0"
+                <ListBox x:Name="ThemeSelector" SelectionMode="Single" SelectedIndex="2"
                          Style="{StaticResource SegmentedListBox}" HorizontalAlignment="Left">
                     <ListBoxItem Content="卫戍协议终端" />
                     <ListBoxItem Content="乌萨斯齐心团" />

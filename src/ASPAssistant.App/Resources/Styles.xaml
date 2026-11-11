@@ -11,7 +11,7 @@
     <Geometry x:Key="IconLineups">M 4.5 4.5 L 10.5 4.5 L 10.5 10.5 L 4.5 10.5 Z M 13.5 4.5 L 19.5 4.5 L 19.5 10.5 L 13.5 10.5 Z M 4.5 13.5 L 10.5 13.5 L 10.5 19.5 L 4.5 19.5 Z M 13.5 13.5 L 19.5 13.5 L 19.5 19.5 L 13.5 19.5 Z</Geometry>
     <Geometry x:Key="IconPlanner">M 6 20 A 2 2 0 1 0 6 16 A 2 2 0 1 0 6 20 Z M 18 8 A 2 2 0 1 0 18 4 A 2 2 0 1 0 18 8 Z M 6 16 L 6 13 A 4 4 0 0 1 10 9 L 16 9</Geometry>
     <Geometry x:Key="IconEnemy">M 12 4 L 21 20 L 3 20 Z M 12 10 L 12 14.5 M 12 17.2 L 12 17.5</Geometry>
-    <Geometry x:Key="IconSettings">M 12 9 A 3 3 0 1 0 12 15 A 3 3 0 1 0 12 9 Z M 12 2 L 12 5 M 12 19 L 12 22 M 2 12 L 5 12 M 19 12 L 22 12 M 4.9 4.9 L 7 7 M 17 17 L 19.1 19.1 M 4.9 19.1 L 7 17 M 17 7 L 19.1 4.9</Geometry>
+    <Geometry x:Key="IconSettings">M 19.30 9.88 L 21.85 10.28 L 21.85 13.72 L 19.30 14.12 L 18.66 15.66 L 20.18 17.75 L 17.75 20.18 L 15.66 18.66 L 14.12 19.30 L 13.72 21.85 L 10.28 21.85 L 9.88 19.30 L 8.34 18.66 L 6.25 20.18 L 3.82 17.75 L 5.34 15.66 L 4.70 14.12 L 2.15 13.72 L 2.15 10.28 L 4.70 9.88 L 5.34 8.34 L 3.82 6.25 L 6.25 3.82 L 8.34 5.34 L 9.88 4.70 L 10.28 2.15 L 13.72 2.15 L 14.12 4.70 L 15.66 5.34 L 17.75 3.82 L 20.18 6.25 L 18.66 8.34 Z M 12 8.8 A 3.2 3.2 0 1 0 12 15.2 A 3.2 3.2 0 1 0 12 8.8 Z</Geometry>
     <Geometry x:Key="IconMinimize">M 5 12 L 19 12</Geometry>
     <Geometry x:Key="IconStar">M 12 3.5 L 14.6 8.8 L 20.5 9.7 L 16.2 13.8 L 17.2 19.6 L 12 16.9 L 6.8 19.6 L 7.8 13.8 L 3.5 9.7 L 9.4 8.8 Z</Geometry>
     <Geometry x:Key="IconBan">M 12 4 A 8 8 0 1 0 12 20 A 8 8 0 1 0 12 4 Z M 6.5 17.5 L 17.5 6.5</Geometry>
@@ -556,6 +556,14 @@
                 <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
             </Trigger>
         </Style.Triggers>
+    </Style>
+
+    <!-- Close button of a dialog title bar: 30 px, centred, 6 px from the right edge -->
+    <Style x:Key="DialogCloseButton" TargetType="Button" BasedOn="{StaticResource CloseButton}">
+        <Setter Property="Width" Value="30" />
+        <Setter Property="Height" Value="30" />
+        <Setter Property="Margin" Value="0,0,6,0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!-- On/off switch (CheckBox): track + knob -->

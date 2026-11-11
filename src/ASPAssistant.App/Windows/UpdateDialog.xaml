@@ -20,7 +20,7 @@
             <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
                     <Button Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnClose" DockPanel.Dock="Right"
-                            Style="{StaticResource CloseButton}" />
+                            Style="{StaticResource DialogCloseButton}" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
                         <TextBlock x:Name="TitleText" Style="{StaticResource DialogTitleText}" Padding="4,0" />
                     </StackPanel>

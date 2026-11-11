@@ -15,7 +15,7 @@
             <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}"
                     MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnClose" Style="{StaticResource CloseButton}" />
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnClose" Style="{StaticResource DialogCloseButton}" />
                     <TextBlock Style="{StaticResource DialogTitleText}" Text="阵容分享 · 链接已生成" />
                 </DockPanel>
             </Border>

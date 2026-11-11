@@ -5,13 +5,13 @@ namespace ASPAssistant.Core.Models;
 
 /// <summary>
 /// Side panel look: one of the three mode themes (终端 / 乌萨斯 / 可露希尔), each with a day and a night palette.
-/// By default the look follows the 模式主题 used for shop recognition.
+/// Defaults: 终端 日间, chosen on its own (not following the 模式主题 used for shop recognition).
 /// </summary>
 public sealed class SidebarAppearance
 {
     /// <summary>Use the 模式主题 (shop recognition theme) as the side panel theme.</summary>
     [JsonPropertyName("followModeTheme")]
-    public bool FollowModeTheme { get; set; } = true;
+    public bool FollowModeTheme { get; set; }
 
     /// <summary>Side panel theme when <see cref="FollowModeTheme"/> is off.</summary>
     [JsonPropertyName("theme")]
@@ -21,8 +21,8 @@ public sealed class SidebarAppearance
     [JsonPropertyName("night")]
     public Dictionary<GameShopTheme, bool> Night { get; set; } = [];
 
-    /// <summary>终端 defaults to night, 乌萨斯 and 可露希尔 to day.</summary>
-    public static bool DefaultNight(GameShopTheme theme) => theme == GameShopTheme.Terminal;
+    /// <summary>Every theme starts in its day palette.</summary>
+    public static bool DefaultNight(GameShopTheme theme) => false;
 
     public GameShopTheme ThemeFor(GameShopTheme modeTheme) => FollowModeTheme ? modeTheme : Theme;
 

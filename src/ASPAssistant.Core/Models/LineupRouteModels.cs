@@ -7,23 +7,41 @@ namespace ASPAssistant.Core.Models;
 public sealed record RouteStageDefinition(string Name, int TerminalLevel, int MaxTier, int TripleSlots, int People)
 {
     /// <summary>
-    /// A stacking lineup (六本叠层): keeps the 大成 covenants active and fields as many stackers for them as
+    /// A stacking lineup (后期, six-terminal 叠层): keeps the 大成 covenants active and fields as many stackers for them as
     /// possible; swapped for the boss lineup before the boss fight. Its people count follows the 大成 lineup.
     /// </summary>
     public bool Stacking { get; init; }
 
     /// <summary>
-    /// Default stages, modelled on the common “公式化运营” guides: 开局 → 前期 → 中期 → 四本对对碰 → 六本叠层 → 大成.
+    /// Default stages, modelled on the common “公式化运营” guides: 开局 → 前期 → 中期 (四本对对碰) → 后期 (六本叠层) → 大成.
     /// 大成 (the boss lineup) is the chosen final lineup itself and is not part of this list.
     /// </summary>
     public static IReadOnlyList<RouteStageDefinition> Defaults { get; } =
     [
         new("开局", 2, 2, 1, 6),
         new("前期", 3, 3, 1, 8),
-        new("中期", 4, 4, 0, 8),
-        new("四本对对碰", 4, 4, 2, 8),
-        new("六本叠层", 6, 6, 0, 8) { Stacking = true },
+        new("中期", 4, 4, 2, 8),
+        new("后期", 6, 6, 0, 8) { Stacking = true },
     ];
+}
+
+/// <summary>Stage names saved by earlier versions (tracking entries keep the names of the stages that used them).</summary>
+public static class RouteStageNames
+{
+    private static readonly Dictionary<string, string> Renamed = new(StringComparer.Ordinal)
+    {
+        ["四本对对碰"] = "中期",
+        ["六本叠层"] = "后期",
+    };
+
+    /// <summary>“开局 · 四本对对碰 · 六本叠层” → “开局 · 中期 · 后期” (the old separate 中期 merges into 中期).</summary>
+    public static string Normalize(string stages)
+    {
+        if (string.IsNullOrEmpty(stages)) return stages;
+        var names = stages.Split(" · ", StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(n => Renamed.GetValueOrDefault(n, n)).Distinct(StringComparer.Ordinal);
+        return string.Join(" · ", names);
+    }
 }
 
 public sealed class RouteRequest
@@ -87,7 +105,7 @@ public sealed class PlannedRoute
 
     /// <summary>
     /// Terminal level from which a stage is behind the player: the first higher terminal level of a later stage
-    /// (开局 → 3, 前期 → 4, 中期 / 四本对对碰 → 6). 0 = never (六本叠层, 大成).
+    /// (开局 → 3, 前期 → 4, 中期 → 6). 0 = never (后期, 大成).
     /// </summary>
     public int ExpiresAt(int stageIndex)
     {

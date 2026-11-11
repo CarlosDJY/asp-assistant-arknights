@@ -1,0 +1,36 @@
+<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
+<Window x:Class="ASPAssistant.App.Windows.ConfirmDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="确认"
+        Width="400" SizeToContent="Height"
+        WindowStartupLocation="CenterOwner"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource PanelBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}"
+        Icon="{StaticResource AspaLogo}">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="0" GlassFrameThickness="0" />
+    </WindowChrome.WindowChrome>
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancelClick"
+                            Style="{StaticResource DialogCloseButton}" />
+                    <TextBlock Style="{StaticResource DialogTitleText}" x:Name="TitleText" Text="确认" />
+                </DockPanel>
+            </Border>
+            <Border Style="{StaticResource DialogFooter}" DockPanel.Dock="Bottom">
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="CancelButton" Style="{StaticResource DialogSecondaryButton}" Content="取消" Click="OnCancelClick" Margin="0,0,8,0" IsCancel="True" />
+                    <Button x:Name="OkButton" Style="{StaticResource DialogPrimaryButton}" Content="确定" Click="OnOkClick" IsDefault="True" />
+                </StackPanel>
+            </Border>
+            <TextBlock x:Name="MessageText" Margin="16,14,16,16" FontSize="12" LineHeight="19" TextWrapping="Wrap"
+                       Foreground="{DynamicResource TextPrimaryBrush}" />
+        </DockPanel>
+    </Border>
+</Window>

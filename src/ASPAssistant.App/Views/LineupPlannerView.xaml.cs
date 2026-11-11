@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -12,7 +13,22 @@ public partial class LineupPlannerView : UserControl
     {
         InitializeComponent();
         IsVisibleChanged += (_, _) => SyncActive();
-        DataContextChanged += (_, _) => SyncActive();
+        DataContextChanged += (_, e) =>
+        {
+            if (e.OldValue is LineupPlannerViewModel old) old.RouteStageFocusRequested -= OnRouteStageFocus;
+            if (e.NewValue is LineupPlannerViewModel vm) vm.RouteStageFocusRequested += OnRouteStageFocus;
+            SyncActive();
+        };
+    }
+
+    /// <summary>Stepper click: scroll the opened stage card to the top of the results.</summary>
+    private void OnRouteStageFocus(RouteStageItem stage)
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (RouteStagesList.ItemContainerGenerator.ContainerFromItem(stage) is FrameworkElement container)
+                container.BringIntoView(new Rect(0, 0, container.ActualWidth, Math.Min(container.ActualHeight, 400)));
+        }, System.Windows.Threading.DispatcherPriority.Loaded);
     }
 
     private LineupPlannerViewModel? Vm => DataContext as LineupPlannerViewModel;
