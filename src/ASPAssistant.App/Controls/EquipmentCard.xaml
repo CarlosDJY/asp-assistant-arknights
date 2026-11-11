@@ -27,7 +27,7 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
-                        <Border Background="{DynamicResource NeutralTintBrush}" CornerRadius="4"
+                        <Border Background="{DynamicResource NeutralTintBrush}" CornerRadius="{DynamicResource RowCornerRadius}"
                                 Padding="5,1" Margin="0,0,4,0">
                             <TextBlock Text="{Binding}" FontSize="10"
                                        Foreground="{DynamicResource TextSecondaryBrush}" />
@@ -37,7 +37,7 @@
             </ItemsControl>
             <DockPanel>
                 <Border DockPanel.Dock="Left" Width="56" Height="56" Margin="0,0,8,0"
-                        CornerRadius="4" Background="{DynamicResource NeutralHoverBrush}" VerticalAlignment="Top"
+                        CornerRadius="{DynamicResource RowCornerRadius}" Background="{DynamicResource NeutralHoverBrush}" VerticalAlignment="Top"
                         ClipToBounds="True">
                     <Image x:Name="IconImage" Stretch="UniformToFill" />
                 </Border>

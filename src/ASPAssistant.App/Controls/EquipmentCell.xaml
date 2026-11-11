@@ -1,0 +1,50 @@
+<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
+<UserControl x:Class="ASPAssistant.App.Controls.EquipmentCell"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ASPAssistant.App.Controls"
+             PreviewMouseWheel="OnPreviewMouseWheel">
+    <!-- Compact equipment cell (same size as operator / tracking cells); hovering shows the full effect card -->
+    <Border x:Name="CardBorder" Height="53" BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}" Margin="0,0,5,5"
+            ToolTipService.InitialShowDelay="250" ToolTipService.BetweenShowDelay="0" ToolTipService.ShowDuration="60000">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
+                <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+            </Style>
+        </Border.Style>
+        <Border.ToolTip>
+            <ToolTip x:Name="DetailsToolTip" Placement="Left"
+                     DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                     Background="Transparent" BorderThickness="0" Padding="0" HasDropShadow="False" MaxHeight="700">
+                <Border Background="{DynamicResource PanelBackgroundBrush}" CornerRadius="{DynamicResource CardCornerRadius}" Padding="6"
+                        BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Width="310">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                        <!-- the full card is created when the pop-up opens (EquipmentCell.xaml.cs) -->
+                        <ContentControl x:Name="DetailsHost" Focusable="False" />
+                    </ScrollViewer>
+                </Border>
+            </ToolTip>
+        </Border.ToolTip>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource HoverFadeOverlay}" />
+            <Border x:Name="TierRail" Width="3" Margin="0,11" CornerRadius="0,2,2,0" Background="{DynamicResource BorderBrush}" />
+            <controls:Avatar x:Name="Icon" Grid.Column="1" Width="34" Height="34" Margin="7,0,9,0" VerticalAlignment="Center"
+                             Text="{Binding Name}" Source="{Binding IconPath}" />
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,2,0">
+                <TextBlock x:Name="NameText" Text="{Binding Name}" FontSize="13" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock x:Name="SubText" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                           Foreground="{DynamicResource TextSecondaryBrush}" />
+            </StackPanel>
+            <Button x:Name="TrackButton" Grid.Column="3" Width="22" Height="22" Margin="0,0,3,0" VerticalAlignment="Center"
+                    Tag="{StaticResource IconStar}" Style="{StaticResource RowIconButton}" Click="OnTrackClick" />
+        </Grid>
+    </Border>
+</UserControl>

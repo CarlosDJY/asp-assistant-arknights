@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
 using System.Windows.Data;
@@ -16,11 +17,25 @@ namespace ASPAssistant.App.Converters;
 [ValueConversion(typeof(string), typeof(BitmapImage))]
 public sealed class LocalPathToImageConverter : IValueConverter
 {
+    /// <summary>
+    /// Icons are frozen and shared: lists and planner results re-create their templates often
+    /// (filters, re-plans, tooltips), and each one used to read and decode the PNG from disk again.
+    /// </summary>
+    private static readonly ConcurrentDictionary<string, BitmapImage?> Cache = new(StringComparer.OrdinalIgnoreCase);
+
     public object? Convert(object value, Type targetType, object parameter, CultureInfo culture)
     {
         if (value is not string iconPath || string.IsNullOrEmpty(iconPath))
             return null;
+        return LoadCached(iconPath);
+    }
 
+    /// <summary>Cached, frozen icon for a <c>data/</c>-relative path (null when empty or missing).</summary>
+    public static BitmapImage? LoadCached(string? iconPath)
+        => string.IsNullOrEmpty(iconPath) ? null : Cache.GetOrAdd(iconPath, Load);
+
+    private static BitmapImage? Load(string iconPath)
+    {
         var fullPath = Path.Combine(AppContext.BaseDirectory, "data", iconPath);
         if (!File.Exists(fullPath))
             return null;

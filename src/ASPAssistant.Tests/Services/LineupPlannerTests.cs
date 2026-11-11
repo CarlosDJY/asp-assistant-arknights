@@ -26,6 +26,46 @@ public class LineupPlannerTests
     private static Operator Op(string name, string[]? core = null, string[]? extra = null)
         => new() { Name = name, CoreCovenants = [.. core ?? []], AdditionalCovenants = [.. extra ?? []], IconPath = $"icons/operators/{name}.png" };
 
+    private static Operator Healer(Operator op)
+    {
+        op.Profile = new OperatorProfile { Profession = "医疗", Roles = [OperatorProfile.HealerRole] };
+        return op;
+    }
+
+    [Fact]
+    public void Plan_KeepsAtLeastOneHealerInTheFinalLineup()
+    {
+        var ops = new List<Operator>
+        {
+            Op("炎1", ["炎"], ["突袭"]), Op("炎2", ["炎"], ["突袭"]), Op("炎3", ["炎"], ["突袭"]), Op("炎4", ["炎"], ["突袭"]),
+            Healer(Op("医疗", ["维多利亚"]))
+        };
+        var planner = new LineupPlanner(ops, [Core("炎"), Core("维多利亚"), Extra("突袭")]);
+        var lineups = planner.Solve(new PlannerRequest
+        {
+            Goals = [new("炎", 1, 3, false, true)], PeopleOptions = [4], TransformOptions = [0]
+        });
+
+        lineups.Should().NotBeEmpty();
+        lineups.Should().OnlyContain(l => l.Operators.Any(o => o.Name == "医疗") && !l.MissingHealer);
+    }
+
+    [Fact]
+    public void Plan_FlagsLineupsWhenTargetsLeaveNoRoomForAHealer()
+    {
+        var ops = new List<Operator>
+        {
+            Op("炎1", ["炎"]), Op("炎2", ["炎"]), Op("炎3", ["炎"]), Healer(Op("医疗", ["维多利亚"]))
+        };
+        var planner = new LineupPlanner(ops, [Core("炎"), Core("维多利亚")]);
+        var lineups = planner.Solve(new PlannerRequest
+        {
+            Goals = [new("炎", 1, 3, false, true)], PeopleOptions = [3], TransformOptions = [0]
+        });
+
+        lineups.Should().ContainSingle().Which.MissingHealer.Should().BeTrue();
+    }
+
     [Fact]
     public void Solve_ReturnsEightAndNinePersonVariants()
     {
@@ -226,6 +266,23 @@ public class LineupPlannerTests
         planner.IsExcludedByBans(operators[1], banned).Should().BeTrue();
         planner.IsExcludedByBans(operators[2], banned).Should().BeFalse();
         planner.IsExcludedByBans(operators[4], banned).Should().BeFalse();
+    }
+
+    [Fact]
+    public void CovenantBans_RemoveOperatorsWhoseCovenantsAreAllBanned()
+    {
+        // 霍尔海雅: 奥术 + 精准, no core covenant.
+        var hoederer = new Operator { Name = "霍尔海雅", AdditionalCovenants = ["奥术", "精准"] };
+        CovenantBanRules.IsExcluded(hoederer, new HashSet<string> { "奥术" }).Should().BeFalse();
+        CovenantBanRules.IsExcluded(hoederer, new HashSet<string> { "奥术", "精准" }).Should().BeTrue();
+        // Two core covenants (哈洛德): both banned removes him, one does not.
+        var harold = new Operator { Name = "哈洛德", CoreCovenants = ["维多利亚", "谢拉格"] };
+        CovenantBanRules.IsExcluded(harold, new HashSet<string> { "维多利亚" }).Should().BeFalse();
+        CovenantBanRules.IsExcluded(harold, new HashSet<string> { "维多利亚", "谢拉格" }).Should().BeTrue();
+        // Three covenants: one left unbanned keeps the operator.
+        var eyja = new Operator { Name = "纯烬艾雅法拉", CoreCovenants = ["莱塔尼亚"], AdditionalCovenants = ["聚合", "远见"] };
+        CovenantBanRules.IsExcluded(eyja, new HashSet<string> { "莱塔尼亚", "聚合" }).Should().BeFalse();
+        CovenantBanRules.IsExcluded(eyja, new HashSet<string> { "莱塔尼亚", "聚合", "远见" }).Should().BeTrue();
     }
 
     [Fact]

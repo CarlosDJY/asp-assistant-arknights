@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -17,6 +17,25 @@ public partial class OperatorBrowseViewModel : ObservableObject
 {
     private List<Operator> _allOperators = [];
     private Func<string, bool>? _isBannedCheck;
+    private Func<string, bool>? _isCovenantBanned;
+
+    // ── Filter card chips (nothing selected in a section = all) ────────────
+    public ObservableCollection<FilterChip> TierChips { get; } = [];
+    public ObservableCollection<FilterChip> CoreChips { get; } = [];
+    public ObservableCollection<FilterChip> OtherChips { get; } = [];
+    public ObservableCollection<FilterChip> TraitChips { get; } = [];
+    public ObservableCollection<FilterChip> TimingChips { get; } = [];
+
+    /// <summary>Selected chips, shown as removable tags while the filter card is collapsed.</summary>
+    public IReadOnlyList<FilterChip> ActiveChips =>
+        TierChips.Concat(CoreChips).Concat(OtherChips).Concat(TraitChips).Concat(TimingChips).Where(c => c.IsSelected).ToList();
+
+    public bool HasActiveChips => ActiveChips.Count > 0;
+
+    /// <summary>Filter badge count: chips only (the 全部 / 本局可用 / 不可用 switch and search are visible on their own).</summary>
+    public int ChipFilterCount => ActiveChips.Count;
+
+    public int MatchedCount => FilteredOperators.Count;
 
     [ObservableProperty]
     private ObservableCollection<Operator> _filteredOperators = [];
@@ -136,6 +155,8 @@ public partial class OperatorBrowseViewModel : ObservableObject
             .SelectMany(desc => timingRegex.Matches(desc).Select(m => m.Groups[1].Value))
             .Distinct().Order()];
 
+        BuildChips();
+
         OnPropertyChanged(nameof(AvailableTiers));
         OnPropertyChanged(nameof(AvailableCoreCovenants));
         OnPropertyChanged(nameof(AvailableOtherCovenants));
@@ -148,14 +169,117 @@ public partial class OperatorBrowseViewModel : ObservableObject
     public void SetBanChecker(Func<string, bool> checker)
     {
         _isBannedCheck = checker;
+        RefreshChipCounts();
         ApplyFilters();
+    }
+
+    /// <summary>Which covenants this run's info screen banned (for the chips' ban state).</summary>
+    public void SetCovenantBanChecker(Func<string, bool> checker)
+    {
+        _isCovenantBanned = checker;
+        RefreshChipCounts();
     }
 
     /// <summary>
     /// Called when the ban set changes externally (e.g. new bans detected or bans cleared).
     /// Re-runs the filter so the operator list reflects the updated ban state.
     /// </summary>
-    public void NotifyBansChanged() => ApplyFilters();
+    public void NotifyBansChanged()
+    {
+        RefreshChipCounts();
+        ApplyFilters();
+    }
+
+    partial void OnHighlightedCovenantsChanged(IReadOnlySet<string> value)
+    {
+        foreach (var chip in CoreChips.Concat(OtherChips)) chip.IsHighlighted = value.Contains(chip.Value);
+    }
+
+    private static readonly string[] RomanLabels = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ"];
+
+    private void BuildChips()
+    {
+        static void Fill(ObservableCollection<FilterChip> target, IEnumerable<FilterChip> chips)
+        {
+            target.Clear();
+            foreach (var chip in chips) target.Add(chip);
+        }
+        Fill(TierChips, AvailableTiers.OfType<int>().Select(t =>
+            new FilterChip(FilterChipKind.Tier, t.ToString(), t is >= 1 and <= 6 ? RomanLabels[t] : t.ToString(), OnChipToggled)));
+        Fill(CoreChips, AvailableCoreCovenants.Where(c => !string.IsNullOrEmpty(c))
+            .Select(c => new FilterChip(FilterChipKind.CoreCovenant, c!, c!, OnChipToggled)));
+        Fill(OtherChips, AvailableOtherCovenants.Where(c => !string.IsNullOrEmpty(c))
+            .Select(c => new FilterChip(FilterChipKind.OtherCovenant, c!, c!, OnChipToggled)));
+        Fill(TraitChips, AvailableTraitTypes.Where(c => !string.IsNullOrEmpty(c))
+            .Select(c => new FilterChip(FilterChipKind.TraitType, c!, c!, OnChipToggled)));
+        Fill(TimingChips, AvailableTriggerTimings.Where(c => !string.IsNullOrEmpty(c))
+            .Select(c => new FilterChip(FilterChipKind.TriggerTiming, c!, c!, OnChipToggled)));
+        foreach (var chip in CoreChips.Concat(OtherChips)) chip.IsHighlighted = HighlightedCovenants.Contains(chip.Value);
+        RefreshChipCounts();
+    }
+
+    /// <summary>Covenant chips count the holders usable this run; trait chips count all operators having them.</summary>
+    private void RefreshChipCounts()
+    {
+        bool Usable(Operator o) => _isBannedCheck?.Invoke(o.Name) != true;
+        foreach (var chip in CoreChips)
+        {
+            chip.Count = _allOperators.Count(o => o.CoreCovenants.Contains(chip.Value) && Usable(o));
+            chip.Ban = _isCovenantBanned?.Invoke(chip.Value) == true ? FilterChipBan.Blocked : FilterChipBan.None;
+        }
+        foreach (var chip in OtherChips)
+        {
+            chip.Count = _allOperators.Count(o => o.AdditionalCovenants.Contains(chip.Value) && Usable(o));
+            chip.Ban = _isCovenantBanned?.Invoke(chip.Value) == true ? FilterChipBan.Reduced : FilterChipBan.None;
+        }
+        foreach (var chip in TraitChips)
+            chip.Count = _allOperators.Count(o => o.Normal.Traits.Concat(o.Elite.Traits).Any(t => t.TraitType == chip.Value));
+        foreach (var chip in TimingChips)
+        {
+            var tag = $"<{chip.Value}>";
+            chip.Count = _allOperators.Count(o => o.Normal.Traits.Concat(o.Elite.Traits).Any(t => t.TraitDescription.Contains(tag)));
+        }
+    }
+
+    private void OnChipToggled(FilterChip chip)
+    {
+        switch (chip.Kind)
+        {
+            case FilterChipKind.Tier:
+                _selectedTierFilters = TierChips.Where(c => c.IsSelected).Select(c => int.Parse(c.Value)).Order().ToList();
+                break;
+            case FilterChipKind.CoreCovenant:
+                _selectedCoreCovenantFilters.Clear();
+                foreach (var c in CoreChips.Where(c => c.IsSelected)) _selectedCoreCovenantFilters.Add(c.Value);
+                break;
+            case FilterChipKind.OtherCovenant:
+                _selectedOtherCovenantFilters.Clear();
+                foreach (var c in OtherChips.Where(c => c.IsSelected)) _selectedOtherCovenantFilters.Add(c.Value);
+                break;
+            case FilterChipKind.TraitType:
+                // single choice: picking one releases the others
+                SelectedTraitTypeFilter = chip.IsSelected ? chip.Value : null; // re-runs the filter
+                return;
+            case FilterChipKind.TriggerTiming:
+                SelectedTriggerTimingFilter = chip.IsSelected ? chip.Value : null;
+                return;
+        }
+        ApplyFilters();
+    }
+
+    /// <summary>Mirrors the filter state onto the chips (after external changes such as 重置 or the planner).</summary>
+    private void SyncChips()
+    {
+        foreach (var c in TierChips) c.SetSelected(int.TryParse(c.Value, out var t) && _selectedTierFilters.Contains(t));
+        foreach (var c in CoreChips) c.SetSelected(_selectedCoreCovenantFilters.Contains(c.Value));
+        foreach (var c in OtherChips) c.SetSelected(_selectedOtherCovenantFilters.Contains(c.Value));
+        foreach (var c in TraitChips) c.SetSelected(c.Value == SelectedTraitTypeFilter);
+        foreach (var c in TimingChips) c.SetSelected(c.Value == SelectedTriggerTimingFilter);
+    }
+
+    /// <summary>Removes one condition (the ✕ on a collapsed tag).</summary>
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    public void RemoveChip(FilterChip chip) => chip.IsSelected = false;
 
     public void SetAvailableCovenants(IEnumerable<string> names)
         => HighlightedCovenants = names.ToHashSet(StringComparer.Ordinal);
@@ -236,10 +360,36 @@ public partial class OperatorBrowseViewModel : ObservableObject
             filtered = filtered.Where(o =>
                 o.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
 
-        FilteredOperators = new ObservableCollection<Operator>(filtered);
+        SyncList(FilteredOperators, filtered.ToList());
+        SyncChips();
+        OnPropertyChanged(nameof(ActiveChips));
+        OnPropertyChanged(nameof(HasActiveChips));
+        OnPropertyChanged(nameof(ChipFilterCount));
+        OnPropertyChanged(nameof(MatchedCount));
         OnPropertyChanged(nameof(ActiveFilterTags));
         OnPropertyChanged(nameof(ActiveFilterCount));
         OnPropertyChanged(nameof(EmptyListMessage));
+    }
+
+    /// <summary>
+    /// Updates the shown list in place: only operators that leave or join are removed / inserted, so switching
+    /// 全部 / 本局可用 / 不可用 keeps every unchanged row (and its rendered card) instead of rebuilding the list.
+    /// </summary>
+    internal static void SyncList<T>(ObservableCollection<T> target, IReadOnlyList<T> wanted) where T : class
+    {
+        var keep = new HashSet<T>(wanted, ReferenceEqualityComparer.Instance);
+        for (var i = target.Count - 1; i >= 0; i--)
+            if (!keep.Contains(target[i])) target.RemoveAt(i);
+        for (var i = 0; i < wanted.Count; i++)
+        {
+            if (i < target.Count && ReferenceEquals(target[i], wanted[i])) continue;
+            var at = -1;
+            for (var j = i + 1; j < target.Count; j++)
+                if (ReferenceEquals(target[j], wanted[i])) { at = j; break; }
+            if (at >= 0) target.Move(at, i);
+            else target.Insert(i, wanted[i]);
+        }
+        while (target.Count > wanted.Count) target.RemoveAt(target.Count - 1);
     }
 
     /// <summary>提示文案：勾选「同时选中」而结果为空时，说明是“同时满足”导致的。</summary>

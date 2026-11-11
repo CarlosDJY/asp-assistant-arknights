@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -124,9 +124,9 @@ public partial class LineupEditorWindow : Window
         {
             Margin = new Thickness(4),
             Padding = new Thickness(8),
-            CornerRadius = new CornerRadius(6),
+            CornerRadius = (CornerRadius)FindResource("CardCornerRadius"),
             Background = (Brush)FindResource("CardBackgroundBrush"),
-            BorderBrush = (Brush)FindResource("BorderBrush"),
+            BorderBrush = (Brush)FindResource("LineBrush"),
             BorderThickness = new Thickness(1),
             Tag = slotIndex,
         };
@@ -164,19 +164,16 @@ public partial class LineupEditorWindow : Window
         }
 
         // Filled: portrait + name + remove button
-        var iconBorder = new Border
+        var iconBorder = new Controls.Avatar
         {
             Width = 44,
             Height = 44,
-            CornerRadius = new CornerRadius(4),
-            Background = (Brush)FindResource("NeutralHoverBrush"),
-            ClipToBounds = true,
+            Text = slot.OperatorName,
+            Source = $"icons/operators/{slot.OperatorName}.png",
             VerticalAlignment = VerticalAlignment.Top,
             Cursor = Cursors.Hand,
+            ToolTip = "点击更换干员",
         };
-        var img = new Image { Stretch = Stretch.UniformToFill };
-        TryLoadOperatorIcon(slot.OperatorName, img);
-        iconBorder.Child = img;
         iconBorder.MouseLeftButtonUp += (_, _) => PickOperator(slotIndex);
         DockPanel.SetDock(iconBorder, Dock.Left);
         headerDock.Children.Add(iconBorder);
@@ -186,13 +183,9 @@ public partial class LineupEditorWindow : Window
         var nameRow = new DockPanel();
         var removeBtn = new Button
         {
-            Content = "✕",
-            FontSize = 11,
-            Padding = new Thickness(6, 1, 6, 1),
-            Background = Brushes.Transparent,
-            Foreground = (Brush)FindResource("TextSecondaryBrush"),
-            BorderThickness = new Thickness(0),
-            Cursor = Cursors.Hand,
+            Tag = FindResource("IconClose"),
+            Style = (Style)FindResource("RowIconButton"),
+            Width = 22, Height = 22,
             VerticalAlignment = VerticalAlignment.Top,
             ToolTip = "清空该槽位",
         };
@@ -317,20 +310,13 @@ public partial class LineupEditorWindow : Window
         // 外部分享可能引用尚未收录的策略，保留 ID 和删除入口。
         var strategy = _strategies.FirstOrDefault(s => s.Id == slot.StrategyId);
         var header = new DockPanel();
-        var portrait = new Border
+        var portrait = new Controls.Avatar
         {
-            Width = 44, Height = 44, CornerRadius = new CornerRadius(4), ClipToBounds = true,
-            Background = (Brush)FindResource("NeutralHoverBrush"), Cursor = Cursors.Hand,
-            VerticalAlignment = VerticalAlignment.Top,
+            Width = 44, Height = 44, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Top,
+            Text = strategy?.Name ?? slot.StrategyId, Source = strategy?.IconPath,
         };
         if (strategy is not null)
         {
-            portrait.Child = new Image
-            {
-                Source = (ImageSource?)((Converters.LocalPathToImageConverter)FindResource("PathToImage")).Convert(
-                    strategy.IconPath, typeof(ImageSource), null!, System.Globalization.CultureInfo.CurrentCulture),
-                Stretch = Stretch.UniformToFill,
-            };
             border.ToolTip = new TextBlock
             {
                 Text = $"{strategy.Name} · {strategy.Initiator}\n初始生命值：{strategy.InitialHp}\n{strategy.Description}",
@@ -345,9 +331,8 @@ public partial class LineupEditorWindow : Window
         var nameRow = new DockPanel();
         var remove = new Button
         {
-            Content = "✕", FontSize = 11, Padding = new Thickness(6, 1, 6, 1),
-            Background = Brushes.Transparent, Foreground = (Brush)FindResource("TextSecondaryBrush"),
-            BorderThickness = new Thickness(0), Cursor = Cursors.Hand, ToolTip = "清空该策略",
+            Tag = FindResource("IconClose"), Style = (Style)FindResource("RowIconButton"),
+            Width = 22, Height = 22, ToolTip = "清空该策略",
             VerticalAlignment = VerticalAlignment.Top,
         };
         remove.Click += (_, _) =>
@@ -487,8 +472,8 @@ public partial class LineupEditorWindow : Window
         if (sender is not Border b || b.Tag is not bool activated) return;
         if (activated)
         {
-            b.SetResourceReference(Border.BackgroundProperty, "AccentHoverBrush");
-            b.SetResourceReference(Border.BorderBrushProperty, "AccentBrush");
+            b.SetResourceReference(Border.BackgroundProperty, "AccentSoftBrush");
+            b.SetResourceReference(Border.BorderBrushProperty, "AccentBorderBrush");
             b.BorderThickness = new Thickness(1);
         }
         else

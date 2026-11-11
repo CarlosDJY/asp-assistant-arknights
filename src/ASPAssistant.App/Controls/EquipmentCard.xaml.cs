@@ -37,6 +37,13 @@ public partial class EquipmentCard : UserControl
     {
         InitializeComponent();
         DataContextChanged += OnDataContextChanged;
+        // A card created before it joins the list's visual tree cannot find the view's tracking check yet.
+        Loaded += (_, _) =>
+        {
+            if (IsTrackedCheck is not null) return;
+            IsTrackedCheck = FindAncestor<EquipmentBrowseView>()?.IsTrackedCheck;
+            if (IsTrackedCheck is not null && DataContext is Equipment eq) RefreshTrackedState(IsTrackedCheck(eq.Name));
+        };
     }
 
     private void OnDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -44,8 +51,8 @@ public partial class EquipmentCard : UserControl
         // Inherit IsTrackedCheck from parent view if not explicitly set
         if (IsTrackedCheck == null)
             IsTrackedCheck = FindAncestor<EquipmentBrowseView>()?.IsTrackedCheck;
-        if (DataContext is Equipment eq && IsTrackedCheck != null)
-            IsTracked = IsTrackedCheck(eq.Name);
+        // Recycled cards get a new item: reset the tracked state as well.
+        IsTracked = DataContext is Equipment eq && IsTrackedCheck?.Invoke(eq.Name) == true;
         if (DataContext is Equipment eq2)
         {
             LoadIcon(eq2.IconPath);
@@ -100,7 +107,7 @@ public partial class EquipmentCard : UserControl
                 var highlighted = new Run(number.Value.TrimEnd('%')) { FontWeight = FontWeights.Bold };
                 highlighted.SetResourceReference(TextElement.ForegroundProperty, "AccentBrush");
                 EffectText.Inlines.Add(highlighted);
-                EffectText.Inlines.Add(new Run($"({eliteNumbers[i].Value})"));
+                EffectText.Inlines.Add(new Run($"({eliteNumbers[i].Value.TrimEnd('%')})"));
                 if (number.Value.EndsWith('%')) EffectText.Inlines.Add(new Run("%"));
             }
             offset = number.Index + number.Length;
@@ -115,21 +122,9 @@ public partial class EquipmentCard : UserControl
         RaiseEvent(new RoutedEventArgs(TrackingToggledEvent, this));
     }
 
+    /// <summary>Shared icon cache; also clears the icon of a recycled card whose new item has none.</summary>
     private void LoadIcon(string iconPath)
-    {
-        if (string.IsNullOrEmpty(iconPath))
-            return;
-        var fullPath = Path.Combine(AppContext.BaseDirectory, "data", iconPath);
-        if (File.Exists(fullPath))
-        {
-            var bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.UriSource = new Uri(fullPath, UriKind.Absolute);
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.EndInit();
-            IconImage.Source = bitmap;
-        }
-    }
+        => IconImage.Source = Converters.LocalPathToImageConverter.LoadCached(iconPath);
 
     public void RefreshTrackedState(bool isTracked)
     {

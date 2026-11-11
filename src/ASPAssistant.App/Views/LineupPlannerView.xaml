@@ -1,6 +1,7 @@
 <UserControl x:Class="ASPAssistant.App.Views.LineupPlannerView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ASPAssistant.App.Controls"
              xmlns:converters="clr-namespace:ASPAssistant.App.Converters"
              xmlns:vm="clr-namespace:ASPAssistant.Core.ViewModels;assembly=ASPAssistant.Core"
              x:Name="Root"
@@ -37,7 +38,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="6">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource RowCornerRadius}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -67,7 +68,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                                BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -85,19 +86,19 @@
         </Style>
 
         <Style x:Key="PlannerPrimaryButton" TargetType="Button" BasedOn="{StaticResource PlannerGhostButton}">
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="Background" Value="{DynamicResource PrimaryActionBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource PrimaryActionBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+            <Setter Property="Background" Value="{DynamicResource AccentSolidBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="{DynamicResource RowCornerRadius}" Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="{DynamicResource PrimaryActionHoverBrush}" />
+                                <Setter TargetName="bg" Property="Opacity" Value="0.88" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -108,18 +109,19 @@
         <!-- Ⅰ / Ⅱ level buttons on a covenant tile. Tag="On" marks the active level. -->
         <Style x:Key="PlannerLevelButton" TargetType="Button" BasedOn="{StaticResource ClickableButtonBase}">
             <Setter Property="Width" Value="26" />
-            <Setter Property="Height" Value="22" />
-            <Setter Property="Margin" Value="3,0,0,0" />
-            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="FontSize" Value="12" />
             <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="FontFamily" Value="{DynamicResource NumberFontFamily}" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+            <Setter Property="Background" Value="{DynamicResource SectionBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
                         <Border x:Name="bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="1" CornerRadius="5">
+                                BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
@@ -151,10 +153,10 @@
         <ToolTip x:Key="OperatorDetailsToolTip" x:Shared="False" Placement="Left" HorizontalOffset="-8"
                  Background="Transparent" BorderThickness="0" Padding="0" HasDropShadow="False" MaxHeight="700"
                  DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
-            <Border Background="{DynamicResource PanelBackgroundBrush}" CornerRadius="10" Padding="6"
+            <Border Background="{DynamicResource PanelBackgroundBrush}" CornerRadius="{DynamicResource CardCornerRadius}" Padding="6"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <StackPanel>
-                    <Border CornerRadius="6" Padding="8,4" Margin="0,0,0,6" Background="{DynamicResource EliteTintBrush}"
+                    <Border CornerRadius="{DynamicResource RowCornerRadius}" Padding="8,4" Margin="0,0,0,6" Background="{DynamicResource EliteTintBrush}"
                             BorderBrush="{DynamicResource EliteBrush}" BorderThickness="1"
                             Visibility="{Binding PlacementTarget.DataContext.HasExtraInfo, RelativeSource={RelativeSource AncestorType=ToolTip}, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}">
                         <TextBlock Text="{Binding PlacementTarget.DataContext.ExtraInfo, RelativeSource={RelativeSource AncestorType=ToolTip}}"
@@ -169,28 +171,28 @@
 
         <!-- Covenant details: requirements, ban note and every operator holding it -->
         <DataTemplate x:Key="CovenantDetailsTemplate" DataType="{x:Type vm:PlannerCovenantItem}">
-            <Border Background="{DynamicResource PanelBackgroundBrush}" CornerRadius="10" Padding="12"
+            <Border Background="{DynamicResource PanelBackgroundBrush}" CornerRadius="{DynamicResource CardCornerRadius}" Padding="12"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Width="300">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8">
-                        <Border DockPanel.Dock="Right" CornerRadius="8" Padding="7,1" VerticalAlignment="Center"
+                        <Border DockPanel.Dock="Right" CornerRadius="{DynamicResource RowCornerRadius}" Padding="7,1" VerticalAlignment="Center"
                                 Background="{DynamicResource NeutralTintBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                             <TextBlock Text="{Binding TypeText}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </Border>
                         <TextBlock Text="{Binding Name}" FontSize="15" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
                     </DockPanel>
                     <WrapPanel Margin="0,0,0,8">
-                        <Border CornerRadius="8" Padding="7,1" Margin="0,0,5,0" BorderThickness="1"
+                        <Border CornerRadius="{DynamicResource RowCornerRadius}" Padding="7,1" Margin="0,0,5,0" BorderThickness="1"
                                 Background="{DynamicResource AvailableTintBrush}" BorderBrush="{DynamicResource AvailableBrush}"
                                 Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="本局可用" FontSize="10" Foreground="{DynamicResource AvailableBrush}" />
                         </Border>
-                        <Border CornerRadius="8" Padding="7,1" Margin="0,0,5,0" BorderThickness="1"
+                        <Border CornerRadius="{DynamicResource RowCornerRadius}" Padding="7,1" Margin="0,0,5,0" BorderThickness="1"
                                 Background="{DynamicResource DangerTintBrush}" BorderBrush="{DynamicResource DangerBrush}"
                                 Visibility="{Binding IsBanned, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="本局被 Ban" FontSize="10" Foreground="{DynamicResource DangerBrush}" />
                         </Border>
-                        <Border CornerRadius="8" Padding="7,1" BorderThickness="1"
+                        <Border CornerRadius="{DynamicResource RowCornerRadius}" Padding="7,1" BorderThickness="1"
                                 Background="{DynamicResource EliteTintBrush}" BorderBrush="{DynamicResource EliteBrush}"
                                 Visibility="{Binding CanTransformInto, Converter={StaticResource BoolToVis}}">
                             <TextBlock Text="可作为转职目标" FontSize="10" Foreground="{DynamicResource EliteBrush}" />
@@ -205,13 +207,13 @@
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                         </Grid.RowDefinitions>
-                        <Border Width="24" Height="20" CornerRadius="5" Margin="0,0,8,4" Background="{DynamicResource AccentBrush}" VerticalAlignment="Top">
+                        <Border Width="24" Height="20" CornerRadius="{DynamicResource RowCornerRadius}" Margin="0,0,8,4" Background="{DynamicResource AccentBrush}" VerticalAlignment="Top">
                             <TextBlock Text="Ⅰ" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Foreground="{DynamicResource OnAccentBrush}" />
                         </Border>
                         <TextBlock Grid.Column="1" Text="{Binding FirstRequirement}" FontSize="12" Margin="0,1,0,4"
                                    Foreground="{DynamicResource TextPrimaryBrush}" />
-                        <Border Grid.Row="1" Width="24" Height="20" CornerRadius="5" Margin="0,0,8,0" Background="{DynamicResource EliteBrush}" VerticalAlignment="Top">
+                        <Border Grid.Row="1" Width="24" Height="20" CornerRadius="{DynamicResource RowCornerRadius}" Margin="0,0,8,0" Background="{DynamicResource EliteBrush}" VerticalAlignment="Top">
                             <TextBlock Text="Ⅱ" FontSize="11" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Foreground="{DynamicResource OnAccentBrush}" />
                         </Border>
@@ -224,7 +226,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="0,0,0,7">
-                                    <Border HorizontalAlignment="Left" CornerRadius="4" Padding="6,1" Margin="0,0,0,3"
+                                    <Border HorizontalAlignment="Left" CornerRadius="{DynamicResource RowCornerRadius}" Padding="6,1" Margin="0,0,0,3"
                                             Background="{DynamicResource EliteTintBrush}" BorderBrush="{DynamicResource EliteBrush}" BorderThickness="1"
                                             Visibility="{Binding HasCondition, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Text="{Binding Condition}" FontSize="10" FontWeight="SemiBold" TextWrapping="Wrap"
@@ -248,16 +250,7 @@
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:PlannerCovenantMember}">
                                 <StackPanel x:Name="member" Width="48" Margin="0,0,0,6">
-                                    <Grid Width="32" Height="32">
-                                        <Ellipse Fill="{DynamicResource SectionBackgroundBrush}" />
-                                        <TextBlock Text="{Binding Initial}" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                   Foreground="{DynamicResource TextSecondaryBrush}" />
-                                        <Ellipse>
-                                            <Ellipse.Fill>
-                                                <ImageBrush ImageSource="{Binding IconPath, Converter={StaticResource PathToImage}}" Stretch="UniformToFill" />
-                                            </Ellipse.Fill>
-                                        </Ellipse>
-                                    </Grid>
+                                    <controls:Avatar Width="32" Height="32" Text="{Binding Name}" Source="{Binding IconPath}" />
                                     <TextBlock x:Name="memberName" Text="{Binding Name}" FontSize="9" TextAlignment="Center" Margin="1,2,1,0"
                                                TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
                                 </StackPanel>
@@ -276,8 +269,8 @@
 
         <!-- One covenant tile -->
         <DataTemplate x:Key="CovenantTileTemplate" DataType="{x:Type vm:PlannerCovenantItem}">
-            <Border x:Name="tile" Height="34" Margin="0,0,5,5" CornerRadius="8" BorderThickness="1" Padding="7,0,5,0"
-                    Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+            <Border x:Name="tile" Height="44" Margin="0,0,5,5" CornerRadius="{DynamicResource RowCornerRadius}" BorderThickness="1" Padding="9,0,6,0"
+                    Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource LineBrush}"
                     ToolTipService.InitialShowDelay="350" ToolTipService.BetweenShowDelay="0" ToolTipService.ShowDuration="60000">
                 <Border.ToolTip>
                     <ToolTip Placement="Left" HorizontalOffset="-8" Background="Transparent" BorderThickness="0" Padding="0"
@@ -293,12 +286,17 @@
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    <Ellipse x:Name="dot" Width="5" Height="5" Margin="0,0,5,0" Fill="{DynamicResource AccentBrush}"
-                             Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVis}}" />
-                    <TextBlock x:Name="name" Grid.Column="1" Text="{Binding Name}" FontSize="12" VerticalAlignment="Center"
-                               TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
-                    <Border x:Name="banTag" Grid.Column="2" Visibility="Collapsed" BorderBrush="{DynamicResource DangerBorderBrush}"
-                            BorderThickness="1" CornerRadius="4" Padding="4,0" VerticalAlignment="Center">
+                    <Border x:Name="dot" Width="6" Height="6" Margin="0,0,6,0" CornerRadius="{DynamicResource DotCornerRadius}"
+                            Background="{DynamicResource AccentSolidBrush}" VerticalAlignment="Center"
+                            Visibility="{Binding IsAvailable, Converter={StaticResource BoolToVis}}" ToolTip="本局可用" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,2,0">
+                        <TextBlock x:Name="name" Text="{Binding Name}" FontSize="12" FontWeight="Bold"
+                                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBlock x:Name="sub" Text="{Binding TileSubText}" FontSize="10" Margin="0,1,0,0"
+                                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextSecondaryBrush}" />
+                    </StackPanel>
+                    <Border x:Name="banTag" Grid.Column="2" Visibility="Collapsed" Width="0" BorderBrush="{DynamicResource DangerBorderBrush}"
+                            BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}" Padding="4,0" VerticalAlignment="Center">
                         <TextBlock Text="禁" FontSize="10" Foreground="{DynamicResource DangerBrush}" />
                     </Border>
                     <Button x:Name="lv1" Grid.Column="3" Content="Ⅰ" Style="{StaticResource PlannerLevelButton}"
@@ -309,24 +307,21 @@
             </Border>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding IsLevel1}" Value="True">
-                    <Setter TargetName="tile" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
-                    <Setter TargetName="tile" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
-                    <Setter TargetName="name" Property="FontWeight" Value="Bold" />
-                    <Setter TargetName="lv1" Property="Background" Value="{DynamicResource AccentBrush}" />
-                    <Setter TargetName="lv1" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                    <Setter TargetName="tile" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                    <Setter TargetName="lv1" Property="Background" Value="{DynamicResource AccentSolidBrush}" />
+                    <Setter TargetName="lv1" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
                     <Setter TargetName="lv1" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsLevel2}" Value="True">
-                    <Setter TargetName="tile" Property="BorderBrush" Value="{DynamicResource EliteBrush}" />
-                    <Setter TargetName="tile" Property="Background" Value="{DynamicResource EliteTintBrush}" />
-                    <Setter TargetName="name" Property="FontWeight" Value="Bold" />
-                    <Setter TargetName="lv2" Property="Background" Value="{DynamicResource EliteBrush}" />
-                    <Setter TargetName="lv2" Property="BorderBrush" Value="{DynamicResource EliteBrush}" />
+                    <Setter TargetName="tile" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                    <Setter TargetName="lv2" Property="Background" Value="{DynamicResource AccentSolidBrush}" />
+                    <Setter TargetName="lv2" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
                     <Setter TargetName="lv2" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsBanned}" Value="True">
-                    <Setter TargetName="banTag" Property="Visibility" Value="Visible" />
-                    <Setter TargetName="banTag" Property="Margin" Value="0,0,2,0" />
+                    <Setter TargetName="tile" Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+                    <Setter TargetName="name" Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                    <Setter TargetName="sub" Property="Foreground" Value="{DynamicResource DangerBrush}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsBlocked}" Value="True">
                     <Setter TargetName="tile" Property="Opacity" Value="0.5" />
@@ -347,73 +342,124 @@
             <UniformGrid Columns="2" Margin="0,0,-5,0" />
         </ItemsPanelTemplate>
 
-        <!-- Operator avatar on a result card -->
-        <DataTemplate x:Key="PlannedOperatorTemplate" DataType="{x:Type vm:PlannerOperatorItem}">
-            <StackPanel Margin="0,0,0,6" Background="Transparent" Tag="{Binding Operator}"
-                        ToolTip="{StaticResource OperatorDetailsToolTip}" ToolTipService.IsEnabled="{Binding HasDetails}"
-                        ToolTipService.InitialShowDelay="0" ToolTipService.BetweenShowDelay="0" ToolTipService.ShowDuration="60000">
-                <Grid Width="40" Height="40" HorizontalAlignment="Center">
-                    <Ellipse x:Name="plate" Fill="{DynamicResource SectionBackgroundBrush}" />
-                    <TextBlock x:Name="initial" Text="{Binding Initial}" FontSize="14" FontWeight="Bold"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
-                    <Ellipse x:Name="photo">
-                        <Ellipse.Fill>
-                            <ImageBrush ImageSource="{Binding IconPath, Converter={StaticResource PathToImage}}" Stretch="UniformToFill" />
-                        </Ellipse.Fill>
-                    </Ellipse>
-                    <Ellipse x:Name="ring" Stroke="{DynamicResource BorderBrush}" StrokeThickness="2" />
-                    <Border x:Name="lockBadge" Visibility="Collapsed" Width="15" Height="15" CornerRadius="8"
-                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-3,0"
-                            Background="{DynamicResource AccentBrush}">
-                        <Path Width="7" Height="8" Stretch="Uniform" Fill="{DynamicResource OnAccentBrush}"
-                              Data="M2,5 L2,3 A3,3 0 0 1 8,3 L8,5 L9,5 L9,11 L1,11 L1,5 Z M3.5,5 L6.5,5 L6.5,3 A1.5,1.5 0 0 0 3.5,3 Z" />
-                    </Border>
-                    <Border x:Name="harmonyBadge" Visibility="Collapsed" CornerRadius="7" Padding="3,0"
-                            HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-5,-3"
-                            Background="{DynamicResource SuccessBrush}">
-                        <TextBlock Text="+1" FontSize="9" FontWeight="Bold" Foreground="White" />
-                    </Border>
-                </Grid>
-                <TextBlock x:Name="opName" Text="{Binding Name}" FontSize="11" TextAlignment="Center" Margin="2,2,2,0"
-                           TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
-                <TextBlock x:Name="sub" Text="{Binding Sub}" FontSize="9" TextAlignment="Center" Margin="2,0"
-                           TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextSecondaryBrush}" />
-            </StackPanel>
+        <!-- Operator on a result card: badge corner shared by both layouts -->
+        <Style x:Key="PlannedBadge" TargetType="Border">
+            <Setter Property="Visibility" Value="Collapsed" />
+            <Setter Property="MinWidth" Value="13" />
+            <Setter Property="Height" Value="13" />
+            <Setter Property="Padding" Value="2,0" />
+            <Setter Property="CornerRadius" Value="{DynamicResource DotCornerRadius}" />
+            <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="VerticalAlignment" Value="Bottom" />
+            <Setter Property="Margin" Value="0,0,-4,-4" />
+            <Setter Property="IsHitTestVisible" Value="False" />
+        </Style>
+
+        <!-- Collapsed card: one small avatar per slot -->
+        <DataTemplate x:Key="PlannedAvatarTemplate" DataType="{x:Type vm:PlannerOperatorItem}">
+            <Grid Width="26" Height="26" HorizontalAlignment="Center" Margin="0,0,0,2" Background="Transparent" Tag="{Binding Operator}"
+                  ToolTip="{StaticResource OperatorDetailsToolTip}" ToolTipService.IsEnabled="{Binding HasDetails}"
+                  ToolTipService.InitialShowDelay="0" ToolTipService.BetweenShowDelay="0" ToolTipService.ShowDuration="60000">
+                <controls:Avatar x:Name="av" Small="True" Text="{Binding Name}" Source="{Binding IconPath}" />
+                <Border x:Name="badge" Style="{StaticResource PlannedBadge}">
+                    <TextBlock x:Name="badgeText" FontSize="8" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+            </Grid>
             <DataTemplate.Triggers>
-                <DataTrigger Binding="{Binding IsLocked}" Value="True">
-                    <Setter TargetName="lockBadge" Property="Visibility" Value="Visible" />
-                    <Setter TargetName="ring" Property="Stroke" Value="{DynamicResource AccentBrush}" />
-                </DataTrigger>
                 <DataTrigger Binding="{Binding IsHarmony}" Value="True">
-                    <Setter TargetName="harmonyBadge" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="badge" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource SuccessBrush}" />
+                    <Setter TargetName="badgeText" Property="Text" Value="+1" />
+                    <Setter TargetName="badgeText" Property="Foreground" Value="White" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsTransformed}" Value="True">
-                    <Setter TargetName="ring" Property="Stroke" Value="{DynamicResource EliteBrush}" />
-                    <Setter TargetName="sub" Property="Foreground" Value="{DynamicResource EliteBrush}" />
-                    <Setter TargetName="sub" Property="FontWeight" Value="Bold" />
+                    <Setter TargetName="badge" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource EliteBrush}" />
+                    <Setter TargetName="badgeText" Property="Text" Value="转" />
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                    <Setter TargetName="av" Property="Ring" Value="{DynamicResource AccentSolidBrush}" />
+                    <Setter TargetName="badge" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource AccentSolidBrush}" />
+                    <Setter TargetName="badgeText" Property="Text" Value="锁" />
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
                 </DataTrigger>
                 <DataTrigger Binding="{Binding IsFree}" Value="True">
-                    <Setter TargetName="plate" Property="Fill" Value="Transparent" />
-                    <Setter TargetName="photo" Property="Visibility" Value="Collapsed" />
-                    <Setter TargetName="ring" Property="StrokeDashArray" Value="3 2" />
-                    <Setter TargetName="ring" Property="StrokeThickness" Value="1" />
-                    <Setter TargetName="ring" Property="Stroke" Value="{DynamicResource TextSecondaryBrush}" />
+                    <Setter TargetName="av" Property="Source" Value="{x:Null}" />
+                    <Setter TargetName="av" Property="Text" Value="+" />
+                    <Setter TargetName="av" Property="Opacity" Value="0.5" />
+                    <Setter TargetName="av" Property="RingDashed" Value="True" />
+                    <Setter TargetName="av" Property="Ring" Value="{DynamicResource TextSecondaryBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <!-- Expanded card: avatar, name and the covenants the member brings -->
+        <DataTemplate x:Key="PlannedOperatorTemplate" DataType="{x:Type vm:PlannerOperatorItem}">
+            <DockPanel Margin="0,0,8,7" Background="Transparent" Tag="{Binding Operator}"
+                       ToolTip="{StaticResource OperatorDetailsToolTip}" ToolTipService.IsEnabled="{Binding HasDetails}"
+                       ToolTipService.InitialShowDelay="0" ToolTipService.BetweenShowDelay="0" ToolTipService.ShowDuration="60000">
+                <Grid DockPanel.Dock="Left" Width="30" Height="30" Margin="0,0,7,0" VerticalAlignment="Center">
+                    <controls:Avatar x:Name="av" Small="True" Text="{Binding Name}" Source="{Binding IconPath}" />
+                    <Border x:Name="badge" Style="{StaticResource PlannedBadge}">
+                        <TextBlock x:Name="badgeText" FontSize="8" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                </Grid>
+                <StackPanel VerticalAlignment="Center">
+                    <TextBlock x:Name="opName" Text="{Binding Name}" FontSize="11" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <TextBlock x:Name="sub" Text="{Binding Sub}" FontSize="10" TextTrimming="CharacterEllipsis"
+                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                </StackPanel>
+            </DockPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsHarmony}" Value="True">
+                    <Setter TargetName="badge" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource SuccessBrush}" />
+                    <Setter TargetName="badgeText" Property="Text" Value="+1" />
+                    <Setter TargetName="badgeText" Property="Foreground" Value="White" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsTransformed}" Value="True">
+                    <Setter TargetName="badge" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource EliteBrush}" />
+                    <Setter TargetName="badgeText" Property="Text" Value="转" />
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                    <Setter TargetName="sub" Property="Foreground" Value="{DynamicResource EliteBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                    <Setter TargetName="av" Property="Ring" Value="{DynamicResource AccentSolidBrush}" />
+                    <Setter TargetName="badge" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="badge" Property="Background" Value="{DynamicResource AccentSolidBrush}" />
+                    <Setter TargetName="badgeText" Property="Text" Value="锁" />
+                    <Setter TargetName="badgeText" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsFree}" Value="True">
+                    <Setter TargetName="av" Property="Source" Value="{x:Null}" />
+                    <Setter TargetName="av" Property="Text" Value="+" />
+                    <Setter TargetName="av" Property="Opacity" Value="0.5" />
+                    <Setter TargetName="av" Property="RingDashed" Value="True" />
+                    <Setter TargetName="av" Property="Ring" Value="{DynamicResource TextSecondaryBrush}" />
                     <Setter TargetName="opName" Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <!-- Variant matrix cell -->
+        <!-- Variant matrix cell: number of plans for this people × transforms combination -->
         <DataTemplate x:Key="VariantCellTemplate" DataType="{x:Type vm:PlannerVariantCell}">
-            <Button Margin="0,0,4,4" Height="30" Cursor="Hand" ToolTip="{Binding ToolTip}"
+            <Button Margin="0,0,4,4" Height="40" Cursor="Hand" ToolTip="{Binding ToolTip}"
                     Command="{Binding DataContext.SelectVariantCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}">
                 <Button.Template>
                     <ControlTemplate TargetType="Button">
                         <Grid>
-                            <Rectangle x:Name="frame" RadiusX="7" RadiusY="7" StrokeThickness="1"
+                            <Rectangle x:Name="frame" RadiusX="{DynamicResource RowRadiusValue}" RadiusY="{DynamicResource RowRadiusValue}" StrokeThickness="1"
                                        Stroke="{DynamicResource BorderBrush}" Fill="{DynamicResource CardBackgroundBrush}" />
-                            <TextBlock x:Name="label" Text="{Binding Text}" FontSize="12" FontWeight="Bold"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock x:Name="label" Text="{Binding Text}" FontSize="15" FontWeight="Bold" HorizontalAlignment="Center"
+                                           FontFamily="{DynamicResource NumberFontFamily}" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock x:Name="subLabel" Text="{Binding SubText}" FontSize="9" HorizontalAlignment="Center" Margin="0,1,0,0"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
                         </Grid>
                         <ControlTemplate.Triggers>
                             <DataTrigger Binding="{Binding HasResults}" Value="False">
@@ -426,9 +472,11 @@
                                 <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource AccentBrush}" />
                             </Trigger>
                             <DataTrigger Binding="{Binding IsSelected}" Value="True">
-                                <Setter TargetName="frame" Property="Fill" Value="{DynamicResource AccentBrush}" />
-                                <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="frame" Property="Fill" Value="{DynamicResource AccentSolidBrush}" />
+                                <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource AccentSolidBrush}" />
                                 <Setter TargetName="label" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                                <Setter TargetName="subLabel" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                                <Setter TargetName="subLabel" Property="Opacity" Value="0.85" />
                             </DataTrigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -436,55 +484,267 @@
             </Button>
         </DataTemplate>
 
-        <!-- Result card -->
+        <!-- Result card: rank, activated covenants, members; only the first is expanded by default -->
         <DataTemplate x:Key="LineupCardTemplate" DataType="{x:Type vm:PlannerLineupItem}">
-            <Border Style="{StaticResource ItemCardBorder}" CornerRadius="10" Padding="8,9,8,8" Margin="0,0,0,8">
+            <Border x:Name="card" Style="{StaticResource ItemCardBorder}" CornerRadius="{DynamicResource CardCornerRadius}" Padding="10" Margin="0,0,0,8">
                 <StackPanel>
-                    <DockPanel Margin="0,0,0,8">
-                        <Button DockPanel.Dock="Right" Content="保存" Style="{StaticResource PlannerPrimaryButton}" Padding="11,0"
-                                ToolTip="保存为阵容（可在阵容页编辑装备）"
-                                Command="{Binding DataContext.SaveLineupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
-                        <Button DockPanel.Dock="Right" Content="追踪" Style="{StaticResource PlannerGhostButton}" Margin="0,0,6,0"
-                                ToolTip="把这些干员加入追踪列表"
-                                Command="{Binding DataContext.TrackLineupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                            <TextBlock Text="{Binding Subtitle}" Style="{StaticResource PlannerHint}" Margin="6,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </DockPanel>
-                    <ItemsControl ItemsSource="{Binding Operators}" ItemTemplate="{StaticResource PlannedOperatorTemplate}" Focusable="False">
+                    <!-- header: click anywhere to expand / collapse -->
+                    <Button Command="{Binding ToggleExpandedCommand}" Cursor="Hand" Focusable="False">
+                        <Button.Template>
+                            <ControlTemplate TargetType="Button">
+                                <ContentPresenter />
+                            </ControlTemplate>
+                        </Button.Template>
+                        <DockPanel Background="Transparent">
+                            <Border x:Name="rank" DockPanel.Dock="Left" Width="26" Height="26" Margin="0,0,8,0" VerticalAlignment="Top"
+                                    CornerRadius="{DynamicResource RowCornerRadius}" Background="{DynamicResource SectionBackgroundBrush}">
+                                <TextBlock x:Name="rankText" Text="{Binding Rank}" FontSize="13" FontWeight="Bold" FontFamily="{DynamicResource NumberFontFamily}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </Border>
+                            <Path x:Name="chevron" DockPanel.Dock="Right" Width="10" Height="6" Margin="8,10,4,0" VerticalAlignment="Top" Stretch="Uniform"
+                                  Data="M0,0 L5,5 L10,0" StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                  Stroke="{DynamicResource TextSecondaryBrush}" />
+                            <ItemsControl ItemsSource="{Binding Goals}" Focusable="False" VerticalAlignment="Center" Margin="0,2,0,-4">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate DataType="{x:Type vm:PlannerGoalPill}">
+                                        <Border x:Name="pill" CornerRadius="{DynamicResource PillCornerRadius}" Padding="7,1" Margin="0,0,4,4" BorderThickness="1"
+                                                Background="{DynamicResource SuccessTintBrush}" BorderBrush="Transparent">
+                                            <TextBlock x:Name="pillText" Text="{Binding Text}" FontSize="10" Foreground="{DynamicResource SuccessTextBrush}" />
+                                        </Border>
+                                        <DataTemplate.Triggers>
+                                            <DataTrigger Binding="{Binding IsGoal}" Value="True">
+                                                <Setter TargetName="pill" Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
+                                                <Setter TargetName="pillText" Property="FontWeight" Value="Bold" />
+                                            </DataTrigger>
+                                            <DataTrigger Binding="{Binding IsManual}" Value="True">
+                                                <Setter TargetName="pill" Property="Background" Value="{DynamicResource WarningTintBrush}" />
+                                                <Setter TargetName="pill" Property="BorderBrush" Value="{DynamicResource WarningMutedBrush}" />
+                                                <Setter TargetName="pillText" Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
+                                            </DataTrigger>
+                                        </DataTemplate.Triggers>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DockPanel>
+                    </Button>
+
+                    <!-- collapsed: one row of avatars -->
+                    <ItemsControl x:Name="avatars" ItemsSource="{Binding Operators}" ItemTemplate="{StaticResource PlannedAvatarTemplate}" Focusable="False" Margin="0,8,0,0">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
-                                <UniformGrid Columns="4" />
+                                <UniformGrid Rows="1" Columns="9" />
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
-                    <ItemsControl ItemsSource="{Binding Goals}" Focusable="False">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type vm:PlannerGoalPill}">
-                                <Border x:Name="pill" CornerRadius="10" Padding="7,1" Margin="0,0,5,4" BorderThickness="1"
-                                        Background="{DynamicResource SuccessTintBrush}" BorderBrush="{DynamicResource SuccessBorderBrush}">
-                                    <TextBlock x:Name="pillText" Text="{Binding Text}" FontSize="10" Foreground="{DynamicResource SuccessTextBrush}" />
-                                </Border>
-                                <DataTemplate.Triggers>
-                                    <DataTrigger Binding="{Binding IsManual}" Value="True">
-                                        <Setter TargetName="pill" Property="Background" Value="{DynamicResource WarningTintBrush}" />
-                                        <Setter TargetName="pill" Property="BorderBrush" Value="{DynamicResource WarningMutedBrush}" />
-                                        <Setter TargetName="pillText" Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
-                                    </DataTrigger>
-                                </DataTemplate.Triggers>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                    <TextBlock Text="{Binding Note}" Style="{StaticResource PlannerHint}" Margin="0,2,0,0"
-                               Visibility="{Binding HasNote, Converter={StaticResource BoolToVis}}" />
+
+                    <!-- expanded: members, warning, actions -->
+                    <StackPanel x:Name="details" Visibility="Collapsed" Margin="0,9,0,0">
+                        <ItemsControl ItemsSource="{Binding Operators}" ItemTemplate="{StaticResource PlannedOperatorTemplate}" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="2" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                        <Border CornerRadius="{DynamicResource RowCornerRadius}" Background="{DynamicResource SectionBackgroundBrush}" Padding="8,6" Margin="0,1,0,8"
+                                Visibility="{Binding HasNote, Converter={StaticResource BoolToVis}}">
+                            <DockPanel>
+                                <Path DockPanel.Dock="Left" Width="12" Height="11" Margin="0,2,6,0" VerticalAlignment="Top" Stretch="Uniform"
+                                      Data="M12,4 L21,20 L3,20 Z M12,10 L12,14.5 M12,17.2 L12,17.5" StrokeThickness="2" StrokeLineJoin="Round"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" Stroke="{DynamicResource TransitionTextBrush}" />
+                                <TextBlock Text="{Binding Note}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TransitionTextBrush}" />
+                            </DockPanel>
+                        </Border>
+                        <UniformGrid Columns="3">
+                            <Button Content="追踪" Style="{StaticResource DialogSecondaryButton}" MinWidth="0" Margin="0,0,3,0"
+                                    ToolTip="把这些干员加入追踪列表"
+                                    Command="{Binding DataContext.TrackLineupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                            <Button Content="保存为阵容" Style="{StaticResource DialogSecondaryButton}" MinWidth="0" Margin="3,0"
+                                    ToolTip="保存后可在阵容页编辑装备"
+                                    Command="{Binding DataContext.SaveLineupCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                            <Button Content="道中路线 ›" Style="{StaticResource DialogPrimaryButton}" MinWidth="0" Margin="3,0,0,0"
+                                    ToolTip="从开局到大成每个阶段的过渡阵容"
+                                    Command="{Binding DataContext.ShowRouteForCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding}" />
+                        </UniformGrid>
+                    </StackPanel>
                 </StackPanel>
             </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsFirst}" Value="True">
+                    <Setter TargetName="rank" Property="Background" Value="{DynamicResource AccentSolidBrush}" />
+                    <Setter TargetName="rankText" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsExpanded}" Value="True">
+                    <Setter TargetName="avatars" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="details" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="chevron" Property="Data" Value="M0,5 L5,0 L10,5" />
+                    <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+        <!-- ── 道中路线 ─────────────────────────────────────────────── -->
+        <DataTemplate x:Key="RouteOperatorTemplate" DataType="{x:Type vm:RouteOperatorItem}">
+            <StackPanel Margin="0,0,0,6" Background="Transparent" Tag="{Binding Operator}"
+                        ToolTip="{StaticResource OperatorDetailsToolTip}" ToolTipService.IsEnabled="{Binding HasDetails}"
+                        ToolTipService.InitialShowDelay="0" ToolTipService.BetweenShowDelay="0" ToolTipService.ShowDuration="60000">
+                <Grid Width="40" Height="40" HorizontalAlignment="Center">
+                    <controls:Avatar x:Name="photo" Text="{Binding Name}" Source="{Binding IconPath}"
+                                     Ring="{DynamicResource TransitionBrush}" RingDashed="True" />
+                    <Border CornerRadius="{DynamicResource DotCornerRadius}" Padding="3,0" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-4,0,0,-3"
+                            Background="{DynamicResource TitleBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <TextBlock Text="{Binding TierText}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </Border>
+                    <Border x:Name="tripleBadge" Visibility="Collapsed" CornerRadius="{DynamicResource DotCornerRadius}" Padding="3,0"
+                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-3,-6,0" Background="{DynamicResource AccentBrush}">
+                        <TextBlock Text="三连" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}" />
+                    </Border>
+                    <Border x:Name="newDot" Visibility="Collapsed" Width="8" Height="8" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                            Margin="0,0,-2,-2" CornerRadius="{DynamicResource DotCornerRadius}" Background="{DynamicResource SuccessBrush}"
+                            BorderBrush="{DynamicResource CardBackgroundBrush}" BorderThickness="1.5" />
+                </Grid>
+                <TextBlock Text="{Binding Name}" FontSize="11" TextAlignment="Center" Margin="2,2,2,0"
+                           TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
+                <TextBlock Text="{Binding RoleMarks}" FontSize="9" TextAlignment="Center" FontWeight="SemiBold"
+                           Foreground="{DynamicResource AccentBrush}"
+                           Visibility="{Binding HasRoleMarks, Converter={StaticResource BoolToVis}}" />
+                <Border x:Name="roleTag" HorizontalAlignment="Center" CornerRadius="{DynamicResource PillCornerRadius}" Padding="5,0" Margin="0,1,0,0" BorderThickness="1"
+                        Background="{DynamicResource TransitionTintBrush}" BorderBrush="{DynamicResource TransitionBrush}">
+                    <TextBlock x:Name="roleText" Text="{Binding RoleText}" FontSize="9" Foreground="{DynamicResource TransitionTextBrush}" />
+                </Border>
+            </StackPanel>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsFinal}" Value="True">
+                    <Setter TargetName="photo" Property="Ring" Value="{DynamicResource FinalBrush}" />
+                    <Setter TargetName="photo" Property="RingDashed" Value="False" />
+                    <Setter TargetName="roleTag" Property="Background" Value="{DynamicResource FinalTintBrush}" />
+                    <Setter TargetName="roleTag" Property="BorderBrush" Value="{DynamicResource FinalBrush}" />
+                    <Setter TargetName="roleText" Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
+                    <Setter TargetName="roleText" Property="FontWeight" Value="Bold" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsFinal}" Value="False">
+                    <Setter TargetName="photo" Property="Opacity" Value="0.85" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding ViaTriple}" Value="True">
+                    <Setter TargetName="tripleBadge" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsNew}" Value="True">
+                    <Setter TargetName="newDot" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
+
+        <DataTemplate x:Key="RouteStageTemplate" DataType="{x:Type vm:RouteStageItem}">
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="14" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <!-- timeline rail -->
+                <Rectangle Width="2" HorizontalAlignment="Center" Margin="0,14,0,-8" Fill="{DynamicResource LineBrush}" />
+                <Border x:Name="node" Width="10" Height="10" VerticalAlignment="Top" Margin="0,12,0,0"
+                        CornerRadius="{DynamicResource DotCornerRadius}" Background="{DynamicResource AccentSolidBrush}" />
+                <Border x:Name="card" Grid.Column="1" Style="{StaticResource ItemCardBorder}" CornerRadius="{DynamicResource CardCornerRadius}" Padding="8,8,8,6" Margin="4,0,0,0">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
+                            <TextBlock x:Name="stageTitle" Text="{Binding Title}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <Border x:Name="pastBadge" CornerRadius="{DynamicResource RowCornerRadius}" Padding="5,0" Margin="6,1,0,0" VerticalAlignment="Center"
+                                    Background="{DynamicResource NeutralTintBrush}" Visibility="Collapsed"
+                                    ToolTip="当前终端等级已经过了这个阶段：它的过渡卡不再追踪">
+                                <TextBlock Text="已过" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </Border>
+                        </StackPanel>
+                        <TextBlock Text="{Binding Subtitle}" Style="{StaticResource PlannerHint}" Margin="0,0,0,2" />
+                        <StackPanel x:Name="stageBody">
+                        <TextBlock Text="{Binding SummaryText}" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,2"
+                                   Foreground="{DynamicResource TextPrimaryBrush}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding WarningText}" FontSize="11" Margin="0,0,0,2" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource DangerBrush}"
+                                   Visibility="{Binding HasWarning, Converter={StaticResource BoolToVis}}" />
+                        <Rectangle Height="6" />
+                        <ItemsControl ItemsSource="{Binding Operators}" ItemTemplate="{StaticResource RouteOperatorTemplate}" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Covenants}" Focusable="False" Margin="0,2,0,0">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate DataType="{x:Type vm:RouteCovenantPill}">
+                                    <Border x:Name="pill" CornerRadius="{DynamicResource RowCornerRadius}" Padding="7,1" Margin="0,0,5,4" BorderThickness="1"
+                                            Background="Transparent" BorderBrush="{DynamicResource BorderBrush}">
+                                        <TextBlock x:Name="pillText" Text="{Binding Text}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsGoal}" Value="True" />
+                                                <Condition Binding="{Binding IsActive}" Value="True" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter TargetName="pill" Property="Background" Value="{DynamicResource SuccessTintBrush}" />
+                                            <Setter TargetName="pill" Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}" />
+                                            <Setter TargetName="pillText" Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
+                                        </MultiDataTrigger>
+                                        <MultiDataTrigger>
+                                            <MultiDataTrigger.Conditions>
+                                                <Condition Binding="{Binding IsGoal}" Value="True" />
+                                                <Condition Binding="{Binding IsActive}" Value="False" />
+                                            </MultiDataTrigger.Conditions>
+                                            <Setter TargetName="pill" Property="BorderBrush" Value="{DynamicResource TextSecondaryBrush}" />
+                                            <Setter TargetName="pillText" Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                                        </MultiDataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock Text="{Binding ChangeText}" Style="{StaticResource PlannerHint}" Margin="0,2,0,0"
+                                   Visibility="{Binding HasChange, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+                        <ToggleButton x:Name="expandPast" Visibility="Collapsed" HorizontalAlignment="Left" Margin="0,2,0,0"
+                                      Cursor="Hand" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" Background="Transparent"
+                                      BorderThickness="0" Padding="0" ToolTip="这个阶段已经过了，点开查看当时的阵容">
+                            <ToggleButton.Template>
+                                <ControlTemplate TargetType="ToggleButton">
+                                    <TextBlock x:Name="t" Text="展开 ▾" Background="Transparent" Foreground="{TemplateBinding Foreground}" />
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="t" Property="Text" Value="收起 ▴" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </ToggleButton.Template>
+                        </ToggleButton>
+                    </StackPanel>
+                </Border>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsFinal}" Value="True">
+                    <Setter TargetName="node" Property="Background" Value="{DynamicResource FinalBrush}" />
+                    <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource FinalBrush}" />
+                    <Setter TargetName="stageTitle" Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsPast}" Value="True">
+                    <Setter TargetName="card" Property="Opacity" Value="0.55" />
+                    <Setter TargetName="node" Property="Background" Value="{DynamicResource BorderBrush}" />
+                    <Setter TargetName="pastBadge" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="expandPast" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="stageBody" Property="Visibility" Value="Collapsed" />
+                </DataTrigger>
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Binding="{Binding IsPast}" Value="True" />
+                        <Condition Binding="{Binding IsChecked, ElementName=expandPast}" Value="True" />
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="stageBody" Property="Visibility" Value="Visible" />
+                    <Setter TargetName="card" Property="Opacity" Value="0.8" />
+                </MultiDataTrigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
     </UserControl.Resources>
 
@@ -492,7 +752,7 @@
         <!-- Step switch + run info -->
         <StackPanel DockPanel.Dock="Top" Margin="10,10,10,8">
             <Border Background="{DynamicResource TitleBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                    BorderThickness="1" CornerRadius="8" Padding="3">
+                    BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}" Padding="3">
                 <UniformGrid Columns="2">
                     <Button x:Name="GoalTabButton" Margin="0,0,2,0"
                             Content="{Binding GoalTabText}" Command="{Binding ShowGoalPageCommand}" >
@@ -524,8 +784,8 @@
                 <CheckBox DockPanel.Dock="Right" Content="只看本局" FontSize="11" VerticalContentAlignment="Center"
                           Foreground="{DynamicResource TextPrimaryBrush}" IsChecked="{Binding OnlyCurrentRun}"
                           IsEnabled="{Binding HasRunInfo}" ToolTip="只显示本局可用的盟约（已选目标始终显示）" />
-                <Ellipse Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center" Fill="{DynamicResource AccentBrush}"
-                         Visibility="{Binding HasRunInfo, Converter={StaticResource BoolToVis}}" />
+                <Border Width="6" Height="6" Margin="0,0,6,0" VerticalAlignment="Center" CornerRadius="{DynamicResource DotCornerRadius}"
+                        Background="{DynamicResource AccentSolidBrush}" Visibility="{Binding HasRunInfo, Converter={StaticResource BoolToVis}}" />
                 <TextBlock Text="{Binding RunInfoText}" FontSize="11" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            Foreground="{DynamicResource TextSecondaryBrush}" />
             </DockPanel>
@@ -554,6 +814,20 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10,0,10,10"
                           Visibility="{Binding ShowResults, Converter={StaticResource InverseBoolToVis}}">
                 <StackPanel>
+                    <ItemsControl ItemsSource="{Binding GoalChips}" Focusable="False" Margin="0,0,0,6"
+                                  Visibility="{Binding HasGoals, Converter={StaticResource BoolToVis}}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="{DynamicResource RowCornerRadius}" Padding="9,2" Margin="0,0,5,5" BorderThickness="1"
+                                        Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}">
+                                    <TextBlock Text="{Binding}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                     <DockPanel Margin="0,0,0,6">
                         <Button DockPanel.Dock="Right" Content="清空目标" Style="{StaticResource PlannerLinkButton}"
                                 Command="{Binding ClearGoalsCommand}" Visibility="{Binding HasGoals, Converter={StaticResource BoolToVis}}" />
@@ -579,7 +853,7 @@
                         <TextBlock Text="已在场上 / 一定要带的人" Style="{StaticResource PlannerHint}" Margin="8,0,0,0" VerticalAlignment="Center" />
                     </DockPanel>
                     <Border Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                            BorderThickness="1" CornerRadius="7" Height="30" Padding="8,0">
+                            BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}" Height="30" Padding="8,0">
                         <Grid>
                             <TextBlock Text="搜索干员，回车锁定" FontSize="11" VerticalAlignment="Center" IsHitTestVisible="False"
                                        Foreground="{DynamicResource TextSecondaryBrush}">
@@ -613,11 +887,7 @@
                                         Tag="{Binding}" ToolTip="{StaticResource OperatorDetailsToolTip}" ToolTipService.InitialShowDelay="300"
                                         Command="{Binding DataContext.LockOperatorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}" CommandParameter="{Binding Name}">
                                     <StackPanel Orientation="Horizontal">
-                                        <Ellipse Width="18" Height="18" Margin="0,0,5,0">
-                                            <Ellipse.Fill>
-                                                <ImageBrush ImageSource="{Binding IconPath, Converter={StaticResource PathToImage}}" Stretch="UniformToFill" />
-                                            </Ellipse.Fill>
-                                        </Ellipse>
+                                        <controls:Avatar Width="18" Height="18" Margin="0,0,5,0" Small="True" Text="{Binding Name}" Source="{Binding IconPath}" />
                                         <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
@@ -632,20 +902,11 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate DataType="{x:Type vm:PlannerLockedOperator}">
-                                <Border Height="24" CornerRadius="12" Margin="0,0,5,5" Padding="3,0,2,0" BorderThickness="1"
+                                <Border Height="26" CornerRadius="{DynamicResource RowCornerRadius}" Margin="0,0,5,5" Padding="3,0,2,0" BorderThickness="1"
                                         Tag="{Binding Operator}" ToolTip="{StaticResource OperatorDetailsToolTip}" ToolTipService.InitialShowDelay="300"
                                         Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}">
                                     <StackPanel Orientation="Horizontal">
-                                        <Grid Width="18" Height="18" Margin="0,0,5,0">
-                                            <Ellipse Fill="{DynamicResource SectionBackgroundBrush}" />
-                                            <TextBlock Text="{Binding Initial}" FontSize="10" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                       Foreground="{DynamicResource TextSecondaryBrush}" />
-                                            <Ellipse>
-                                                <Ellipse.Fill>
-                                                    <ImageBrush ImageSource="{Binding IconPath, Converter={StaticResource PathToImage}}" Stretch="UniformToFill" />
-                                                </Ellipse.Fill>
-                                            </Ellipse>
-                                        </Grid>
+                                        <controls:Avatar Width="20" Height="20" Margin="0,0,5,0" Small="True" Text="{Binding Name}" Source="{Binding IconPath}" />
                                         <TextBlock Text="{Binding Name}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
                                         <Button Content="✕" Style="{StaticResource PlannerLinkButton}" Foreground="{DynamicResource TextSecondaryBrush}"
                                                 Margin="5,0,4,0" Command="{Binding RemoveCommand}" ToolTip="取消锁定" />
@@ -663,34 +924,54 @@
             <!-- ② Results -->
             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10,0,10,10"
                           Visibility="{Binding ShowResults, Converter={StaticResource BoolToVis}}">
-                <StackPanel>
-                    <DockPanel Margin="0,0,0,8">
-                        <Button DockPanel.Dock="Right" Content="改目标" Style="{StaticResource PlannerLinkButton}" Command="{Binding ShowGoalPageCommand}" />
-                        <WrapPanel>
-                            <ItemsControl ItemsSource="{Binding GoalChips}" Focusable="False">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <WrapPanel />
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border CornerRadius="11" Padding="8,1" Margin="0,0,5,4" BorderThickness="1"
-                                                Background="{DynamicResource EliteTintBrush}" BorderBrush="{DynamicResource EliteBrush}">
-                                            <TextBlock Text="{Binding}" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource EliteBrush}" />
-                                        </Border>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
-                            <Border CornerRadius="11" Padding="8,1" Margin="0,0,5,4" BorderThickness="1"
-                                    Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}"
-                                    Visibility="{Binding HasLocked, Converter={StaticResource BoolToVis}}">
-                                <TextBlock FontSize="11" Foreground="{DynamicResource AccentBrush}">
-                                    <Run Text="必带" /><Run Text="{Binding LockedOperators.Count, Mode=OneWay}" />
-                                </TextBlock>
-                            </Border>
-                        </WrapPanel>
+                <Grid>
+                <!-- 道中路线 of one candidate -->
+                <StackPanel Visibility="{Binding ShowRoute, Converter={StaticResource BoolToVis}}">
+                    <DockPanel Margin="0,0,0,6">
+                        <Button DockPanel.Dock="Left" Content="← 返回方案" Style="{StaticResource PlannerLinkButton}" Margin="0,0,10,0"
+                                Command="{Binding CloseRouteCommand}" />
+                        <Button DockPanel.Dock="Right" Content="追踪路线" Style="{StaticResource PlannerGhostButton}" Margin="6,0,0,0"
+                                Foreground="{DynamicResource AccentBrush}" BorderBrush="{DynamicResource AccentBorderBrush}"
+                                Command="{Binding TrackRouteCommand}"
+                                ToolTip="把整条路线加入追踪：大成干员绿色标记，过渡干员橙色标记（含六本叠层用的干员）" />
+                        <TextBlock Text="{Binding RouteTitle}" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
                     </DockPanel>
+                    <TextBlock Style="{StaticResource PlannerHint}" Margin="0,0,0,8"
+                               Text="绿色实线 = 最终卡（保留到大成），橙色虚线 = 过渡卡；“三连”= 高于终端等级、需要三连获得；绿点 = 本阶段新加入；盾 / 奶 / 叠 = 盾位、奶位、叠层手。强度：核心 3 人 2 分、6 人 4 分，附加 Ⅰ 1 分、Ⅱ 3 分（本家未开 3 人前附加 Ⅱ 只算 2 分；目标盟约按 2 倍计入规划）。按当前 Ban 位推算。" />
+                    <TextBlock Text="正在推算路线…" Style="{StaticResource PlannerHint}" Margin="0,8,0,0" TextAlignment="Center"
+                               Visibility="{Binding IsRouteBusy, Converter={StaticResource BoolToVis}}" />
+                    <ItemsControl ItemsSource="{Binding RouteStages}" ItemTemplate="{StaticResource RouteStageTemplate}" Focusable="False" />
+                </StackPanel>
+                <StackPanel Visibility="{Binding ShowRoute, Converter={StaticResource InverseBoolToVis}}">
+                    <WrapPanel Margin="0,0,0,10">
+                        <ItemsControl ItemsSource="{Binding GoalChips}" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border CornerRadius="{DynamicResource PillCornerRadius}" Height="24" Padding="9,0" Margin="0,0,5,5" BorderThickness="1"
+                                            Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}">
+                                        <TextBlock Text="{Binding}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <Border CornerRadius="{DynamicResource PillCornerRadius}" Height="24" Padding="9,0" Margin="0,0,5,5" BorderThickness="1"
+                                Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource LineBrush}"
+                                Visibility="{Binding HasLocked, Converter={StaticResource BoolToVis}}">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Path Width="9" Height="10" Margin="0,0,4,0" Stretch="Uniform" StrokeThickness="1.6" StrokeLineJoin="Round"
+                                      Data="M6,11 L18,11 L18,20 L6,20 Z M8.5,11 L8.5,8 A3.5,3.5 0 0 1 15.5,8 L15.5,11" Stroke="{DynamicResource TextSecondaryBrush}" />
+                                <TextBlock FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                                    <Run Text="必带" /> <Run Text="{Binding LockedOperators.Count, Mode=OneWay}" />
+                                </TextBlock>
+                            </StackPanel>
+                        </Border>
+                    </WrapPanel>
 
                     <!-- people × transforms matrix -->
                     <Grid Margin="0,0,0,4">
@@ -708,8 +989,8 @@
                             <TextBlock Text="2 转" Style="{StaticResource PlannerHint}" TextAlignment="Center" Margin="0,0,4,0" />
                         </UniformGrid>
                         <UniformGrid Grid.Row="1" Rows="2">
-                            <TextBlock Text="8 人" FontSize="11" VerticalAlignment="Center" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondaryBrush}" />
-                            <TextBlock Text="9 人" FontSize="11" VerticalAlignment="Center" Margin="0,0,0,4" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="8 人" FontSize="11" VerticalAlignment="Center" Margin="0,0,0,4" TextWrapping="NoWrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <TextBlock Text="9 人" FontSize="11" VerticalAlignment="Center" Margin="0,0,0,4" TextWrapping="NoWrap" Foreground="{DynamicResource TextSecondaryBrush}" />
                         </UniformGrid>
                         <ItemsControl Grid.Row="1" Grid.Column="1" ItemsSource="{Binding VariantCells}"
                                       ItemTemplate="{StaticResource VariantCellTemplate}" Focusable="False">
@@ -720,13 +1001,16 @@
                             </ItemsControl.ItemsPanel>
                         </ItemsControl>
                     </Grid>
-                    <TextBlock Text="{Binding ResultHint}" Style="{StaticResource PlannerHint}" Margin="0,0,0,8" />
+                    <TextBlock Text="{Binding ResultHint}" Style="{StaticResource PlannerHint}" Margin="0,0,0,8" TextWrapping="Wrap"
+                               Visibility="{Binding HasError, Converter={StaticResource BoolToVis}}" />
+                    <Border Height="6" />
 
                     <ItemsControl ItemsSource="{Binding VisibleLineups}" ItemTemplate="{StaticResource LineupCardTemplate}" Focusable="False" />
                     <TextBlock Text="{Binding EmptyResultText}" Style="{StaticResource PlannerHint}"
                                Margin="0,12,0,0" TextAlignment="Center"
                                Visibility="{Binding HasVisibleLineups, Converter={StaticResource InverseBoolToVis}}" />
                 </StackPanel>
+                </Grid>
             </ScrollViewer>
         </Grid>
     </DockPanel>

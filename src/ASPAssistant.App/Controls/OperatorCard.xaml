@@ -1,74 +1,51 @@
-<!-- Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE. -->
+<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
 <UserControl x:Class="ASPAssistant.App.Controls.OperatorCard"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:converters="clr-namespace:ASPAssistant.App.Converters"
+             xmlns:controls="clr-namespace:ASPAssistant.App.Controls"
              PreviewMouseWheel="OnPreviewMouseWheel">
-    <UserControl.Resources>
-        <converters:TierToRomanConverter x:Key="TierToRoman" />
-        <converters:LocalPathToImageConverter x:Key="LocalImage" />
-    </UserControl.Resources>
-    <Border x:Name="CardBorder" BorderThickness="1" CornerRadius="6" Margin="0,0,0,4"
-            ToolTipService.InitialShowDelay="0"
+    <!-- Operator row: tier stripe · avatar · name / covenant pills · ☆ ⊘ -->
+    <Border x:Name="CardBorder" Height="53" BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}" Margin="0,0,5,5"
+            ToolTipService.InitialShowDelay="250"
             ToolTipService.BetweenShowDelay="0"
             ToolTipService.ShowDuration="60000">
         <Border.Style>
             <Style TargetType="Border">
                 <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-                <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{DynamicResource CardHoverBrush}" />
-                    </Trigger>
-                </Style.Triggers>
+                <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
             </Style>
         </Border.Style>
         <Border.ToolTip>
-            <ToolTip x:Name="DetailsToolTip" Placement="Left" HorizontalOffset="-8"
+            <ToolTip x:Name="DetailsToolTip" Placement="Left"
                      DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
                      Background="Transparent" BorderThickness="0" Padding="0" HasDropShadow="False"
                      MaxHeight="700">
-                <Border Background="{DynamicResource PanelBackgroundBrush}" CornerRadius="10" Padding="6"
+                <Border Background="{DynamicResource PanelBackgroundBrush}" CornerRadius="{DynamicResource CardCornerRadius}" Padding="6"
                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource OperatorDetailsTemplate}" />
+                        <!-- filled only while open (see OperatorCard.xaml.cs): building every row's details up front made the list slow -->
+                        <ContentControl x:Name="DetailsHost" ContentTemplate="{StaticResource OperatorDetailsTemplate}" />
                     </ScrollViewer>
                 </Border>
             </ToolTip>
         </Border.ToolTip>
-        <Grid Height="38" ClipToBounds="True">
-            <Image x:Name="PortraitBackground" Width="134" HorizontalAlignment="Right" Stretch="UniformToFill" Opacity="0.8"
-                   Source="{Binding IconPath, Converter={StaticResource LocalImage}}" />
-            <Border IsHitTestVisible="False">
-                <Border.Background>
-                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
-                        <GradientStop Color="{DynamicResource RowGradientStartColor}" Offset="0" />
-                        <GradientStop Color="{DynamicResource RowGradientMiddleColor}" Offset="0.45" />
-                        <GradientStop Color="{DynamicResource RowGradientEndColor}" Offset="1" />
-                    </LinearGradientBrush>
-                </Border.Background>
-            </Border>
-            <Border x:Name="BanDimOverlay" Background="#66000000" Visibility="Collapsed" IsHitTestVisible="False" />
-            <Grid Margin="8,0,5,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <Ellipse x:Name="TrackingPortrait" Width="28" Height="28" Margin="0,0,8,0" VerticalAlignment="Center"
-                         Stroke="{DynamicResource TrackingBrush}" StrokeThickness="1.5" Visibility="Collapsed">
-                    <Ellipse.Fill>
-                        <ImageBrush ImageSource="{Binding IconPath, Converter={StaticResource LocalImage}}" Stretch="UniformToFill" />
-                    </Ellipse.Fill>
-                </Ellipse>
-                <TextBlock Grid.Column="1" Text="{Binding Name}" Foreground="{DynamicResource TextPrimaryBrush}"
-                           FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"
-                           VerticalAlignment="Center" Margin="0,0,6,0" MaxWidth="110" />
-                <!-- Covenant chips: core covenants in accent, additional ones neutral -->
-                <ItemsControl x:Name="CovenantChips" Grid.Column="2" Margin="0,0,6,0" VerticalAlignment="Center"
-                              HorizontalAlignment="Right" ClipToBounds="True" Focusable="False" IsHitTestVisible="False">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource HoverFadeOverlay}" />
+            <!-- Tier stripe: gold for Ⅴ/Ⅵ, accent for Ⅳ -->
+            <Border x:Name="TierRail" Width="3" Margin="0,11" CornerRadius="0,2,2,0" Background="{DynamicResource BorderBrush}" />
+            <controls:Avatar x:Name="TrackingPortrait" Grid.Column="1" Width="34" Height="34" Margin="7,0,9,0" VerticalAlignment="Center"
+                             Text="{Binding Name}" Source="{Binding IconPath}" />
+            <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="0,0,2,0">
+                <TextBlock x:Name="NameText" Text="{Binding Name}" Foreground="{DynamicResource TextPrimaryBrush}"
+                           FontSize="13" FontWeight="Bold" TextTrimming="CharacterEllipsis" />
+                <!-- Covenant pills: core filled in the accent tint, additional neutral -->
+                <ItemsControl x:Name="CovenantChips" Margin="0,4,0,0" ClipToBounds="True" Focusable="False" IsHitTestVisible="False">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <StackPanel Orientation="Horizontal" />
@@ -76,33 +53,29 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
-                            <Border x:Name="chip" CornerRadius="8" Padding="6,1" Margin="3,0,0,0" BorderThickness="1"
-                                    Background="{DynamicResource SummaryBackgroundBrush}" BorderBrush="{DynamicResource SoftBorderBrush}">
-                                <TextBlock x:Name="chipText" Text="{Binding Name}" FontSize="10"
-                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <Border x:Name="chip" CornerRadius="{DynamicResource PillCornerRadius}" Padding="6,0" Margin="0,0,4,0"
+                                    Background="{DynamicResource NeutralTintBrush}">
+                                <TextBlock x:Name="chipText" Text="{Binding Name}" FontSize="10" LineHeight="17" Foreground="{DynamicResource TextSecondaryBrush}" />
                             </Border>
                             <DataTemplate.Triggers>
                                 <DataTrigger Binding="{Binding IsCore}" Value="True">
-                                    <Setter TargetName="chip" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                                    <Setter TargetName="chip" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
                                     <Setter TargetName="chipText" Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                    <Setter TargetName="chipText" Property="FontWeight" Value="SemiBold" />
+                                    <Setter TargetName="chipText" Property="FontWeight" Value="Bold" />
                                 </DataTrigger>
                             </DataTemplate.Triggers>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Border x:Name="BanBadge" Grid.Column="3" Background="{DynamicResource DangerTintBrush}"
-                        BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1" CornerRadius="8"
-                        Padding="5,0" Margin="0,0,5,0" VerticalAlignment="Center" Visibility="Collapsed">
-                    <TextBlock Text="禁用" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" />
-                </Border>
-                <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="TrackButton" Width="25" Height="25" Padding="0" FontSize="14"
-                            Style="{StaticResource TrackingButton}" Click="OnTrackClick" />
-                    <Button x:Name="BanButton" Width="25" Height="25" Padding="0" FontSize="12" Margin="4,0,0,0"
-                            Style="{StaticResource BanToggleButton}" Click="OnBanClick" />
-                </StackPanel>
-            </Grid>
+            </StackPanel>
+            <StackPanel x:Name="ActionButtons" Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,4,0">
+                <Button x:Name="TrackButton" Width="28" Height="28" Tag="{StaticResource IconStar}"
+                        Style="{StaticResource RowIconButton}" Click="OnTrackClick" />
+                <Button x:Name="BanButton" Width="28" Height="28" Tag="{StaticResource IconBan}"
+                        Style="{StaticResource RowIconButton}" Click="OnBanClick" />
+            </StackPanel>
+            <!-- kept for the banned state text in tooltips / tests -->
+            <Border x:Name="BanBadge" Visibility="Collapsed" Width="0" />
         </Grid>
     </Border>
 </UserControl>

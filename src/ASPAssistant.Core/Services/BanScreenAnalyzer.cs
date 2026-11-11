@@ -129,7 +129,7 @@ public sealed class BanScreenAnalyzer
             }
 
             var (rawWidth, rawHeight) = GetPngDimensions(shot);
-            AppLogger.SaveArtifact("ban-attempt", shot, ".png");
+            AppLogger.SaveArtifact("ban-attempt", ImageBytes.ToPng(shot), ".png");
             AppLogger.Info("BanAnalyzer", $"Screenshot ready: {rawWidth}x{rawHeight}");
 
             // 小图（例如被缩放过的录像截图）先把文字放大到 OCR 能读的尺寸；
@@ -233,23 +233,8 @@ public sealed class BanScreenAnalyzer
             if (string.IsNullOrWhiteSpace(op.Name))
                 continue;
 
-            var allCovenants = op.CoreCovenants
-                .Concat(op.AdditionalCovenants)
-                .Where(c => !string.IsNullOrWhiteSpace(c))
-                .Distinct(StringComparer.Ordinal)
-                .ToList();
-
-            // Rule 1: ban operators that have exactly one covenant and that covenant
-            // is one of the banned covenants in this run.
-            bool rule1 = allCovenants.Count == 1 && bannedCovenants.Contains(allCovenants[0]);
-
-            // Rule 2: ban operators that have at least one banned core covenant and
-            // at least one banned additional covenant.
-            bool hasBannedCore = op.CoreCovenants.Any(c => bannedCoreCovenants.Contains(c));
-            bool hasBannedAdditional = op.AdditionalCovenants.Any(c => bannedAdditionalCovenants.Contains(c));
-            bool rule2 = hasBannedCore && hasBannedAdditional;
-
-            if (rule1 || rule2)
+            // Same rule as the planner: unavailable only when every covenant of the operator is banned.
+            if (CovenantBanRules.IsExcluded(op.CoreCovenants, op.AdditionalCovenants, bannedCovenants))
                 autoBannedOperators.Add(op.Name);
         }
 
@@ -322,10 +307,5 @@ public sealed class BanScreenAnalyzer
     private static string HashShot(byte[] shot) =>
         Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(shot));
 
-    private static (int Width, int Height) GetPngDimensions(byte[] png)
-    {
-        int w = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
-        int h = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
-        return (w, h);
-    }
+    private static (int Width, int Height) GetPngDimensions(byte[] image) => ImageBytes.GetDimensions(image);
 }

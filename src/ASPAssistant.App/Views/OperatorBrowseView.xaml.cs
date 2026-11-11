@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -29,17 +29,13 @@ public partial class OperatorBrowseView : UserControl
 
     private void OnViewDataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
-        if (e.NewValue is OperatorBrowseViewModel)
-        {
-            // Pre-select "全部" (index 0) so the chip appears highlighted and
-            // clicking it later always triggers SelectionChanged.
-            AvailabilityFilterList.SelectedIndex = 0;
-            TierFilterList.SelectedIndex = 0;
-            CoreCovenantFilterList.SelectedIndex = 0;
-            OtherCovenantFilterList.SelectedIndex = 0;
-            TraitFilterList.SelectedIndex = 0;
-            TriggerTimingFilterList.SelectedIndex = 0;
-        }
+        if (e.NewValue is OperatorBrowseViewModel vm)
+            AvailabilityFilterList.SelectedIndex = vm.SelectedAvailabilityFilter switch
+            {
+                Core.ViewModels.AvailabilityFilter.Available => 1,
+                Core.ViewModels.AvailabilityFilter.Unavailable => 2,
+                _ => 0
+            };
     }
 
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject
@@ -119,6 +115,17 @@ public partial class OperatorBrowseView : UserControl
         ManualScanRequested?.Invoke();
     }
 
+    /// <summary>Run banner: banned covenants as pills, how many operators that leaves unusable.</summary>
+    public void SetBanSummary(IReadOnlyCollection<string> bannedCovenants, int unavailableOperators)
+    {
+        var any = bannedCovenants.Count > 0 || unavailableOperators > 0;
+        BanBannerMeta.Text = !any ? "未录入 · 打开本局信息页后截屏录入"
+            : unavailableOperators > 0 ? $"{unavailableOperators} 名干员不可用" : "无干员被禁用";
+        BanCovenantPills.ItemsSource = bannedCovenants.ToList();
+        BanCovenantPills.Visibility = bannedCovenants.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        ManualScanButton.Content = any ? "重新录入" : "截屏录入";
+    }
+
     public void UpdateManualScanStatus(int pending)
     {
         ManualScanButton.IsEnabled = pending == 0;
@@ -126,200 +133,20 @@ public partial class OperatorBrowseView : UserControl
         ManualScanStatusText.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
 
-    // Tier and Trait filters: single-select, shared null-item fix handler
-    private void OnFilterListPreviewMouseDown(object sender, MouseButtonEventArgs e)
+    private void OnRunMenuClicked(object sender, RoutedEventArgs e)
     {
-        if (sender is not ListBox lb) return;
-        var container = ItemsControl.ContainerFromElement(lb, e.OriginalSource as DependencyObject) as ListBoxItem;
-        if (container == null) return;
-        if (lb.ItemContainerGenerator.IndexFromContainer(container) != 0) return;
-
-        // WPF cannot select a null item via mouse — force selection programmatically
-        lb.SelectedIndex = 0;
-        e.Handled = true;
+        if (RunMenuButton.ContextMenu is not { } menu) return;
+        menu.PlacementTarget = RunMenuButton;
+        menu.IsOpen = true;
     }
 
-    private bool _suppressTierSelectionChanged;
+    private void OnCollapseFiltersClicked(object sender, RoutedEventArgs e) => FilterToggle.IsChecked = false;
 
-    private void OnTierFilterChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressTierSelectionChanged) return;
-        UpdateTierFiltersInVm();
-    }
-
-    private void UpdateTierFiltersInVm()
-    {
-        if (DataContext is not OperatorBrowseViewModel vm) return;
-        vm.SelectedTierFilters = TierFilterList.SelectedItems.OfType<int>().ToList();
-    }
-
-    /// <summary>等阶多选：点「全部」清空本行，点具体阶位取消「全部」，全部取消时回落到「全部」。</summary>
-    private void OnTierFilterPreviewMouseDown(object sender, MouseButtonEventArgs e)
-    {
-        var container = ItemsControl.ContainerFromElement(TierFilterList, e.OriginalSource as DependencyObject)
-            as ListBoxItem;
-        if (container == null) return;
-
-        int index = TierFilterList.ItemContainerGenerator.IndexFromContainer(container);
-        _suppressTierSelectionChanged = true;
-
-        if (index == 0)
-        {
-            // 「全部」的列表项是 null，WPF 不允许直接选中 null 项，只能按索引选择
-            TierFilterList.SelectedItems.Clear();
-            TierFilterList.SelectedIndex = 0;
-        }
-        else
-        {
-            if (TierFilterList.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem allItem)
-                allItem.IsSelected = false;
-            container.IsSelected = !container.IsSelected;
-
-            bool anySelected = false;
-            for (int i = 1; i < TierFilterList.Items.Count; i++)
-            {
-                if (TierFilterList.ItemContainerGenerator.ContainerFromIndex(i) is ListBoxItem item && item.IsSelected)
-                {
-                    anySelected = true;
-                    break;
-                }
-            }
-            if (!anySelected)
-            {
-                TierFilterList.SelectedItems.Clear();
-                TierFilterList.SelectedIndex = 0;
-            }
-        }
-
-        _suppressTierSelectionChanged = false;
-        UpdateTierFiltersInVm();
-        e.Handled = true;
-    }
-
-    /// <summary>把所有筛选行恢复为「全部」，再清空 VM 里的筛选状态（含搜索与「同时选中」）。</summary>
+    /// <summary>重置: every chip, the availability switch, search and 任一/全部 back to the defaults.</summary>
     private void OnResetFiltersClicked(object sender, RoutedEventArgs e)
     {
         if (DataContext is not OperatorBrowseViewModel vm) return;
-
-        SelectOnlyFirst(AvailabilityFilterList);
-        SelectOnlyFirst(TierFilterList);
-        SelectOnlyFirst(CoreCovenantFilterList);
-        SelectOnlyFirst(OtherCovenantFilterList);
-        SelectOnlyFirst(TraitFilterList);
-        SelectOnlyFirst(TriggerTimingFilterList);
-        UpdateTierFiltersInVm();
-        UpdateCovenantFiltersInVm();
+        AvailabilityFilterList.SelectedIndex = 0;
         vm.ResetFilters();
-    }
-
-    private static void SelectOnlyFirst(ListBox list)
-    {
-        if (list.SelectionMode != SelectionMode.Single)
-            list.SelectedItems.Clear();
-        if (list.Items.Count > 0) list.SelectedIndex = 0;
-    }
-
-    private void OnTraitFilterChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (DataContext is not OperatorBrowseViewModel vm) return;
-        vm.SelectedTraitTypeFilter = TraitFilterList.SelectedItem as string;
-    }
-
-    private void OnTriggerTimingFilterChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (DataContext is not OperatorBrowseViewModel vm) return;
-        vm.SelectedTriggerTimingFilter = TriggerTimingFilterList.SelectedItem as string;
-    }
-
-
-    // ── Covenant multi-select ────────────────────────────────────────────────
-
-    // Suppress flag prevents cascading SelectionChanged calls during programmatic
-    // selection updates inside HandleCovenantListMouseDown.
-    private bool _suppressCovenantSelectionChanged = false;
-
-    private void OnCoreCovenantPreviewMouseDown(object sender, MouseButtonEventArgs e)
-        => HandleCovenantListMouseDown(CoreCovenantFilterList, e);
-
-    private void OnOtherCovenantPreviewMouseDown(object sender, MouseButtonEventArgs e)
-        => HandleCovenantListMouseDown(OtherCovenantFilterList, e);
-
-    private void HandleCovenantListMouseDown(ListBox lb, MouseButtonEventArgs e)
-    {
-        var container = ItemsControl.ContainerFromElement(lb, e.OriginalSource as DependencyObject) as ListBoxItem;
-        if (container == null) return;
-
-        int idx = lb.ItemContainerGenerator.IndexFromContainer(container);
-
-        _suppressCovenantSelectionChanged = true;
-
-        if (idx == 0) // "全部" clicked — clear all selections in this row
-        {
-            for (int i = 1; i < lb.Items.Count; i++)
-            {
-                if (lb.ItemContainerGenerator.ContainerFromIndex(i) is ListBoxItem c)
-                    c.IsSelected = false;
-            }
-            container.IsSelected = true;
-        }
-        else // specific covenant clicked — toggle it
-        {
-            container.IsSelected = !container.IsSelected;
-
-            // Deselect 全部 in this row
-            if (lb.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem allContainer)
-                allContainer.IsSelected = false;
-
-            // If nothing remains selected in this row, fall back to 全部
-            bool anySelected = false;
-            for (int i = 1; i < lb.Items.Count; i++)
-            {
-                if (lb.ItemContainerGenerator.ContainerFromIndex(i) is ListBoxItem c && c.IsSelected)
-                {
-                    anySelected = true;
-                    break;
-                }
-            }
-            if (!anySelected)
-            {
-                if (lb.ItemContainerGenerator.ContainerFromIndex(0) is ListBoxItem allContainer2)
-                    allContainer2.IsSelected = true;
-            }
-        }
-
-        _suppressCovenantSelectionChanged = false;
-        UpdateCovenantFiltersInVm();
-        e.Handled = true;
-    }
-
-    private void OnCovenantFilterChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_suppressCovenantSelectionChanged) return;
-        // Handles initial "全部" selection restored by WPF after LoadOperators
-        UpdateCovenantFiltersInVm();
-    }
-
-    private void UpdateCovenantFiltersInVm()
-    {
-        if (DataContext is not OperatorBrowseViewModel vm) return;
-
-        var core = new List<string>();
-        CollectSelectedCovenants(CoreCovenantFilterList, core);
-        vm.SetCoreCovenantFilters(core);
-
-        var other = new List<string>();
-        CollectSelectedCovenants(OtherCovenantFilterList, other);
-        vm.SetOtherCovenantFilters(other);
-    }
-
-    private static void CollectSelectedCovenants(ListBox lb, List<string> selected)
-    {
-        for (int i = 1; i < lb.Items.Count; i++)
-        {
-            if (lb.ItemContainerGenerator.ContainerFromIndex(i) is ListBoxItem c
-                && c.IsSelected
-                && lb.Items[i] is string s)
-                selected.Add(s);
-        }
     }
 }

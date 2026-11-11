@@ -24,6 +24,9 @@ https://github.com/bingyunhe/asp-assistant-arknights/pull/1
 Original contribution commit: 2498a019db155903419f2109c8651d73ebb4da6d
 The original commit is retained; subsequent integration fixes have separate commits.
 
+Bundled fonts Oswald, Silkscreen and Barlow Semi Condensed are licensed under
+the SIL Open Font License 1.1 (src/ASPAssistant.App/Resources/Fonts/OFL-*.txt).
+
 MaaFramework and other third-party dependencies retain their own licenses.
 Game data, character names and artwork retain the rights and attribution of
 their respective owners; the software license does not relicense these assets.

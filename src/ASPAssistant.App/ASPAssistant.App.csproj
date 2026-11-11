@@ -21,6 +21,9 @@
   <ItemGroup>
     <ProjectReference Include="..\ASPAssistant.Core\ASPAssistant.Core.csproj" />
     <Resource Include="..\..\data\icons\aspa_logo.png" Link="Resources\aspa_logo.png" />
+    <!-- Number fonts of the redesign themes (SIL Open Font License, see Resources/Fonts/OFL-*.txt) -->
+    <Resource Include="Resources\Fonts\*.ttf" />
+    <Content Include="Resources\Fonts\OFL-*.txt" Link="licenses\fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

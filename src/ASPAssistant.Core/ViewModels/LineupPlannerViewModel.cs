@@ -31,7 +31,16 @@ public partial class PlannerCovenantItem : ObservableObject
     public string SecondRequirement => !HasSecond ? "没有 Ⅱ 级"
         : SecondManual ? "规划不提供 Ⅱ 级效果"
         : $"{LineupPlanner.CreateGoal(Info, 2).Count} 人";
-    public bool CanPlanSecond => HasSecond && !SecondManual;
+    public bool CanPlanSecond => HasSecond && !SecondManual && !SecondUnreachable;
+    /// <summary>
+    /// A banned covenant cannot be a transformation target, so only its native holders that are still available
+    /// count. Ⅱ is out of reach when fewer of them remain than Ⅱ needs.
+    /// </summary>
+    public bool SecondUnreachable => IsBanned && !IsCore && HasSecond && !SecondManual
+        && AvailableMembers < LineupPlanner.CreateGoal(Info, 2).Count;
+    /// <summary>Banned additional covenant with fewer available holders than Ⅰ needs.</summary>
+    public bool FirstUnreachable => IsBanned && !IsCore && AvailableMembers < LineupPlanner.CreateGoal(Info, 1).Count;
+    public int AvailableMembers => Members.Count(m => !m.IsUnavailable);
     public bool CanTransformInto => !LineupPlanner.NoTransform.Contains(Name);
     /// <summary>In-game effect texts (data/covenant_effects.json).</summary>
     public IReadOnlyList<CovenantEffect> Effects => Info.Effects;
@@ -40,12 +49,20 @@ public partial class PlannerCovenantItem : ObservableObject
     /// <summary>Explains the ban state in the hover details; empty when not banned.</summary>
     public string BanNote => !IsBanned ? ""
         : IsCore ? "本局已被 Ban，不能作为目标。"
-        : "本局已被 Ban：只带被 Ban 盟约的干员被移出，其他持有者仍可凑人数。";
+        : FirstUnreachable ? $"本局已被 Ban，剩余可用持有者只有 {AvailableMembers} 人，凑不齐 Ⅰ，不能作为目标。"
+        : SecondUnreachable ? $"本局已被 Ban：剩余可用持有者 {AvailableMembers} 人，只能规划 Ⅰ。"
+        : $"本局已被 Ban：自身盟约全部被 Ban 的干员被移出，其余 {AvailableMembers} 名持有者仍可凑人数（不能转职进这个盟约）。";
     public bool HasBanNote => IsBanned;
+
+    /// <summary>Second line of a goal tile: how many holders are left this run.</summary>
+    public string TileSubText => IsBanned && (IsCore || FirstUnreachable) ? "本局 Ban"
+        : IsBanned ? $"Ban · 剩 {AvailableMembers} 人"
+        : $"可用 {AvailableMembers} 人";
 
     /// <summary>Operators who hold this covenant natively (tier order); unavailable ones are dimmed.</summary>
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(MemberSummary))]
+    [NotifyPropertyChangedFor(nameof(MemberSummary), nameof(AvailableMembers), nameof(FirstUnreachable), nameof(SecondUnreachable),
+        nameof(CanPlanSecond), nameof(SecondLabel), nameof(IsBlocked), nameof(IsEnabled), nameof(BanNote), nameof(ToolTip), nameof(TileSubText))]
     private IReadOnlyList<PlannerCovenantMember> _members = [];
 
     public string MemberSummary
@@ -62,9 +79,9 @@ public partial class PlannerCovenantItem : ObservableObject
     {
         get
         {
-            if (IsBlocked) return $"{Name}：核心盟约本局已被 Ban";
+            if (IsBlocked) return IsCore ? $"{Name}：核心盟约本局已被 Ban" : $"{Name}：{BanNote}";
             var first = LineupPlanner.CreateGoal(Info, 1);
-            var text = (IsBanned ? $"{Name} 本局被 Ban，但只带这个盟约的干员才被移出，其他人仍可凑人数\n" : "") + $"{Name} Ⅰ：{first.Count} 人";
+            var text = (IsBanned ? $"{Name} {BanNote}\n" : "") + $"{Name} Ⅰ：{first.Count} 人";
             if (!HasSecond) return text + "（没有 Ⅱ 级）";
             var second = LineupPlanner.CreateGoal(Info, 2);
             return text + (SecondManual
@@ -78,7 +95,8 @@ public partial class PlannerCovenantItem : ObservableObject
     private int _level;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(ToolTip), nameof(IsEnabled), nameof(IsBlocked), nameof(BanNote), nameof(HasBanNote))]
+    [NotifyPropertyChangedFor(nameof(ToolTip), nameof(IsEnabled), nameof(IsBlocked), nameof(BanNote), nameof(HasBanNote),
+        nameof(FirstUnreachable), nameof(SecondUnreachable), nameof(CanPlanSecond), nameof(SecondLabel), nameof(TileSubText))]
     private bool _isBanned;
 
     [ObservableProperty]
@@ -94,7 +112,7 @@ public partial class PlannerCovenantItem : ObservableObject
     /// A banned core covenant cannot be targeted. A banned additional covenant only removes the operators whose
     /// covenants are all banned, so it can still be reached with the remaining operators and stays selectable.
     /// </summary>
-    public bool IsBlocked => IsBanned && IsCore;
+    public bool IsBlocked => IsBanned && (IsCore || FirstUnreachable);
     public bool IsEnabled => !IsBlocked;
 
     [RelayCommand]
@@ -144,11 +162,18 @@ public sealed record PlannerCovenantMember(string Name, string IconPath, int Tie
     public string Initial => Name.Length > 0 ? Name[..1] : "?";
 }
 
-public sealed record PlannerGoalPill(string Text, bool IsManual);
+/// <summary>Activated covenant on a result card; <see cref="IsGoal"/> marks the covenants the user planned for.</summary>
+public sealed record PlannerGoalPill(string Text, bool IsManual, bool IsGoal = false);
 
-public sealed class PlannerLineupItem
+public sealed partial class PlannerLineupItem : ObservableObject
 {
     public required PlannedLineup Source { get; init; }
+    /// <summary>1-based position in the sorted list (shown as the rank tile).</summary>
+    public int Rank { get; init; }
+    public bool IsFirst => Rank == 1;
+    /// <summary>Expanded cards list members in two columns with the actions; collapsed ones show one row of avatars.</summary>
+    [ObservableProperty] private bool _isExpanded;
+    [RelayCommand] private void ToggleExpanded() => IsExpanded = !IsExpanded;
     public string Title { get; init; } = "";
     public string Subtitle { get; init; } = "";
     public string? Note { get; init; }
@@ -177,12 +202,58 @@ public sealed partial class PlannerVariantCell : ObservableObject
     public bool IsLimited { get; init; }
     public bool HasResults => Count > 0;
     public string Text => Count > 0 ? Count.ToString() : "—";
+    public string SubText => Count > 0 ? "套" : IsLimited ? "受限" : "无";
     public string ToolTip => Count > 0
-        ? $"{People} 人 · {Transforms} 转：{Count} 套，最高附加分 {BestScore}" + (IsLimited ? "（达到搜索上限，可能还有其他组合）" : "")
+        ? $"{People} 人 · {Transforms} 转：{Count} 套" + (IsLimited ? "（达到搜索上限，可能还有其他组合）" : "")
         : IsLimited ? $"{People} 人 · {Transforms} 转：达到搜索上限仍未找到" : $"{People} 人 · {Transforms} 转：未找到候选";
 
     [ObservableProperty]
     private bool _isSelected;
+}
+
+/// <summary>One operator in a route stage (道中路线).</summary>
+public sealed class RouteOperatorItem
+{
+    public string Name { get; init; } = "";
+    public string IconPath { get; init; } = "";
+    public string Initial => Name.Length > 0 ? Name[..1] : "?";
+    public string TierText { get; init; } = "";
+    public bool IsFinal { get; init; }
+    public string RoleText => IsFinal ? "最终" : "过渡";
+    public bool ViaTriple { get; init; }
+    public bool IsNew { get; init; }
+    public string Sub { get; init; } = "";
+    public Operator? Operator { get; init; }
+    public bool HasDetails => Operator is not null;
+    public string ExtraInfo { get; init; } = "";
+    public bool HasExtraInfo => ExtraInfo.Length > 0;
+    /// <summary>“盾 / 奶 / 叠” marks from operator_profiles.json.</summary>
+    public string RoleMarks { get; init; } = "";
+    public bool HasRoleMarks => RoleMarks.Length > 0;
+}
+
+public sealed record RouteCovenantPill(string Text, bool IsGoal, bool IsActive);
+
+public sealed partial class RouteStageItem : ObservableObject
+{
+    /// <summary>Terminal level from which this stage is behind the player (0 = never).</summary>
+    public int ExpiresAt { get; init; }
+
+    /// <summary>The current terminal level is already past this stage (its 过渡 cards are no longer tracked).</summary>
+    [ObservableProperty]
+    private bool _isPast;
+
+    public string Title { get; init; } = "";
+    public string Subtitle { get; init; } = "";
+    public bool IsFinal { get; init; }
+    public IReadOnlyList<RouteOperatorItem> Operators { get; init; } = [];
+    public IReadOnlyList<RouteCovenantPill> Covenants { get; init; } = [];
+    public string ChangeText { get; init; } = "";
+    public bool HasChange => ChangeText.Length > 0;
+    /// <summary>“强度 10 分 · 盾 1 · 奶 1 · 叠层手 5”.</summary>
+    public string SummaryText { get; init; } = "";
+    public string WarningText { get; init; } = "";
+    public bool HasWarning => WarningText.Length > 0;
 }
 
 /// <summary>
@@ -194,6 +265,8 @@ public partial class LineupPlannerViewModel : ObservableObject
     private static readonly int[] TransformOptions = [0, 1, 2];
 
     private readonly LineupPlanner _planner;
+    private readonly LineupRoutePlanner _routePlanner;
+    private CancellationTokenSource? _routeCts;
     private readonly BanViewModel _banVm;
     private readonly IReadOnlyList<Operator> _operators;
     private readonly Dictionary<string, Operator> _operatorByName;
@@ -206,6 +279,7 @@ public partial class LineupPlannerViewModel : ObservableObject
     public LineupPlannerViewModel(LineupPlanner planner, IReadOnlyList<Operator> operators, BanViewModel banVm)
     {
         _planner = planner;
+        _routePlanner = new LineupRoutePlanner(operators, planner.Covenants);
         _banVm = banVm;
         _operators = operators;
         _operatorByName = operators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
@@ -242,10 +316,26 @@ public partial class LineupPlannerViewModel : ObservableObject
     public event Action<Lineup>? SaveRequested;
     /// <summary>Raised when the player tracks a candidate.</summary>
     public event Action<Lineup>? TrackRequested;
+    /// <summary>Raised when the player tracks a whole 道中路线 (大成 + 过渡 operators).</summary>
+    public event Action<PlannedRoute>? TrackRouteRequested;
+    private PlannedRoute? _currentRoute;
     /// <summary>Supplies the currently tracked operator names for “从追踪导入”.</summary>
     public Func<IEnumerable<string>>? TrackedOperatorsProvider { get; set; }
 
     [ObservableProperty] private bool _showResults;
+    /// <summary>Results page shows the 道中路线 of one candidate instead of the candidate list.</summary>
+    [ObservableProperty] private bool _showRoute;
+    [ObservableProperty] private bool _isRouteBusy;
+    [ObservableProperty] private string _routeTitle = "";
+    /// <summary>Current terminal level (from the tracking tab; 0 = unknown). Stages behind it are shown as 已过.</summary>
+    [ObservableProperty] private int _currentTerminalLevel;
+
+    partial void OnCurrentTerminalLevelChanged(int value)
+    {
+        foreach (var stage in RouteStages)
+            stage.IsPast = stage.ExpiresAt > 0 && value >= stage.ExpiresAt;
+    }
+    public ObservableCollection<RouteStageItem> RouteStages { get; } = [];
     [ObservableProperty] private bool _onlyCurrentRun;
     [ObservableProperty] private bool _isBusy;
     [ObservableProperty] private bool _hasError;
@@ -430,12 +520,15 @@ public partial class LineupPlannerViewModel : ObservableObject
     {
         var goalDropped = false;
         foreach (var c in AllCovenants)
-        {
             c.IsBanned = _banVm.IsCovenantBanned(c.Name);
+        // Availability of the holders decides whether a banned additional covenant can still be reached.
+        RefreshMembers();
+        foreach (var c in AllCovenants)
+        {
             if (c.IsBlocked && c.Level > 0) { c.Level = 0; goalDropped = true; }
+            else if (c.Level == 2 && !c.CanPlanSecond) { c.Level = 1; goalDropped = true; }
         }
         if (goalDropped) RefreshGoalChips();
-        RefreshMembers();
         UpdateRunInfo();
     }
 
@@ -487,11 +580,137 @@ public partial class LineupPlannerViewModel : ObservableObject
     {
         GoalChips.Clear();
         foreach (var c in AllCovenants.Where(c => c.IsSelected))
-            GoalChips.Add($"{c.Name} {(c.Level == 2 ? c.SecondLabel : "Ⅰ")}");
+            GoalChips.Add($"{c.Name} {LineupPlanner.CreateGoal(c.Info, c.Level).Count}"); // as people, e.g. "乌萨斯 6"
         SelectedGoalCount = GoalChips.Count;
     }
 
     // ── Search pipeline ─────────────────────────────────────────────────────
+
+    // ── 道中路线 ────────────────────────────────────────────────────────────
+
+    [RelayCommand]
+    private void CloseRoute()
+    {
+        _routeCts?.Cancel();
+        _routeCts = null;
+        ShowRoute = false;
+        IsRouteBusy = false;
+        RouteStages.Clear();
+        _currentRoute = null;
+        TrackRouteCommand.NotifyCanExecuteChanged();
+    }
+
+    /// <summary>Tracks every operator of the shown route: 大成 green, 过渡 orange.</summary>
+    [RelayCommand(CanExecute = nameof(CanTrackRoute))]
+    private void TrackRoute()
+    {
+        if (_currentRoute is not null) TrackRouteRequested?.Invoke(_currentRoute);
+    }
+
+    private bool CanTrackRoute() => _currentRoute is not null;
+
+    /// <summary>Plans 开局 → 大成 transition lineups for one candidate.</summary>
+    [RelayCommand]
+    private Task ShowRouteFor(PlannerLineupItem? item) => item is null ? Task.CompletedTask : PlanRouteAsync(item);
+
+    public async Task PlanRouteAsync(PlannerLineupItem item)
+    {
+        _routeCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _routeCts = cts;
+        RouteStages.Clear();
+        _currentRoute = null;
+        TrackRouteCommand.NotifyCanExecuteChanged();
+        RouteTitle = $"{item.Title} 的道中路线";
+        ShowRoute = true;
+        IsRouteBusy = true;
+        var bannedCovenants = new HashSet<string>(_banVm.BannedCovenants, StringComparer.Ordinal);
+        var request = new RouteRequest
+        {
+            Final = item.Source,
+            Goals = item.Source.Goals,
+            BannedCovenants = bannedCovenants,
+            BannedOperators = new HashSet<string>(_banVm.BannedNames, StringComparer.Ordinal)
+        };
+        try
+        {
+            var route = await Task.Run(() => _routePlanner.Plan(request, cts.Token), cts.Token);
+            if (!ReferenceEquals(_routeCts, cts)) return;
+            for (var i = 0; i < route.Stages.Count; i++)
+            {
+                var stageItem = BuildStageItem(route.Stages[i], route.ExpiresAt(i));
+                stageItem.IsPast = route.IsPast(i, CurrentTerminalLevel);
+                RouteStages.Add(stageItem);
+            }
+            _currentRoute = route;
+            TrackRouteCommand.NotifyCanExecuteChanged();
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (ReferenceEquals(_routeCts, cts)) IsRouteBusy = false;
+        }
+    }
+
+    private static readonly string[] Roman = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ"];
+    private static string RomanOf(int tier) => tier >= 0 && tier < Roman.Length ? Roman[tier] : tier.ToString();
+
+    private RouteStageItem BuildStageItem(RouteStage stage, int expiresAt)
+    {
+        var def = stage.Definition;
+        var subtitle = stage.IsFinal
+            ? $"{def.People} 人 · 打 Boss 用的阵容"
+            : def.Stacking
+            ? $"终端 {def.TerminalLevel} · {def.People} 人 · 叠层用：保持大成盟约激活、尽量多上叠层手，打 Boss 前换成大成阵容"
+            : $"终端 {def.TerminalLevel} · {RomanOf(def.MaxTier)} 阶及以下 · {def.People} 人"
+              + (def.TripleSlots > 0 ? $" · 至多 {def.TripleSlots} 张三连 {RomanOf(def.MaxTier + 1)} 阶" : "");
+        var goalNames = stage.Covenants.Where(c => c.IsGoal).Select(c => c.Name).ToHashSet(StringComparer.Ordinal);
+        var ops = stage.Operators.Select(o =>
+        {
+            var relevant = o.Covenants.Where(goalNames.Contains).ToList();
+            var sub = o.TransformedCovenant is not null ? $"转→{o.TransformedCovenant}"
+                : string.Join(" ", relevant.Count > 0 ? relevant : o.Covenants.Take(1));
+            var extra = new List<string> { o.Role == RouteOperatorRole.Final ? "最终卡：一路保留到大成" : "过渡卡：大成前会被替换" };
+            if (o.ViaTriple) extra.Add($"需要三连获得（终端 {def.TerminalLevel} 只出 {RomanOf(def.MaxTier)} 阶及以下）");
+            if (o.IsNew) extra.Add("本阶段新加入");
+            if (stage.Summary.OperatorLayers.TryGetValue(o.Name, out var opLayers))
+                extra.Add($"每回合约为大成盟约叠 {opLayers:0.#} 层（按普通版本估算）");
+            var marks = new List<string>();
+            if (o.IsTank) marks.Add("盾");
+            if (o.IsHealer) marks.Add("奶");
+            if (o.IsStacker) marks.Add("叠");
+            if (o.TransformedCovenant is not null) extra.Add($"转职 → {o.TransformedCovenant}");
+            return new RouteOperatorItem
+            {
+                Name = o.Name, IconPath = o.IconPath, TierText = RomanOf(o.Tier), Sub = sub,
+                IsFinal = o.Role == RouteOperatorRole.Final, ViaTriple = o.ViaTriple, IsNew = o.IsNew,
+                Operator = _operatorByName.GetValueOrDefault(o.Name),
+                ExtraInfo = string.Join(" · ", extra),
+                RoleMarks = string.Join(" ", marks)
+            };
+        }).ToList();
+        var sum = stage.Summary;
+        var summaryText = $"强度 {sum.Points} 分 · 盾 {sum.Tanks} · 奶 {sum.Healers}" + (sum.HealingCovenant ? "（+聚合）" : "")
+                          + $" · 叠层手 {sum.Stackers} · 大成盟约约 {sum.FinalLayers:0.#} 层/回合";
+        var pills = stage.Covenants.Select(c =>
+        {
+            var level = c.Level switch { 2 => " Ⅱ", 1 => " Ⅰ", _ => "" };
+            var text = c.IsGoal ? $"{c.Name} {c.Count}/{c.Target}{level}" : $"{c.Name} {c.Count}{level}";
+            return new RouteCovenantPill(text, c.IsGoal, c.Level > 0);
+        }).ToList();
+        var added = stage.Operators.Where(o => o.IsNew).Select(o => o.Name).ToList();
+        var change = stage.Removed.Count == 0 ? ""
+            : $"换下 {string.Join("、", stage.Removed)}" + (added.Count > 0 ? $"，换上 {string.Join("、", added)}" : "");
+        return new RouteStageItem
+        {
+            Title = def.Name, Subtitle = subtitle, IsFinal = stage.IsFinal, ExpiresAt = expiresAt,
+            Operators = ops, Covenants = pills, ChangeText = change,
+            SummaryText = summaryText,
+            WarningText = string.Join("；", sum.Warnings)
+        };
+    }
 
     public PlannerRequest BuildRequest()
     {
@@ -565,6 +784,7 @@ public partial class LineupPlannerViewModel : ObservableObject
 
     private void ApplyResult(PlannerResult? result, TimeSpan elapsed)
     {
+        CloseRoute();
         var previous = SelectedVariant;
         VariantCells.Clear();
         foreach (var p in PeopleOptions)
@@ -616,10 +836,8 @@ public partial class LineupPlannerViewModel : ObservableObject
         if (VariantCells.Any(c => c.IsLimited)) detail += " · 部分组达到搜索上限";
         StatusDetail = detail;
 
-        var unsolved = VariantCells.Where(c => !c.HasResults)
-            .Select(c => $"{c.People} 人·{c.Transforms} 转" + (c.IsLimited ? "（搜索受限）" : "")).ToList();
-        var hint = unsolved.Count == 0 ? "" : $"尚未找到候选：{string.Join("、", unsolved)}";
-        ResultHint = hint;
+        // The matrix cells already say which combinations have no result; the hint is kept for errors only.
+        ResultHint = "";
     }
 
     private void RebuildVisibleLineups()
@@ -641,12 +859,12 @@ public partial class LineupPlannerViewModel : ObservableObject
         var ops = lineup.Operators.Select(o =>
         {
             string sub;
-            if (o.TransformedCovenant is not null) sub = $"转→{o.TransformedCovenant}";
+            if (o.TransformedCovenant is not null) sub = $"转职 → {o.TransformedCovenant}";
             else
             {
                 var relevant = o.NativeCovenants.Where(goalNames.Contains).ToList();
                 if (o.IsHarmony && relevant.Count == 0) relevant.Add(CovenantCalculator.HarmonyCovenant);
-                sub = string.Join(" ", relevant.Count > 0 ? relevant : o.NativeCovenants.Take(1));
+                sub = string.Join(" · ", relevant.Count > 0 ? relevant : o.NativeCovenants.Take(2));
             }
             var tip = $"{o.Name}\n原生：{string.Join("、", o.NativeCovenants)}";
             if (o.TransformedCovenant is not null) tip += $"\n转入：{o.TransformedCovenant}";
@@ -674,9 +892,15 @@ public partial class LineupPlannerViewModel : ObservableObject
         return new PlannerLineupItem
         {
             Source = lineup,
-            Title = $"方案 {(char)('A' + index)}",
+            Rank = index + 1,
+            IsExpanded = index == 0,
+            Title = $"方案 {index + 1}",
             Subtitle = subtitle,
-            Note = lineup.ForcedTransforms > 0 ? $"含 {lineup.ForcedTransforms} 次非必要转职（只为凑满转职次数）" : null,
+            Note = string.Join("；", new[]
+            {
+                lineup.MissingHealer ? "没有奶位：这些目标下凑不出带医疗 / 治疗干员的阵容" : null,
+                lineup.ForcedTransforms > 0 ? $"含 {lineup.ForcedTransforms} 次非必要转职（只为凑满转职次数）" : null
+            }.Where(n => n is not null)) is { Length: > 0 } note ? note : null,
             Operators = ops,
             Goals = goals,
             LineupName = $"规划 {goalText} {lineup.People}人{lineup.Transforms}转"
@@ -686,23 +910,18 @@ public partial class LineupPlannerViewModel : ObservableObject
     private IReadOnlyList<PlannerGoalPill> BuildActivatedCovenantPills(PlannedLineup lineup)
     {
         var pills = new List<PlannerGoalPill>();
+        var goalNames = lineup.Goals.Select(g => g.Name).ToHashSet(StringComparer.Ordinal);
         foreach (var covenant in _planner.Covenants)
         {
             var count = lineup.Counts.GetValueOrDefault(covenant.Name);
             var first = LineupPlanner.CreateGoal(covenant, 1);
             if (count < first.Count) continue;
 
-            var level = 1;
-            if (LineupPlanner.HasSecondLevel(covenant))
-            {
-                var second = LineupPlanner.CreateGoal(covenant, 2);
-                if (!second.Manual && count >= second.Count)
-                    level = 2;
-            }
-
-            var text = $"{covenant.Name}{(level == 2 ? "Ⅱ" : "Ⅰ")} {count}人";
-            pills.Add(new PlannerGoalPill(text, false));
+            // Shown as people, e.g. "乌萨斯 6"
+            var text = $"{covenant.Name} {count}";
+            pills.Add(new PlannerGoalPill(text, false, goalNames.Contains(covenant.Name)));
         }
-        return pills;
+        // Planned-for covenants first, then the rest in their usual order
+        return pills.OrderByDescending(p => p.IsGoal).ToList();
     }
 }

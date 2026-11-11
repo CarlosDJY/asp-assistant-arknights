@@ -44,6 +44,8 @@ public sealed record PlannedLineup(int People, int Transforms, IReadOnlyList<Pla
     public int ForcedTransforms { get; init; }
     /// <summary>Extra core count contributed by 调和, per goal (already included in <see cref="Counts"/>).</summary>
     public IReadOnlyDictionary<string, int> HarmonyBonus { get; init; } = new Dictionary<string, int>();
+    /// <summary>No 奶位 (healer or active 聚合): only returned when no lineup with one satisfies the targets.</summary>
+    public bool MissingHealer { get; init; }
 }
 
 /// <summary>Search result of one people × transforms combination.</summary>

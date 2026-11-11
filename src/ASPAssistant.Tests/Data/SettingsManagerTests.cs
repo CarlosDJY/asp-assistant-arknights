@@ -42,6 +42,25 @@ public class SettingsManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task OverlappingTrackingSaves_KeepTheNewestList()
+    {
+        var saves = Enumerable.Range(1, 20).Select(n => _manager.SaveTrackingEntriesAsync(
+            Enumerable.Range(0, n).Select(i => new TrackingEntry
+            {
+                Name = $"干员{i}", Type = TrackingType.Operator,
+                Role = i % 2 == 0 ? TrackingRole.Final : TrackingRole.Transition, Stages = i % 2 == 0 ? "" : "开局"
+            }).ToList())).ToList();
+        await Task.WhenAll(saves);
+        // The last caller may return while an earlier caller is still writing its snapshot.
+        for (var i = 0; i < 50 && (await _manager.LoadTrackingEntriesAsync()).Count != 20; i++) await Task.Delay(20);
+
+        var loaded = await _manager.LoadTrackingEntriesAsync();
+        loaded.Should().HaveCount(20);
+        loaded[1].Role.Should().Be(TrackingRole.Transition);
+        loaded[1].Stages.Should().Be("开局");
+    }
+
+    [Fact]
     public async Task OldTrackingEntriesDefaultToNoPlannedTransformation()
     {
         await File.WriteAllTextAsync(Path.Combine(_tempDir, "tracking.json"), """[{"name":"角峰","type":0}]""");
@@ -166,4 +185,15 @@ public class SettingsManagerTests : IDisposable
         await load.Should().ThrowAsync<System.Text.Json.JsonException>();
     }
 
+    [Fact]
+    public async Task TerminalLevel_RoundTripsAndExpires()
+    {
+        var t0 = new DateTime(2026, 11, 12, 0, 0, 0, DateTimeKind.Utc);
+        (await _manager.LoadTerminalLevelAsync(t0)).Should().BeNull();
+        await _manager.SaveTerminalLevelAsync(4, t0);
+        (await _manager.LoadTerminalLevelAsync(t0.AddMinutes(30))).Should().Be(4);
+        (await _manager.LoadTerminalLevelAsync(t0.AddHours(3))).Should().BeNull("a level from hours ago belongs to an old run");
+        await _manager.SaveTerminalLevelAsync(0, t0);
+        (await _manager.LoadTerminalLevelAsync(t0)).Should().BeNull();
+    }
 }

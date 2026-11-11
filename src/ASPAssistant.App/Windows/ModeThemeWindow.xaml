@@ -1,3 +1,4 @@
+<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
 <Window x:Class="ASPAssistant.App.Windows.ModeThemeWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -10,30 +11,28 @@
     </WindowChrome.WindowChrome>
     <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <DockPanel>
-            <Border DockPanel.Dock="Top" Background="{DynamicResource TitleBackgroundBrush}" MouseLeftButtonDown="OnTitleBarDrag">
+            <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="✕" Click="OnCancel" Style="{StaticResource CloseButton}" />
-                    <TextBlock Text="首次启动 · 模式主题设置" FontSize="13" FontWeight="SemiBold" Padding="12,8" />
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancel" Style="{StaticResource CloseButton}" />
+                    <TextBlock Style="{StaticResource DialogTitleText}" Text="首次启动 · 模式主题设置" />
                 </DockPanel>
             </Border>
             <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Margin="14,0,14,12">
-                <Button Content="退出" Click="OnCancel" Style="{StaticResource TrackingButton}" Padding="14,5" Margin="0,0,8,0" />
-                <Button x:Name="ConfirmButton" Content="确认并进入" Click="OnConfirm" IsDefault="True"
-                        Style="{StaticResource TrackingButton}" Padding="14,5"
-                        Background="{DynamicResource PrimaryActionBrush}" Foreground="White" BorderThickness="0" />
+                <Button Style="{StaticResource DialogSecondaryButton}" Content="退出" Click="OnCancel" Margin="0,0,8,0" />
+                <Button Style="{StaticResource DialogPrimaryButton}" x:Name="ConfirmButton" Content="确认并进入" Click="OnConfirm" IsDefault="True" />
             </StackPanel>
             <StackPanel Margin="16,14">
                 <TextBlock Text="请选择游戏中正在使用的模式主题" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,8" />
                 <TextBlock Text="主题保持一致，有助于准确识别商店中的干员和装备。"
                            FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,0,0,12" />
                 <ListBox x:Name="ThemeSelector" SelectionMode="Single" SelectedIndex="0"
-                         Style="{StaticResource FilterChipListBox}">
+                         Style="{StaticResource SegmentedListBox}" HorizontalAlignment="Left">
                     <ListBoxItem Content="卫戍协议终端" />
                     <ListBoxItem Content="乌萨斯齐心团" />
                     <ListBoxItem Content="“全能的”可露希尔" />
                 </ListBox>
                 <TextBlock Text="后续更改主题，可在软件右上角的设置中修改。" FontSize="12" TextWrapping="Wrap"
-                           Foreground="{DynamicResource AccentBrush}" Margin="0,14,0,0" />
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,14,0,0" />
             </StackPanel>
         </DockPanel>
     </Border>

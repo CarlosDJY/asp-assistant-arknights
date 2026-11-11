@@ -88,8 +88,10 @@ public partial class SidePanelWindow : Window
         GameShopTheme gameTheme,
         SidePanelPositionSettings positionSettings,
         LineupPlanner? lineupPlanner = null,
-        IReadOnlyList<CovenantInfo>? covenants = null)
+        IReadOnlyList<CovenantInfo>? covenants = null,
+        SidebarAppearance? appearance = null)
     {
+        _appearance = appearance ?? new SidebarAppearance();
         OperatorBrowseVm = operatorVm;
         EquipmentBrowseVm = equipmentVm;
         TrackingVm = trackingVm;
@@ -115,9 +117,21 @@ public partial class SidePanelWindow : Window
             Width = _preferredWidthDip;
             _userHeightDip = placement.HeightDip;
         }
-        CurrentVersionText.Text = $"当前版本：v{typeof(SidePanelWindow).Assembly.GetName().Version!.ToString(3)}";
-        UiThemeSelector.SelectedIndex = ThemeManager.IsLight ? 1 : 0;
+        CurrentVersionText.Text = $"当前版本  v{typeof(SidePanelWindow).Assembly.GetName().Version!.ToString(3)}";
         GameThemeSelector.SelectedIndex = (int)gameTheme;
+        FollowModeThemeToggle.IsChecked = _appearance.FollowModeTheme;
+        UiThemeSelector.SelectedIndex = (int)_appearance.Theme;
+        UiThemeSelector.Visibility = _appearance.FollowModeTheme ? Visibility.Collapsed : Visibility.Visible;
+        SyncDayNightSelector();
+        DayNightSelector.SelectionChanged += OnDayNightChanged;
+        FollowModeThemeToggle.Checked += OnFollowModeThemeChanged;
+        FollowModeThemeToggle.Unchecked += OnFollowModeThemeChanged;
+        trackingVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName is nameof(TrackingViewModel.TerminalLevel) or nameof(TrackingViewModel.IsTerminalLevelRestored))
+                UpdateStatusChip();
+        };
+        UpdateStatusChip();
         MultiLineupTrackingToggle.IsChecked = trackingVm.TrackMultipleLineups;
         FreeSidePanelMovementToggle.IsChecked = positionSettings.FreeMovement;
         UiThemeSelector.SelectionChanged += OnUiThemeChanged;
@@ -186,8 +200,10 @@ public partial class SidePanelWindow : Window
             {
                 OperatorView.RefreshBannedStates();
                 operatorVm.NotifyBansChanged();
+                OperatorView.SetBanSummary([.. banVm.BannedCovenants], banVm.BannedNames.Count);
             });
         };
+        OperatorView.SetBanSummary([.. banVm.BannedCovenants], banVm.BannedNames.Count);
 
         trackingVm.TrackedOperators.CollectionChanged += (_, _) =>
         {
@@ -207,6 +223,7 @@ public partial class SidePanelWindow : Window
         var hwnd = new WindowInteropHelper(this).Handle;
         _hwndSource = HwndSource.FromHwnd(hwnd);
         _hwndSource.AddHook(WndProc);
+        SystemBorder.Hide(hwnd);
         User32.RegisterHotKey(hwnd, HotkeyIdManualScan,
             User32.MOD_CONTROL | User32.MOD_SHIFT, User32.VK_OEM_2);
     }
@@ -579,7 +596,94 @@ public partial class SidePanelWindow : Window
 
     private void OnToggleSettings(object sender, RoutedEventArgs e)
     {
-        SettingsPanel.Visibility = SettingsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+        var open = SettingsPanel.Visibility != Visibility.Visible || SettingsPanel.Tag as string == "closing";
+        HighlightSettingsButton(open);
+        if (open)
+        {
+            SettingsPanel.Tag = null;
+            SettingsPanel.Visibility = Visibility.Visible;
+            PageTransition.SlideIn(SettingsPanel, fromX: 18);
+        }
+        else
+        {
+            SettingsPanel.Tag = "closing";
+            PageTransition.SlideOut(SettingsPanel, toX: 18, () =>
+            {
+                if (SettingsPanel.Tag as string != "closing") return;
+                SettingsPanel.Visibility = Visibility.Collapsed;
+                SettingsPanel.Tag = null;
+            });
+        }
+    }
+
+    /// <summary>Switching tabs fades the new page in with a short upward slide.</summary>
+    private void OnMainTabChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!ReferenceEquals(e.OriginalSource, MainTabs) || !IsLoaded) return;
+        if (MainTabs.SelectedItem is TabItem { Content: FrameworkElement page }) PageTransition.SlideIn(page, fromY: 8);
+    }
+
+    /// <summary>The gear stays highlighted while the settings page is open.</summary>
+    private void HighlightSettingsButton(bool open)
+    {
+        if (open)
+        {
+            SettingsButton.SetResourceReference(BackgroundProperty, "TitleChipBrush");
+            SettingsButton.SetResourceReference(ForegroundProperty, "TitleDecorBrush");
+        }
+        else
+        {
+            SettingsButton.ClearValue(BackgroundProperty);
+            SettingsButton.ClearValue(ForegroundProperty);
+        }
+    }
+
+    private void UpdateStatusChip()
+    {
+        var level = TrackingVm.TerminalLevel;
+        // "4?" = level saved by the last session, not yet seen on the shop's upgrade card.
+        StatusTerminalText.Text = level <= 0 ? "–"
+            : TrackingVm.IsTerminalLevelRestored && TrackingVm.ManualTerminalLevel is null ? $"{level}?" : level.ToString();
+        StatusTerminalText.ToolTip = TrackingVm.TerminalLevelText;
+    }
+
+    // ── Appearance: 3 mode themes × day / night ────────────────────────────
+
+    private SidebarAppearance _appearance;
+    private bool _syncingAppearance;
+
+    private GameShopTheme CurrentUiTheme => _appearance.ThemeFor(GameTheme);
+
+    private void SyncDayNightSelector()
+    {
+        _syncingAppearance = true;
+        DayNightSelector.SelectedIndex = _appearance.IsNight(CurrentUiTheme) ? 1 : 0;
+        _syncingAppearance = false;
+    }
+
+    private void ApplyAppearance()
+    {
+        ThemeManager.Apply(CurrentUiTheme, _appearance.IsNight(CurrentUiTheme));
+        SyncDayNightSelector();
+    }
+
+    private Task SaveAppearanceAsync(UIElement control)
+        => SavePreferenceAsync(() => _settingsManager.SaveSidebarAppearanceAsync(_appearance), control);
+
+    private async void OnDayNightChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_syncingAppearance || DayNightSelector.SelectedIndex < 0) return;
+        _appearance.Night[CurrentUiTheme] = DayNightSelector.SelectedIndex == 1;
+        ApplyAppearance();
+        await SaveAppearanceAsync(DayNightSelector);
+    }
+
+    private async void OnFollowModeThemeChanged(object sender, RoutedEventArgs e)
+    {
+        _appearance.FollowModeTheme = FollowModeThemeToggle.IsChecked == true;
+        UiThemeSelector.Visibility = _appearance.FollowModeTheme ? Visibility.Collapsed : Visibility.Visible;
+        ApplyAppearance();
+        await SaveAppearanceAsync(FollowModeThemeToggle);
     }
 
     private SidePanelPlacement CaptureSidePanelPlacement()
@@ -624,8 +728,10 @@ public partial class SidePanelWindow : Window
     private async void OnUiThemeChanged(object sender, SelectionChangedEventArgs e)
     {
         if (UiThemeSelector.SelectedIndex < 0) return;
-        ThemeManager.Apply(UiThemeSelector.SelectedIndex == 1);
-        await SavePreferenceAsync(() => _settingsManager.SaveLightThemeAsync(ThemeManager.IsLight), UiThemeSelector);
+        _appearance.Theme = (GameShopTheme)UiThemeSelector.SelectedIndex;
+        if (_appearance.FollowModeTheme) return;
+        ApplyAppearance();
+        await SaveAppearanceAsync(UiThemeSelector);
     }
 
     private async void OnGameThemeChanged(object sender, SelectionChangedEventArgs e)
@@ -633,6 +739,7 @@ public partial class SidePanelWindow : Window
         if (GameThemeSelector.SelectedIndex < 0) return;
         GameTheme = (GameShopTheme)GameThemeSelector.SelectedIndex;
         GameThemeChanged?.Invoke(GameTheme);
+        if (_appearance.FollowModeTheme) ApplyAppearance();
         await SavePreferenceAsync(() => _settingsManager.SaveGameShopThemeAsync(GameTheme), GameThemeSelector);
     }
 
@@ -797,6 +904,18 @@ public partial class SidePanelWindow : Window
             {
                 var added = TrackingVm.TrackLineup(lineup);
                 ShowToast($"已追踪规划阵容：新增 {added.Operators} 名干员");
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"追踪失败：{ex.Message}");
+            }
+        };
+        PlannerVm.TrackRouteRequested += route =>
+        {
+            try
+            {
+                var added = TrackingVm.TrackRoute(route);
+                ShowToast($"已追踪道中路线：新增 {added.Final} 名大成干员 / {added.Transition} 名过渡干员");
             }
             catch (Exception ex)
             {

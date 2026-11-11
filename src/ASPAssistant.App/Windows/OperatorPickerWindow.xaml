@@ -1,7 +1,9 @@
+<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
 <Window x:Class="ASPAssistant.App.Windows.OperatorPickerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:converters="clr-namespace:ASPAssistant.App.Converters"
+        xmlns:controls="clr-namespace:ASPAssistant.App.Controls"
         Title="选择干员" Width="780" Height="700" MinWidth="600" MinHeight="520"
         WindowStartupLocation="CenterOwner" WindowStyle="None" ResizeMode="CanResizeWithGrip"
         Background="{DynamicResource PanelBackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
@@ -18,24 +20,32 @@
             <Setter Property="Margin" Value="0,0,0,6" />
             <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
         </Style>
-        <DataTemplate x:Key="CovenantLabel">
-            <TextBlock Text="{Binding}" Margin="0,0,8,0" FontSize="11" Foreground="{DynamicResource AccentBrush}" />
+        <ItemsPanelTemplate x:Key="ChipWrap"><WrapPanel /></ItemsPanelTemplate>
+        <DataTemplate x:Key="ChipTemplate"><ToggleButton Style="{StaticResource FilterChipToggle}" /></DataTemplate>
+        <DataTemplate x:Key="CorePill">
+            <Border CornerRadius="{DynamicResource PillCornerRadius}" Padding="6,0" Margin="0,0,4,0" Background="{DynamicResource AccentSoftBrush}">
+                <TextBlock Text="{Binding}" FontSize="10" LineHeight="17" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+            </Border>
+        </DataTemplate>
+        <DataTemplate x:Key="ExtraPill">
+            <Border CornerRadius="{DynamicResource PillCornerRadius}" Padding="6,0" Margin="0,0,4,0" Background="{DynamicResource NeutralTintBrush}">
+                <TextBlock Text="{Binding}" FontSize="10" LineHeight="17" Foreground="{DynamicResource TextSecondaryBrush}" />
+            </Border>
         </DataTemplate>
     </Window.Resources>
-    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Background="{DynamicResource PanelBackgroundBrush}">
         <DockPanel>
-            <Border DockPanel.Dock="Top" Background="{DynamicResource TitleBackgroundBrush}" MouseLeftButtonDown="OnTitleBarDrag">
+            <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="✕" Click="OnCancelClick" Style="{StaticResource CloseButton}" />
-                    <TextBlock Text="选择干员" FontSize="13" FontWeight="SemiBold" Padding="12,8" />
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancelClick" Style="{StaticResource CloseButton}" />
+                    <TextBlock Style="{StaticResource DialogTitleText}" Text="选择干员" />
                 </DockPanel>
             </Border>
-            <Border DockPanel.Dock="Bottom" Background="{DynamicResource TitleBackgroundBrush}" Padding="12,8"
-                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0">
+            <Border Style="{StaticResource DialogFooter}" DockPanel.Dock="Bottom">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="清除选择" Click="OnClearClick" Style="{StaticResource TrackingButton}" Padding="10,4" />
+                    <Button Style="{StaticResource DialogSecondaryButton}" DockPanel.Dock="Right" Content="清除选择" Click="OnClearClick" />
                     <TextBlock FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}">
-                        <Run Text="{Binding FilteredOperators.Count, Mode=OneWay}" /><Run Text=" 位干员 · 单击或按 Enter 选择 · 可拖动窗口边缘放大" />
+                        <Run Text="{Binding FilteredOperators.Count, Mode=OneWay}" /><Run Text=" 位干员 · 单击或按 Enter 选择" />
                     </TextBlock>
                 </DockPanel>
             </Border>
@@ -47,81 +57,97 @@
                     <RowDefinition Height="1.2*" />
                 </Grid.RowDefinitions>
                 <DockPanel Margin="0,0,0,8">
-                    <Button x:Name="ResetFiltersButton" DockPanel.Dock="Right" Content="重置筛选" Click="OnResetFiltersClick"
-                            Style="{StaticResource TrackingButton}" Padding="10,4" Margin="8,0,0,0" />
-                    <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="搜索干员名称" Padding="8,5" Background="{DynamicResource InputBackgroundBrush}"
-                             Foreground="{DynamicResource TextPrimaryBrush}" BorderBrush="{DynamicResource BorderBrush}"
-                             CaretBrush="{DynamicResource AccentBrush}" />
+                    <Button Style="{StaticResource DialogSecondaryButton}" x:Name="ResetFiltersButton" DockPanel.Dock="Right" Content="重置筛选" Click="OnResetFiltersClick" Margin="8,0,0,0" />
+                    <TextBox Style="{StaticResource DialogTextBox}" x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="搜索干员名称" />
                 </DockPanel>
                 <ScrollViewer x:Name="FilterScroll" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="0,0,6,0">
-                        <TextBlock Text="等阶（多选，不选为全部）" Style="{StaticResource FilterLabel}" />
-                        <ListBox x:Name="TierFilters" Style="{StaticResource FilterChipListBox}" SelectionMode="Multiple" SelectionChanged="OnFiltersChanged">
-                            <ListBox.ItemTemplate><DataTemplate><TextBlock Text="{Binding Converter={StaticResource TierToRoman}}" /></DataTemplate></ListBox.ItemTemplate>
-                        </ListBox>
-                        <DockPanel>
-                            <CheckBox DockPanel.Dock="Right" Content="同时满足" IsChecked="{Binding CoreCovenantMatchAll}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" />
-                            <TextBlock Text="核心盟约（多选）" Style="{StaticResource FilterLabel}" />
+                        <TextBlock Text="等阶" Style="{StaticResource FilterSectionTitle}" Margin="0,0,0,7" />
+                        <ItemsControl ItemsSource="{Binding TierChips}" Focusable="False" Margin="0,0,-4,10">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate><DataTemplate><ToggleButton Style="{StaticResource TierCellToggle}" /></DataTemplate></ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <DockPanel Margin="0,0,0,7">
+                            <ToggleButton DockPanel.Dock="Right" Style="{StaticResource MatchModeToggle}" IsChecked="{Binding CoreCovenantMatchAll}" />
+                            <TextBlock Text="核心盟约" Style="{StaticResource FilterSectionTitle}" />
                         </DockPanel>
-                        <ListBox x:Name="CoreFilters" Style="{StaticResource FilterChipListBox}" SelectionMode="Multiple" SelectionChanged="OnFiltersChanged" />
-                        <DockPanel>
-                            <CheckBox DockPanel.Dock="Right" Content="同时满足" IsChecked="{Binding OtherCovenantMatchAll}" FontSize="11" Foreground="{DynamicResource TextPrimaryBrush}" />
-                            <TextBlock Text="其他盟约（多选）" Style="{StaticResource FilterLabel}" />
+                        <ItemsControl ItemsSource="{Binding CoreChips}" Focusable="False" ItemsPanel="{StaticResource ChipWrap}" ItemTemplate="{StaticResource ChipTemplate}" />
+                        <DockPanel Margin="0,7,0,7">
+                            <ToggleButton DockPanel.Dock="Right" Style="{StaticResource MatchModeToggle}" IsChecked="{Binding OtherCovenantMatchAll}" />
+                            <TextBlock Text="附加盟约" Style="{StaticResource FilterSectionTitle}" />
                         </DockPanel>
-                        <ListBox x:Name="OtherFilters" Style="{StaticResource FilterChipListBox}" SelectionMode="Multiple" SelectionChanged="OnFiltersChanged" />
-                        <Grid Margin="0,4,0,6">
-                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition /></Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,10,0">
-                                <TextBlock Text="词条" Style="{StaticResource FilterLabel}" />
-                                <ComboBox x:Name="TraitFilter" SelectionChanged="OnSingleFilterChanged" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1">
-                                <TextBlock Text="触发时机" Style="{StaticResource FilterLabel}" />
-                                <ComboBox x:Name="TimingFilter" SelectionChanged="OnSingleFilterChanged" />
-                            </StackPanel>
-                        </Grid>
+                        <ItemsControl ItemsSource="{Binding OtherChips}" Focusable="False" ItemsPanel="{StaticResource ChipWrap}" ItemTemplate="{StaticResource ChipTemplate}" />
+                        <TextBlock Text="词条" Style="{StaticResource FilterSectionTitle}" Margin="0,7,0,7" />
+                        <ItemsControl ItemsSource="{Binding TraitChips}" Focusable="False" ItemsPanel="{StaticResource ChipWrap}" ItemTemplate="{StaticResource ChipTemplate}" />
+                        <TextBlock Text="触发时机" Style="{StaticResource FilterSectionTitle}" Margin="0,7,0,7" />
+                        <ItemsControl ItemsSource="{Binding TimingChips}" Focusable="False" ItemsPanel="{StaticResource ChipWrap}" ItemTemplate="{StaticResource ChipTemplate}" />
                     </StackPanel>
                 </ScrollViewer>
                 <GridSplitter Grid.Row="2" Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                              Background="{DynamicResource BorderBrush}" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" />
+                              Background="{DynamicResource LineBrush}" ResizeDirection="Rows" ResizeBehavior="PreviousAndNext" />
                 <Grid Grid.Row="3">
                     <ListBox x:Name="OperatorsList" ItemsSource="{Binding FilteredOperators}" Background="Transparent" BorderThickness="0"
                              Foreground="{DynamicResource TextPrimaryBrush}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              MouseLeftButtonUp="OnOperatorClick" PreviewKeyDown="OnOperatorKeyDown">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate><VirtualizingStackPanel /></ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem" BasedOn="{StaticResource ClickableListBoxItemBase}">
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                                <Setter Property="Padding" Value="8,5" />
-                                <Setter Property="Margin" Value="0,0,0,3" />
+                                <Setter Property="Margin" Value="0,0,0,5" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="row" Height="53" Padding="0,0,10,0" BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}"
+                                                    Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource LineBrush}">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="row" Property="Background" Value="{DynamicResource CardHoverBrush}" />
+                                                </Trigger>
+                                                <Trigger Property="IsSelected" Value="True">
+                                                    <Setter TargetName="row" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                                                    <Setter TargetName="row" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <DockPanel>
-                                    <Image DockPanel.Dock="Left" Source="{Binding IconPath, Converter={StaticResource PathToImage}}" Width="40" Height="40" Margin="0,0,10,0" />
-                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Tier, StringFormat=T{0}}" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" Margin="10,0,0,0" />
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold" />
-                                        <ItemsControl ItemsSource="{Binding CoreCovenants}" ItemTemplate="{StaticResource CovenantLabel}">
-                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                        </ItemsControl>
-                                        <ItemsControl ItemsSource="{Binding AdditionalCovenants}" ItemTemplate="{StaticResource CovenantLabel}">
-                                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-                                        </ItemsControl>
+                                    <controls:Avatar DockPanel.Dock="Left" Width="34" Height="34" Margin="10,0,10,0" VerticalAlignment="Center"
+                                                     Text="{Binding Name}" Source="{Binding IconPath}" />
+                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Tier, Converter={StaticResource TierToRoman}, StringFormat={}{0} 阶}" VerticalAlignment="Center"
+                                               FontFamily="{DynamicResource NumberFontFamily}" FontWeight="Bold" FontSize="12" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <ItemsControl ItemsSource="{Binding CoreCovenants}" ItemTemplate="{StaticResource CorePill}" Focusable="False">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            </ItemsControl>
+                                            <ItemsControl ItemsSource="{Binding AdditionalCovenants}" ItemTemplate="{StaticResource ExtraPill}" Focusable="False">
+                                                <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                                            </ItemsControl>
+                                        </StackPanel>
                                     </StackPanel>
                                 </DockPanel>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
-                    <TextBlock Text="{Binding EmptyListMessage}" Foreground="{DynamicResource TextSecondaryBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
-                        <TextBlock.Style>
-                            <Style TargetType="TextBlock">
+                    <controls:EmptyState Icon="{StaticResource IconOperators}" Title="{Binding EmptyListMessage}" Hint="换个关键词，或点“重置筛选”。">
+                        <controls:EmptyState.Style>
+                            <Style TargetType="controls:EmptyState">
                                 <Setter Property="Visibility" Value="Collapsed" />
                                 <Style.Triggers><DataTrigger Binding="{Binding FilteredOperators.Count}" Value="0"><Setter Property="Visibility" Value="Visible" /></DataTrigger></Style.Triggers>
                             </Style>
-                        </TextBlock.Style>
-                    </TextBlock>
+                        </controls:EmptyState.Style>
+                    </controls:EmptyState>
                 </Grid>
             </Grid>
         </DockPanel>

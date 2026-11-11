@@ -26,6 +26,24 @@ public class GameStateUpdaterTests
         shopItems.First(s => s.Name == "角峰").IsTracked.Should().BeTrue();
         shopItems.First(s => s.Name == "不屈弹射器").IsTracked.Should().BeTrue();
         shopItems.First(s => s.Name == "隐现").IsTracked.Should().BeFalse();
+        shopItems.Should().OnlyContain(s => !s.IsTransition);
+    }
+
+    [Fact]
+    public void UpdateShop_MarksTransitionOperators()
+    {
+        var tracked = new List<TrackingEntry>
+        {
+            new() { Name = "角峰", Type = TrackingType.Operator },
+            new() { Name = "芬", Type = TrackingType.Operator, Role = TrackingRole.Transition }
+        };
+        var shopItems = new List<ShopItem> { new() { Name = "角峰" }, new() { Name = "芬" }, new() { Name = "隐现" } };
+
+        GameStateUpdater.UpdateShopTracking(shopItems, tracked);
+
+        shopItems.Single(s => s.Name == "角峰").IsTransition.Should().BeFalse();
+        shopItems.Single(s => s.Name == "芬").Should().Match<ShopItem>(s => s.IsTracked && s.IsTransition);
+        shopItems.Single(s => s.Name == "隐现").IsTransition.Should().BeFalse();
     }
 
     [Fact]

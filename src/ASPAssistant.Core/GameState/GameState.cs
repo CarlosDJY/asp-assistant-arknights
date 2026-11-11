@@ -11,6 +11,10 @@ public partial class GameState : ObservableObject
     [ObservableProperty]
     private int _gold;
 
+    /// <summary>Terminal level read from the shop's upgrade card (0 = unknown).</summary>
+    [ObservableProperty]
+    private int _terminalLevel;
+
     [ObservableProperty]
     private List<(string Name, int Count)> _fieldOperators = [];
 

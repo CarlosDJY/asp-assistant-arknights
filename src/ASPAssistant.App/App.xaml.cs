@@ -84,6 +84,8 @@ public partial class App : Application
 
     protected override async void OnStartup(StartupEventArgs e)
     {
+        ASPAssistant.App.Windows.SystemBorder.RegisterForAllWindows();
+        ASPAssistant.App.Controls.PanelToolTip.RegisterForAllElements();
         base.OnStartup(e);
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         try
@@ -144,7 +146,8 @@ public partial class App : Application
         // Data layer
         var dataStore = new JsonDataStore(dataDir);
         _settingsManager = new SettingsManager(settingsDir);
-        ThemeManager.Apply(await _settingsManager.LoadLightThemeAsync());
+        var appearance = await _settingsManager.LoadSidebarAppearanceAsync();
+        ThemeManager.Apply(appearance.Theme, appearance.IsNight(appearance.Theme));
         var savedGameTheme = await _settingsManager.LoadGameShopThemeAsync();
         if (savedGameTheme is null)
         {
@@ -167,6 +170,8 @@ public partial class App : Application
             }
         }
         var gameTheme = savedGameTheme.Value;
+        var uiTheme = appearance.ThemeFor(gameTheme);
+        ThemeManager.Apply(uiTheme, appearance.IsNight(uiTheme));
 
         // Load data
         AppLogger.Info("App", "Loading operators...");
@@ -176,8 +181,6 @@ public partial class App : Application
         var (equipment, manualJobChangeEquipments) = await dataStore.LoadEquipmentAsync();
         AppLogger.Info("App", $"Loaded {equipment.Count} equipment items");
 
-        var skinAvatarMap = await dataStore.LoadSkinAvatarMapAsync();
-        AppLogger.Info("App", $"Loaded {skinAvatarMap.Count} skin avatar entries");
 
         var trackingEntries = await _settingsManager.LoadTrackingEntriesAsync();
         AppLogger.Info("App", $"Loaded {trackingEntries.Count} tracking entries");
@@ -205,6 +208,7 @@ public partial class App : Application
         var operatorVm = new OperatorBrowseViewModel();
         operatorVm.LoadOperators(operators);
         operatorVm.SetBanChecker(banVm.IsBanned);
+        operatorVm.SetCovenantBanChecker(banVm.IsCovenantBanned);
 
         var covenantNames = operators
             .SelectMany(o => o.CoreCovenants.Concat(o.AdditionalCovenants))
@@ -239,7 +243,6 @@ public partial class App : Application
         var ocrEngine = new MaaOcrEngine(dataDir);
         var shopReader = new ShopReader(ocrEngine,
             operators.Select(o => o.Name).Concat(equipment.Select(e => e.Name)).Distinct().ToList()) { Theme = gameTheme };
-        var banIconMatcher = new MaaBanIconMatcher(dataDir);
         // Covenant groups come from covenants.json (bondType), not from the operator roster:
         // a covenant with no operator in the local data set (a new season addition) must
         // still be recognised on the ban screen.
@@ -261,26 +264,12 @@ public partial class App : Application
         var enemyRecognizer = new EnemyRecognizer(ocrEngine, garrisonMode.OcrStrategy, bossDataService);
         _ocrScanner = new OcrScannerService(
             captureService, garrisonMode.OcrStrategy, shopReader, ocrEngine, gameState,
-            () => Dispatcher.Invoke(() => trackingVm.AllEntries.Select(e => e.Name).Distinct().ToList()),
-            getAllOperators: () =>
-            {
-                var covenantLookup = operators.ToDictionary(
-                    o => o.Name,
-                    o => ((IReadOnlyList<string>)o.CoreCovenants, (IReadOnlyList<string>)o.AdditionalCovenants));
-                return skinAvatarMap
-                    .GroupBy(kvp => kvp.Value)
-                    .Select(g =>
-                    {
-                        covenantLookup.TryGetValue(g.Key, out var cv);
-                        return (g.Key,
-                                cv.Item1 ?? (IReadOnlyList<string>)[],
-                                cv.Item2 ?? (IReadOnlyList<string>)[],
-                                (IReadOnlyList<string>)g.Select(kvp => $"skin_avatars/{kvp.Key}").ToList());
-                    })
-                    .ToList();
-            },
-            iconMatcher: banIconMatcher,
-            intervalMs: 500);
+            () => Dispatcher.Invoke(() => trackingVm.ActiveEntries.Select(e => e.Name).Distinct().ToList()),
+            intervalMs: 500)
+        {
+            TerminalReader = new TerminalLevelReader(ocrEngine),
+            ThemeProvider = () => shopReader.Theme,
+        };
 
         _windowTracker = new WindowTrackerService();
 
@@ -405,7 +394,7 @@ public partial class App : Application
             Dispatcher.Invoke(() =>
             {
                 Core.GameState.GameStateUpdater.UpdateShopTracking(
-                    state.ShopItems, trackingVm.AllEntries.ToList());
+                    state.ShopItems, trackingVm.ActiveEntries.ToList());
 
                 _lastShopItems = state.ShopItems;
 
@@ -419,14 +408,6 @@ public partial class App : Application
             });
         };
 
-        // Wire ban detection: manual screenshot scan results → update operator ban state.
-        _ocrScanner.BansDetected += names =>
-        {
-            Dispatcher.Invoke(() =>
-            {
-                banVm.SetBans(names);
-            });
-        };
 
         // Enemy recognition result → update enemy tab (include boss + enemy-type data).
         void UpdateEnemyPage(Core.Models.EnemyResult result)
@@ -548,14 +529,42 @@ public partial class App : Application
                 _informationScanGate.Release();
             }
         }
-        _ocrScanner.BanScreenDetected += async () => await RecordInformationAsync();
+        _ocrScanner.BanScreenDetected += async () =>
+        {
+            // The opening info screen starts a new run: the previous run's terminal level no longer applies.
+            _ocrScanner.ResetTerminalLevel();
+            Dispatcher.Invoke(() => { trackingVm.ResetTerminalLevel(); _sidePanel.PlannerVm.CurrentTerminalLevel = 0; });
+            await _settingsManager!.SaveTerminalLevelAsync(0);
+            await RecordInformationAsync();
+        };
+        _ocrScanner.TerminalLevelChanged += level =>
+        {
+            Dispatcher.Invoke(() =>
+            {
+                trackingVm.IsTerminalLevelRestored = false;
+                trackingVm.DetectedTerminalLevel = level;
+            });
+            _ = _settingsManager!.SaveTerminalLevelAsync(level);
+        };
+        // Restarted mid-run: start from the saved level until the shop's upgrade card confirms or replaces it.
+        if (await _settingsManager!.LoadTerminalLevelAsync() is { } savedLevel)
+        {
+            _ocrScanner.RestoreTerminalLevel(savedLevel);
+            trackingVm.DetectedTerminalLevel = savedLevel;
+            trackingVm.IsTerminalLevelRestored = true;
+        }
+        trackingVm.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName != nameof(TrackingViewModel.TerminalLevel)) return;
+            _sidePanel.PlannerVm.CurrentTerminalLevel = trackingVm.TerminalLevel;
+            RefreshOverlayTracking(trackingVm);
+        };
         _sidePanel.ManualScanRequested += async () => await RecordInformationAsync();
 
         // Manual ban/unban from operator card button.
         _sidePanel.BanToggleRequested += (name, banned) =>
         {
             banVm.ToggleBan(name);
-            _ocrScanner!.SetManualBan(name, banned);
         };
 
 
@@ -591,7 +600,7 @@ public partial class App : Application
     {
         if (_overlay is null || _lastShopItems.Count == 0) return;
         Core.GameState.GameStateUpdater.UpdateShopTracking(
-            _lastShopItems, trackingVm.AllEntries.ToList());
+            _lastShopItems, trackingVm.ActiveEntries.ToList());
         Dispatcher.Invoke(() => _overlay.UpdateShopItems(_lastShopItems));
     }
 

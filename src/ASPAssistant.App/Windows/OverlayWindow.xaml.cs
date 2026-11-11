@@ -105,6 +105,7 @@ public partial class OverlayWindow : Window
 
             if (_markerPool.TryGetValue(item.Id, out var existing))
             {
+                SetMarkerColor(existing, item.IsTransition);
                 if (sameViewport && Math.Abs(Canvas.GetLeft(existing) - mx) < 6 && Math.Abs(Canvas.GetTop(existing) - my) < 6) continue;
                 Canvas.SetLeft(existing, mx);
                 Canvas.SetTop(existing, my);
@@ -113,6 +114,7 @@ public partial class OverlayWindow : Window
             else
             {
                 var marker = CreateMarker();
+                SetMarkerColor(marker, item.IsTransition);
                 marker.Opacity = 0;
                 Canvas.SetLeft(marker, mx);
                 Canvas.SetTop(marker, my);
@@ -225,6 +227,18 @@ public partial class OverlayWindow : Window
             OverlayCanvas.Children.Remove(el);
         };
         el.BeginAnimation(OpacityProperty, anim);
+    }
+
+    private static readonly SolidColorBrush FinalMarkerBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x4C, 0xAF, 0x50)));
+    private static readonly SolidColorBrush TransitionMarkerBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xFF, 0x98, 0x00)));
+
+    private static SolidColorBrush Freeze(SolidColorBrush brush) { brush.Freeze(); return brush; }
+
+    /// <summary>Green = 大成 (final) operator, orange = 过渡 (transition) operator of an imported route.</summary>
+    private static void SetMarkerColor(FrameworkElement marker, bool transition)
+    {
+        if (marker is Panel panel && panel.Children.OfType<Ellipse>().FirstOrDefault() is { } ellipse)
+            ellipse.Fill = transition ? TransitionMarkerBrush : FinalMarkerBrush;
     }
 
     private static Grid CreateMarker()

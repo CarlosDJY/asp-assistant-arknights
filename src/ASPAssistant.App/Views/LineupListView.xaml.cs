@@ -62,9 +62,19 @@ public partial class LineupListView : UserControl
 
     private Lineup? FindLineup(object sender)
     {
+        if (sender is FrameworkElement { DataContext: Lineup lineup }) return lineup;
         if (sender is FrameworkElement fe && fe.Tag is string id && _vm is not null)
             return _vm.Lineups.FirstOrDefault(l => l.Id == id);
         return null;
+    }
+
+    /// <summary>Activated covenants of a card, core first, shown as people ("乌萨斯 6").</summary>
+    private void OnCovenantPillsLoaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not ItemsControl list || list.DataContext is not Lineup lineup || _vm is null) return;
+        list.ItemsSource = _vm.ComputeStats(lineup).Where(c => c.Activated)
+            .OrderByDescending(c => c.BondType == "SEASON").ThenByDescending(c => c.Count)
+            .Select(c => new LineupCovenantPill(c.Name, c.Count, c.BondType == "SEASON")).ToList();
     }
 
     private void OnEditLineup(object sender, RoutedEventArgs e)
@@ -130,3 +140,5 @@ public partial class LineupListView : UserControl
         }
     }
 }
+
+public sealed record LineupCovenantPill(string Name, int Count, bool IsCore);

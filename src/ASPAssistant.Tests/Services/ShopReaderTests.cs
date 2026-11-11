@@ -160,6 +160,7 @@ public class ShopReaderTests(ShopReaderFixture fixture) : IClassFixture<ShopRead
 public sealed class ShopReaderFixture : IDisposable
 {
     private readonly MaaOcrEngine _engine = new(Path.Combine(AppContext.BaseDirectory, "data"));
+    public MaaOcrEngine Engine => _engine;
     public IReadOnlyList<string> Names { get; }
     public ShopReader Reader { get; }
     public void SelectTheme(string file) => Reader.Theme = file.StartsWith("shop-terminal-", StringComparison.Ordinal)

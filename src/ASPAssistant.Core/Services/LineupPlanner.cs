@@ -18,6 +18,8 @@ public sealed class LineupPlanner
     public static readonly IReadOnlySet<string> NoAdditionalScore = new HashSet<string> { "奇迹", "投资人", "远见", "独行", "调和" };
     public const string SoloCovenant = "独行";
     public const int MaxLockedOperators = 9;
+    /// <summary>Active 聚合 counts as a 奶位 like a healer.</summary>
+    public const string HealingCovenant = "聚合";
     private const int MaxBranches = 48;
 
     private readonly IReadOnlyList<Operator> _operators;
@@ -57,19 +59,9 @@ public sealed class LineupPlanner
         => _covenants.Where(c => !NoTransform.Contains(c.Name) && bannedCovenants?.Contains(c.Name) != true)
             .Select(c => c.Name).ToHashSet(StringComparer.Ordinal);
 
-    /// <summary>
-    /// Operators that cannot appear because of covenant bans: their only covenant is banned,
-    /// or both a core covenant and an additional covenant of theirs are banned.
-    /// </summary>
+    /// <summary>Operators that cannot appear because of covenant bans (see <see cref="CovenantBanRules"/>).</summary>
     public bool IsExcludedByBans(Operator op, IReadOnlySet<string> bannedCovenants)
-    {
-        if (bannedCovenants.Count == 0) return false;
-        var all = op.CoreCovenants.Concat(op.AdditionalCovenants).Distinct().ToList();
-        if (all.Count == 1 && bannedCovenants.Contains(all[0])) return true;
-        var coreBanned = all.Any(c => _coreNames.Contains(c) && bannedCovenants.Contains(c));
-        var additionalBanned = all.Any(c => !_coreNames.Contains(c) && bannedCovenants.Contains(c));
-        return coreBanned && additionalBanned;
-    }
+        => CovenantBanRules.IsExcluded(op, bannedCovenants);
 
     // ── Search ──────────────────────────────────────────────────────────────
 
@@ -138,6 +130,12 @@ public sealed class LineupPlanner
         private readonly HashSet<string> _goalNames;
         private readonly HashSet<string> _additionalNames;
         private readonly bool _hasSoloGoal;
+        // 奶位: every final lineup keeps at least one healer (or an active 聚合). Only enforced when the
+        // operator data carries roles; if no lineup can have one, the search is repeated without it.
+        private readonly bool[] _healer;
+        private readonly bool _healerData;
+        private readonly int _healingNeed;
+        private bool _requireHealer;
 
         // per-variant state
         private int _people, _teamSize, _transforms, _nodes;
@@ -164,7 +162,15 @@ public sealed class LineupPlanner
             _additionalNames = _covenantNames.Where(n => !_goalNames.Contains(n)
                 && !_coreNames.Contains(n) && !NoAdditionalScore.Contains(n)).ToHashSet(StringComparer.Ordinal);
             _hasSoloGoal = request.Goals.Any(g => g.Name == SoloCovenant);
+            _healer = ops.Select(o => o.Profile?.IsHealer == true).ToArray();
+            _healerData = _healer.Any(h => h);
+            var healing = covenants.FirstOrDefault(c => c.Name == HealingCovenant);
+            _healingNeed = healing is null ? 0 : CreateGoal(healing, 1).Count;
         }
+
+        private bool HasHealer(IReadOnlyList<int> team, Dictionary<string, int> counts)
+            => !_requireHealer || team.Any(i => _healer[i])
+               || _healingNeed > 0 && counts.GetValueOrDefault(HealingCovenant) >= _healingNeed;
 
         private IReadOnlyList<string> _covenantNames => _covenants.Select(c => c.Name).ToList();
 
@@ -176,7 +182,16 @@ public sealed class LineupPlanner
             _picked.Clear(); _visited.Clear(); Array.Clear(_used);
             if (_locked.Count > people) return new PlannerVariantResult(people, transforms, [], false);
             foreach (var i in _locked) { _picked.Add(i); _used[i] = true; }
+            _requireHealer = _healerData;
             Visit();
+            if (_found.Count == 0 && _requireHealer)
+            {
+                // Targets leave no room for a healer: return the best lineups anyway, flagged.
+                _requireHealer = false;
+                _nodes = 0; _visited.Clear();
+                Visit();
+                _found = [.. _found.Select(f => f with { MissingHealer = true })];
+            }
             var limited = _limited;
             return new PlannerVariantResult(people, transforms,
                 _found.Select(f => f with { SearchLimited = limited }).ToList(), limited);
@@ -253,12 +268,14 @@ public sealed class LineupPlanner
             // Once targets are reachable, keep branching until the whole lineup is
             // filled. This is what lets the score see the operators in the free slots.
             var transformDeficit = missing.Sum(g => TransformDeficit(g, counts));
+            var needHealer = !HasHealer(_picked, counts);
             if (slots <= 0)
             {
                 if (missing.All(g => _allowed.Contains(g.Name)) && transformDeficit <= trLeft)
                     TryFinish(counts);
                 return;
             }
+            // Last free slot and still no 奶位: it has to be a healer (a transform into 聚合 is checked at finish).
             if (!CanStillReach(missing, counts, slots, trLeft)) return;
             if (!_visited.Add(StateKey())) return;
 
@@ -277,9 +294,11 @@ public sealed class LineupPlanner
                 if (_used[i]) continue;
                 if (_hasSoloGoal && _native[i].Contains(SoloCovenant) && counts[ SoloCovenant ] >= 1) continue;
                 if (pivot is not null && !Contributes(i, pivot, counts)) continue;
+                if (needHealer && slots == 1 && !_healer[i] && trLeft == 0) continue;
                 var gain = missing.Count(g => Contributes(i, g, counts));
                 var extra = _native[i].Count(c => _additionalNames.Contains(c));
-                branches.Add((i, 10 * gain + 0.8 * extra + (i * 13 % 31) / 50.0));
+                var heal = needHealer && _healer[i] ? 5 : 0;
+                branches.Add((i, 10 * gain + heal + 0.8 * extra + (i * 13 % 31) / 50.0));
             }
 
             // A solo covenant can make the requested people count impossible to
@@ -380,6 +399,7 @@ public sealed class LineupPlanner
 
             var (counts, bonus) = Count(team, tr);
             if (_request.Goals.Any(g => counts[g.Name] < g.Count)) return false;
+            if (!HasHealer(team, counts)) return false;
             if (_hasSoloGoal && counts[SoloCovenant] != 1) return false;
 
             var key = string.Join(',', team.Select(i => _ops[i].Name).Order(StringComparer.Ordinal)) + '|' +

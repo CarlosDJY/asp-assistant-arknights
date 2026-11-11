@@ -1,7 +1,8 @@
-<!-- Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE. -->
+<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
 <Window x:Class="ASPAssistant.App.Windows.SimplePickerDialog"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:ASPAssistant.App.Controls"
         xmlns:converters="clr-namespace:ASPAssistant.App.Converters"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         Title="选择"
@@ -20,48 +21,36 @@
     </Window.Resources>
     <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <DockPanel>
-            <Border DockPanel.Dock="Top" Background="{DynamicResource TitleBackgroundBrush}" MouseLeftButtonDown="OnTitleBarDrag">
+            <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
-                    <Button DockPanel.Dock="Right" Content="✕" Click="OnCancelClick"
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancelClick"
                             Style="{StaticResource CloseButton}" />
                     <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="TitleText" Text="选择"
-                                   Foreground="{DynamicResource TextPrimaryBrush}" FontSize="13"
-                                   FontWeight="SemiBold" Padding="12,8" VerticalAlignment="Center" />
+                        <TextBlock Style="{StaticResource DialogTitleText}" x:Name="TitleText" Text="选择" />
                         <CheckBox x:Name="CoreEquipmentToggle" Content="设为核心" Visibility="Collapsed"
                                   FontSize="12" VerticalAlignment="Center" Margin="4,0,0,0"
-                                  Foreground="{DynamicResource AccentBrush}" />
+                                  Foreground="{DynamicResource TitleTextBrush}" />
                     </StackPanel>
                 </DockPanel>
             </Border>
 
-            <Border DockPanel.Dock="Top" Padding="10,8,10,4">
-                <TextBox x:Name="SearchBox"
-                         Background="{DynamicResource InputOverlayBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
-                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1"
-                         CaretBrush="{DynamicResource AccentBrush}"
-                         Padding="4,4" FontSize="12"
+            <Border DockPanel.Dock="Top" Padding="12,10,12,6">
+                <TextBox Style="{StaticResource DialogTextBox}" x:Name="SearchBox" FontSize="12"
                          TextChanged="OnSearchTextChanged" />
             </Border>
 
-            <Border DockPanel.Dock="Bottom" Background="{DynamicResource TitleBackgroundBrush}"
-                    BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,1,0,0"
-                    Padding="10,6">
+            <Border Style="{StaticResource DialogFooter}" DockPanel.Dock="Bottom">
                 <DockPanel>
-                    <Button x:Name="ConfirmButton" DockPanel.Dock="Right" Content="确定" Click="OnConfirmClick"
-                            Visibility="Collapsed" Style="{StaticResource TrackingButton}" Padding="12,4" Margin="8,0,0,0" />
-                    <Button DockPanel.Dock="Right" Content="清除选择" Click="OnClearClick"
-                            Padding="10,4" FontSize="12" Cursor="Hand"
-                            Background="{DynamicResource NeutralHoverBrush}"
-                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                            Foreground="{DynamicResource TextSecondaryBrush}" />
+                    <Button Style="{StaticResource DialogPrimaryButton}" x:Name="ConfirmButton" DockPanel.Dock="Right" Content="确定" Click="OnConfirmClick"
+                            Visibility="Collapsed" Margin="8,0,0,0" />
+                    <Button Style="{StaticResource DialogSecondaryButton}" DockPanel.Dock="Right" Content="清除选择" Click="OnClearClick" />
                     <TextBlock x:Name="HintText" Text=""
                                Foreground="{DynamicResource TextSecondaryBrush}" FontSize="11"
                                VerticalAlignment="Center" />
                 </DockPanel>
             </Border>
 
-            <ListBox x:Name="ItemsList" Background="Transparent" BorderThickness="0"
+            <ListBox x:Name="ItemsList" Background="Transparent" BorderThickness="0" Padding="8,0,4,8"
                      Foreground="{DynamicResource TextPrimaryBrush}"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      SelectionMode="Single"
@@ -69,13 +58,13 @@
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="Cursor" Value="Hand" />
-                        <Setter Property="Padding" Value="4" />
+                        <Setter Property="Padding" Value="8,0" />
+                        <Setter Property="Margin" Value="0,0,0,4" />
                         <Setter Property="Background" Value="Transparent" />
                         <Setter Property="ToolTipService.InitialShowDelay" Value="200" />
                         <Setter Property="ToolTip">
                             <Setter.Value>
-                                <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
-                                         Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" Padding="8">
+                                <ToolTip DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}" Padding="10,8">
                                     <TextBlock Text="{Binding Summary}" Width="300" MaxHeight="240" TextWrapping="Wrap"
                                                FontSize="12" Foreground="{DynamicResource TextPrimaryBrush}" />
                                 </ToolTip>
@@ -84,16 +73,18 @@
                         <Setter Property="Template">
                             <Setter.Value>
                                 <ControlTemplate TargetType="ListBoxItem">
-                                    <Border x:Name="bg" Background="{TemplateBinding Background}"
-                                            CornerRadius="3" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter />
+                                    <Border x:Name="bg" Height="48" Background="{DynamicResource CardBackgroundBrush}" BorderThickness="1"
+                                            BorderBrush="{DynamicResource LineBrush}"
+                                            CornerRadius="{DynamicResource RowCornerRadius}" Padding="{TemplateBinding Padding}">
+                                        <ContentPresenter VerticalAlignment="Center" />
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource NeutralHoverBrush}" />
+                                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource CardHoverBrush}" />
                                         </Trigger>
                                         <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource AccentHoverBrush}" />
+                                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                            <Setter TargetName="bg" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>
@@ -109,21 +100,18 @@
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <DockPanel>
-                            <Border DockPanel.Dock="Left" Width="32" Height="32" Margin="0,0,8,0"
-                                    Background="{DynamicResource NeutralHoverBrush}" CornerRadius="3" ClipToBounds="True">
-                                <Image Source="{Binding IconPath, Converter={StaticResource PathToImage}}"
-                                       Stretch="UniformToFill" />
-                            </Border>
+                            <controls:Avatar DockPanel.Dock="Left" Width="32" Height="32" Margin="0,0,10,0"
+                                             Text="{Binding Display}" Source="{Binding IconPath}" />
                             <TextBlock DockPanel.Dock="Right"
                                        Text="{Binding RightLabel}"
-                                       Foreground="{DynamicResource AccentBrush}"
+                                       Foreground="{DynamicResource TextSecondaryBrush}"
                                        FontSize="11"
                                        VerticalAlignment="Center"
                                        Margin="8,0,2,0"
                                        TextAlignment="Right" />
                             <TextBlock Text="{Binding Display}"
                                        Foreground="{DynamicResource TextPrimaryBrush}"
-                                       FontSize="12" VerticalAlignment="Center"
+                                       FontSize="13" FontWeight="Bold" VerticalAlignment="Center"
                                        TextTrimming="CharacterEllipsis" />
                         </DockPanel>
                     </DataTemplate>

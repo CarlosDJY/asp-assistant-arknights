@@ -29,7 +29,7 @@ public class LineupPlannerViewModelTests
         vm.TotalResults.Should().Be(0);
         vm.VariantCells.Should().Contain(c => c.IsLimited);
         vm.StatusDetail.Should().Contain("搜索上限");
-        vm.ResultHint.Should().Contain("搜索受限").And.NotContain("无解");
+        vm.VariantCells.Should().Contain(c => !c.HasResults && c.SubText == "受限");
         vm.VariantCells.Should().OnlyContain(c => !c.ToolTip.Contains("无解"));
     }
 
@@ -197,6 +197,24 @@ public class LineupPlannerViewModelTests
     }
 
     [Fact]
+    public void BannedAdditionalCovenantIsBlockedWhenTooFewHoldersRemain()
+    {
+        var (vm, bans) = Create();
+        vm.IsActive = true;
+        var raid = Item(vm, "突袭");
+        raid.ToggleLevel1Command.Execute(null);
+        raid.Level.Should().Be(1);
+
+        // 炎 + 突袭 banned: 炎突 leaves (core + additional banned), only 维突 holds 突袭 — Ⅰ needs 2.
+        bans.SetCovenantBans(["炎", "突袭"]);
+
+        raid.AvailableMembers.Should().Be(1);
+        raid.IsBlocked.Should().BeTrue();
+        raid.Level.Should().Be(0);
+        raid.BanNote.Should().Contain("凑不齐");
+    }
+
+    [Fact]
     public void CovenantDetailsListMembersAndMarkUnavailableOnes()
     {
         var (vm, bans) = Create();
@@ -264,6 +282,27 @@ public class LineupPlannerViewModelTests
         await vm.PendingSearch!;
 
         vm.VisibleLineups[0].Goals.Select(g => g.Text)
-            .Should().Contain(["炎Ⅰ 3人", "精准Ⅱ 3人"]);
+            .Should().Contain(["炎 3", "精准 3"]);
+    }
+
+    [Fact]
+    public async Task RouteForACandidateListsStagesAndClosesOnNewResults()
+    {
+        var (vm, _) = Create();
+        vm.IsActive = true;
+        Item(vm, "炎").ToggleLevel1Command.Execute(null);
+        await vm.PendingSearch!;
+
+        await vm.PlanRouteAsync(vm.VisibleLineups[0]);
+
+        vm.ShowRoute.Should().BeTrue();
+        vm.RouteStages.Select(s => s.Title).Should().Equal("开局", "前期", "中期", "四本对对碰", "六本叠层", "大成（打 Boss）");
+        vm.RouteStages[^1].IsFinal.Should().BeTrue();
+        vm.RouteStages.SelectMany(s => s.Operators).Should().OnlyContain(o => o.RoleText == "最终" || o.RoleText == "过渡");
+
+        Item(vm, "维多利亚").ToggleLevel1Command.Execute(null);
+        await vm.PendingSearch!;
+        vm.ShowRoute.Should().BeFalse();
+        vm.RouteStages.Should().BeEmpty();
     }
 }

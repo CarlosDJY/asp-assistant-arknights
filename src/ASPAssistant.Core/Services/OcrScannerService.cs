@@ -1,5 +1,4 @@
 ﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
-using System.Threading.Channels;
 using System.Timers;
 using ASPAssistant.Core.GameModes;
 using ASPAssistant.Core.Models;
@@ -15,18 +14,13 @@ public class OcrScannerService : IDisposable
     private readonly IOcrEngine _ocrEngine;
     private readonly GameState.GameState _gameState;
     private readonly Func<IReadOnlyList<string>> _getTrackedNames;
-    private readonly Func<IReadOnlyList<(string Name, IReadOnlyList<string> CoreCovenants, IReadOnlyList<string> AdditionalCovenants, IReadOnlyList<string> TemplateNames)>>? _getAllOperators;
-    private readonly MaaBanIconMatcher? _iconMatcher;
     private readonly Timer _scanTimer;
     private readonly ShopStateStabilizer _stabilizer = new();
     private int _scanning; // re-entry guard (0=idle, 1=busy)
 
     // Accumulated ban set for manual screenshot scans.
-    private readonly HashSet<string> _accumulatedBans = [];
 
     // Manual screenshot scan queue — button-triggered scans execute sequentially.
-    private readonly Channel<byte[]> _manualScanChannel = Channel.CreateUnbounded<byte[]>();
-    private int _pendingManualScans;
 
     // Ban screen detection state machine.
     private bool _banScreenActive;
@@ -37,6 +31,31 @@ public class OcrScannerService : IDisposable
     private const int BanLostThreshold   = 3;
 
     public event Action<GameState.GameState>? GameStateUpdated;
+
+    /// <summary>Raised when the (confirmed) terminal level read from the shop's upgrade card changes.</summary>
+    public event Action<int>? TerminalLevelChanged;
+
+    /// <summary>Optional: reads the terminal level every <see cref="TerminalReadInterval"/> while the shop is visible.</summary>
+    public TerminalLevelReader? TerminalReader { get; init; }
+    public Func<GameShopTheme>? ThemeProvider { get; init; }
+    public TimeSpan TerminalReadInterval { get; init; } = TimeSpan.FromSeconds(4);
+    private readonly TerminalLevelTracker _terminalTracker = new();
+    private DateTime _nextTerminalRead = DateTime.MinValue;
+
+    /// <summary>New run: forget the previous run's terminal level.</summary>
+    public void ResetTerminalLevel()
+    {
+        _terminalTracker.Reset();
+        _gameState.TerminalLevel = 0;
+        _nextTerminalRead = DateTime.MinValue;
+    }
+
+    /// <summary>Starts from the level the last session saved; the shop's upgrade card confirms or replaces it.</summary>
+    public void RestoreTerminalLevel(int level)
+    {
+        _terminalTracker.Restore(level);
+        _gameState.TerminalLevel = _terminalTracker.Level ?? 0;
+    }
 
     /// <summary>
     /// Raised when the periodic scan first detects that the game is on the ban selection screen.
@@ -49,18 +68,6 @@ public class OcrScannerService : IDisposable
     /// </summary>
     public event Action? BanScreenLost;
 
-    /// <summary>
-    /// Raised when manual screenshot matching finds newly banned operators.
-    /// The argument is the full accumulated list of banned operator names.
-    /// </summary>
-    public event Action<IReadOnlyList<string>>? BansDetected;
-
-    /// <summary>
-    /// Raised when the number of pending manual screenshot scans changes.
-    /// Argument is the new pending count (0 = all done).
-    /// </summary>
-    public event Action<int>? ManualScanQueueChanged;
-
     public OcrScannerService(
         ScreenCaptureService captureService,
         IOcrStrategy ocrStrategy,
@@ -68,8 +75,6 @@ public class OcrScannerService : IDisposable
         IOcrEngine ocrEngine,
         GameState.GameState gameState,
         Func<IReadOnlyList<string>> getTrackedNames,
-        Func<IReadOnlyList<(string Name, IReadOnlyList<string> CoreCovenants, IReadOnlyList<string> AdditionalCovenants, IReadOnlyList<string> TemplateNames)>>? getAllOperators = null,
-        MaaBanIconMatcher? iconMatcher = null,
         int intervalMs = 3000)
     {
         _captureService = captureService;
@@ -79,13 +84,8 @@ public class OcrScannerService : IDisposable
         _informationDetector = new InformationScreenDetector(ocrEngine, ocrStrategy);
         _gameState = gameState;
         _getTrackedNames = getTrackedNames;
-        _getAllOperators = getAllOperators;
-        _iconMatcher = iconMatcher;
         _scanTimer = new Timer(intervalMs);
         _scanTimer.Elapsed += OnScanTick;
-
-        // Start the background consumer for button-triggered manual scans.
-        _ = Task.Run(ProcessManualScansAsync);
     }
 
     public void Start() => _scanTimer.Start();
@@ -146,6 +146,7 @@ public class OcrScannerService : IDisposable
 
             var rawItems = await _shopReader.ReadAsync(screenshot, imgWidth, imgHeight, _getTrackedNames());
             PublishShopItems(rawItems);
+            await ReadTerminalLevelAsync(screenshot, imgWidth, imgHeight);
         }
         catch (Exception ex)
         {
@@ -159,6 +160,22 @@ public class OcrScannerService : IDisposable
         }
     }
 
+    private async Task ReadTerminalLevelAsync(byte[] screenshot, int width, int height)
+    {
+        if (TerminalReader is null || DateTime.UtcNow < _nextTerminalRead) return;
+        var level = await TerminalReader.ReadAsync(screenshot, width, height, ThemeProvider?.Invoke() ?? GameShopTheme.Terminal);
+        // Not visible (battle, menus): look again a little later. Confirming a change reads again soon.
+        _nextTerminalRead = DateTime.UtcNow + (level is null ? TerminalReadInterval * 2 : TerminalReadInterval);
+        if (level is not null && (level != _terminalTracker.Level || _terminalTracker.IsRestored))
+            _nextTerminalRead = DateTime.UtcNow + TimeSpan.FromSeconds(1);
+        if (_terminalTracker.Observe(level))
+        {
+            AppLogger.Info("Terminal", $"Terminal level {_terminalTracker.Level}");
+            _gameState.TerminalLevel = _terminalTracker.Level ?? 0;
+            TerminalLevelChanged?.Invoke(_terminalTracker.Level!.Value);
+        }
+    }
+
     private void PublishShopItems(IReadOnlyList<ShopItem> items)
     {
         if (!_stabilizer.TryUpdate(items, out var stableItems))
@@ -167,171 +184,8 @@ public class OcrScannerService : IDisposable
         GameStateUpdated?.Invoke(_gameState);
     }
 
-    /// <summary>
-    /// Captures the current game window screenshot and enqueues it for ban-screen matching.
-    /// The scan runs on a background consumer thread so multiple calls queue up sequentially.
-    /// </summary>
-    public void EnqueueManualScan()
-    {
-        var screenshot = _captureService.CaptureScreen();
-        if (screenshot == null)
-        {
-            AppLogger.Warn("OcrScanner", "EnqueueManualScan: screenshot capture returned null");
-            return;
-        }
-        var pending = Interlocked.Increment(ref _pendingManualScans);
-        AppLogger.Info("OcrScanner", $"Manual scan enqueued (pending={pending}, png={screenshot.Length} bytes)");
-        ManualScanQueueChanged?.Invoke(pending);
-        _manualScanChannel.Writer.TryWrite(screenshot);
-    }
-
-    private async Task ProcessManualScansAsync()
-    {
-        var regions = _ocrStrategy.GetScanRegions();
-        await foreach (var screenshot in _manualScanChannel.Reader.ReadAllAsync())
-        {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            try
-            {
-                var (w, h) = GetPngDimensions(screenshot);
-                AppLogger.Info("OcrScanner", $"Manual scan started (img={w}x{h})");
-                await RunBanMatchCoreAsync(screenshot, regions, w, h);
-                AppLogger.Info("OcrScanner", $"Manual scan completed in {sw.ElapsedMilliseconds}ms");
-            }
-            catch (Exception ex)
-            {
-                AppLogger.Error("OcrScanner", "Manual scan failed", ex);
-            }
-            finally
-            {
-                var remaining = Interlocked.Decrement(ref _pendingManualScans);
-                ManualScanQueueChanged?.Invoke(remaining);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Reads width and height from a PNG file's IHDR chunk (bytes 16–23).
-    /// No dependencies beyond the raw byte array.
-    /// </summary>
-    private static (int Width, int Height) GetPngDimensions(byte[] png)
-    {
-        int w = (png[16] << 24) | (png[17] << 16) | (png[18] << 8) | png[19];
-        int h = (png[20] << 24) | (png[21] << 16) | (png[22] << 8) | png[23];
-        return (w, h);
-    }
-
-    /// <summary>
-    /// Core ban-screen matching: faction OCR → candidate filter → batch FeatureMatch.
-    /// Accumulates hits in <see cref="_accumulatedBans"/> and fires <see cref="BansDetected"/>.
-    /// </summary>
-    private async Task RunBanMatchCoreAsync(
-        byte[] screenshot,
-        IReadOnlyList<OcrRegionDefinition> regions,
-        int imgWidth,
-        int imgHeight)
-    {
-        // ── Faction OCR: detect which covenant groups are visible in the left panel ──────────
-        var allOperators = _getAllOperators!();
-        var allCovenants = allOperators
-            .SelectMany(o => o.CoreCovenants.Concat(o.AdditionalCovenants))
-            .Where(c => !string.IsNullOrEmpty(c))
-            .ToHashSet();
-
-        var visibleFactions = new HashSet<string>();
-        var factionRegion = regions.FirstOrDefault(r => r.Name == "BanFactionPanel");
-        if (factionRegion != null)
-        {
-            int fx = (int)(factionRegion.XPercent * imgWidth);
-            int fy = (int)(factionRegion.YPercent * imgHeight);
-            int fw = (int)(factionRegion.WidthPercent * imgWidth);
-            int fh = (int)(factionRegion.HeightPercent * imgHeight);
-            var factionOcr = await _ocrEngine.RecognizeRegionAsync(screenshot, fx, fy, fw, fh);
-            var ocrTexts = factionOcr.Select(r => r.Text).ToList();
-            AppLogger.Info("BanMatch", $"Faction OCR ({ocrTexts.Count} results): [{string.Join(", ", ocrTexts)}]");
-            foreach (var result in factionOcr)
-                foreach (var covenant in allCovenants)
-                    if (result.Text.Contains(covenant))
-                        visibleFactions.Add(covenant);
-            AppLogger.Info("BanMatch", $"Visible factions: [{string.Join(", ", visibleFactions)}]");
-        }
-        else
-        {
-            AppLogger.Warn("BanMatch", "BanFactionPanel region not found, no faction pre-filter applied");
-        }
-
-        // Build candidate list, skipping already-identified bans and filtering by visible faction.
-        var buildSw = System.Diagnostics.Stopwatch.StartNew();
-        var totalOperators = allOperators.Count;
-        var alreadyBanned = allOperators.Count(x => _accumulatedBans.Contains(x.Name));
-        var candidateSnapshot = allOperators
-            .Where(x => !_accumulatedBans.Contains(x.Name))
-            .Where(x => visibleFactions.Count == 0
-                || x.CoreCovenants.Any(c => visibleFactions.Contains(c))
-                || x.AdditionalCovenants.Any(c => visibleFactions.Contains(c)))
-            .Select(x => (x.Name, x.TemplateNames))
-            .ToList();
-        buildSw.Stop();
-        AppLogger.Info("BanMatch",
-            $"Candidates: {candidateSnapshot.Count} built in {buildSw.ElapsedMilliseconds}ms " +
-            $"(total={totalOperators}, already-banned={alreadyBanned}, " +
-            $"templates={candidateSnapshot.Sum(c => c.TemplateNames.Count)})");
-
-        bool anyNewMatch = false;
-        var newlyDetected = new List<string>();
-        var matchSw = System.Diagnostics.Stopwatch.StartNew();
-        var candidateSw = System.Diagnostics.Stopwatch.StartNew();
-        long minCandidateMs = long.MaxValue, maxCandidateMs = 0, sumCandidateMs = 0;
-        int candidateIndex = 0;
-        foreach (var candidate in candidateSnapshot)
-        {
-            candidateSw.Restart();
-            var tuple = await _iconMatcher!.FindBestInSlotAsync(screenshot, candidate, imgWidth, imgHeight);
-            var candidateMs = candidateSw.ElapsedMilliseconds;
-            sumCandidateMs += candidateMs;
-            if (candidateMs < minCandidateMs) minCandidateMs = candidateMs;
-            if (candidateMs > maxCandidateMs) maxCandidateMs = candidateMs;
-            candidateIndex++;
-
-            // Log a progress heartbeat every 20 candidates so we can see scan is alive.
-            if (candidateIndex % 20 == 0)
-                AppLogger.Info("BanMatch",
-                    $"Progress: {candidateIndex}/{candidateSnapshot.Count} — " +
-                    $"elapsed={matchSw.ElapsedMilliseconds}ms avg={sumCandidateMs/candidateIndex}ms/op max={maxCandidateMs}ms/op");
-
-            if (tuple == null)
-                continue;
-
-            var (name, hit, hitBox) = tuple.Value;
-            if (hit && !_accumulatedBans.Contains(name))
-            {
-                _accumulatedBans.Add(name);
-                newlyDetected.Add(name);
-                anyNewMatch = true;
-            }
-        }
-        matchSw.Stop();
-        long avgMs = candidateSnapshot.Count > 0 ? sumCandidateMs / candidateSnapshot.Count : 0;
-        AppLogger.Info("BanMatch",
-            $"Match done: elapsed={matchSw.ElapsedMilliseconds}ms " +
-            $"candidates={candidateSnapshot.Count} avg={avgMs}ms/op min={minCandidateMs}ms/op max={maxCandidateMs}ms/op — " +
-            $"new={newlyDetected.Count} [{string.Join(", ", newlyDetected)}], " +
-            $"accumulated={_accumulatedBans.Count} [{string.Join(", ", _accumulatedBans)}]");
-
-        if (anyNewMatch)
-            BansDetected?.Invoke(_accumulatedBans.ToList());
-    }
-
-    /// <summary>
-    /// Mirrors a manual ban/unban into <see cref="_accumulatedBans"/> so subsequent scans
-    /// don't re-detect (and re-ban) an operator the user has deliberately unbanned.
-    /// </summary>
-    public void SetManualBan(string name, bool banned)
-    {
-        if (banned) _accumulatedBans.Add(name);
-        else _accumulatedBans.Remove(name);
-        AppLogger.Info("OcrScanner", $"Manual ban: {name} -> {(banned ? "banned" : "unbanned")} (accumulated={_accumulatedBans.Count})");
-    }
+    /// <summary>Width and height of a captured frame (BMP or PNG).</summary>
+    private static (int Width, int Height) GetPngDimensions(byte[] image) => ImageBytes.GetDimensions(image);
 
     /// <summary>Successful manual recording also consumes this opening screen.</summary>
     public void MarkInformationRecorded() => _informationState.MarkRecorded();
@@ -364,6 +218,5 @@ public class OcrScannerService : IDisposable
     {
         _scanTimer.Stop();
         _scanTimer.Dispose();
-        _manualScanChannel.Writer.TryComplete();
     }
 }

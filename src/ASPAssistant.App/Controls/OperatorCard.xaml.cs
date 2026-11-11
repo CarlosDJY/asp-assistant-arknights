@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -53,6 +53,9 @@ public partial class OperatorCard : UserControl
     {
         InitializeComponent();
         HoverToolTipBehavior.Attach(CardBorder, DetailsToolTip);
+        // Details are built on demand and dropped when the pop-up closes.
+        CardBorder.ToolTipOpening += (_, _) => DetailsHost.Content = DataContext;
+        DetailsToolTip.Closed += (_, _) => DetailsHost.Content = null;
         DataContextChanged += (_, _) => RefreshOperatorState();
         Loaded += (_, _) => RefreshOperatorState();
     }
@@ -76,9 +79,9 @@ public partial class OperatorCard : UserControl
             IsBannedCheck = FindAncestor<OperatorBrowseView>()?.IsBannedCheck;
         IsBanned = IsBannedCheck != null && IsBannedCheck(op.Name);
 
-        TrackingPortrait.Visibility = IsTrackingList ? Visibility.Visible : Visibility.Collapsed;
-        PortraitBackground.Visibility = IsTrackingList ? Visibility.Collapsed : Visibility.Visible;
-        BanButton.Visibility = IsTrackingList ? Visibility.Collapsed : Visibility.Visible;
+        TierRail.SetResourceReference(Border.BackgroundProperty,
+            op.Tier >= 5 ? "EliteBrush" : op.Tier == 4 ? "AccentSolidBrush" : "BorderBrush");
+
 
         UpdateTrackButton();
         UpdateBanButton();
@@ -131,26 +134,61 @@ public partial class OperatorCard : UserControl
 
     private void UpdateTrackButton()
     {
-        TrackButton.Content = IsTrackingList ? "✕" : IsTracked ? "★" : "☆";
-        TrackButton.ToolTip = IsTracked ? "取消追踪" : "追踪干员";
-        TrackButton.Tag = IsTracked ? "tracked" : "";
-        CardBorder.SetResourceReference(Border.BorderBrushProperty, IsTracked ? "TrackingBrush" : "BorderBrush");
+        var tracked = IsTracked && !IsTrackingList;
+        TrackButton.Tag = TryFindResource(IsTrackingList ? "IconClose" : "IconStar");
+        TrackButton.ToolTip = IsTrackingList || IsTracked ? "取消追踪" : "追踪干员";
+        if (tracked)
+        {
+            TrackButton.SetResourceReference(ForegroundProperty, "FinalBrush");
+            TrackButton.SetResourceReference(BackgroundProperty, "FinalTintBrush");
+        }
+        else
+        {
+            TrackButton.ClearValue(ForegroundProperty);
+            TrackButton.ClearValue(BackgroundProperty);
+        }
+        if (tracked)
+        {
+            TrackingPortrait.SetResourceReference(Avatar.RingProperty, "FinalBrush");
+            CardBorder.SetResourceReference(Border.BorderBrushProperty, "FinalBrush");
+        }
+        else
+        {
+            TrackingPortrait.ClearValue(Avatar.RingProperty);
+            CardBorder.ClearValue(Border.BorderBrushProperty);
+        }
+        UpdateButtonVisibility();
+    }
+
+    /// <summary>Single-column rows have room for ☆ and ⊘ all the time; the tracking list only removes (✕).</summary>
+    private void UpdateButtonVisibility()
+    {
+        TrackButton.Visibility = Visibility.Visible;
+        BanButton.Visibility = IsTrackingList ? Visibility.Collapsed : Visibility.Visible;
     }
 
     private void UpdateBanButton()
     {
-        BanButton.Content = IsBanned ? "✕" : "⊘";
         BanButton.ToolTip = IsBanned ? "取消禁用" : "标记为本局禁用";
-        BanButton.Tag = IsBanned ? "banned" : "";
+        UpdateButtonVisibility();
+        if (IsBanned)
+        {
+            BanButton.SetResourceReference(ForegroundProperty, "DangerBrush");
+            BanButton.SetResourceReference(BackgroundProperty, "DangerTintBrush");
+        }
+        else
+        {
+            BanButton.ClearValue(ForegroundProperty);
+            BanButton.ClearValue(BackgroundProperty);
+        }
     }
 
     private void UpdateBannedDisplay()
     {
-        var banVis = IsBanned ? Visibility.Visible : Visibility.Collapsed;
-        BanDimOverlay.Visibility = banVis;
-        BanBadge.Visibility = banVis;
-        // Slightly reduce overall card opacity to visually deprioritise banned operators
-        Opacity = IsBanned ? 0.65 : 1.0;
+        BanBadge.Visibility = IsBanned ? Visibility.Visible : Visibility.Collapsed;
+        NameText.TextDecorations = IsBanned ? TextDecorations.Strikethrough : null;
+        // Banned operators stay listed but fade back
+        CardBorder.Opacity = IsBanned ? 0.5 : 1.0;
     }
 }
 

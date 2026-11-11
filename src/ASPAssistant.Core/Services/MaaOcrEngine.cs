@@ -158,9 +158,7 @@ public sealed class MaaOcrEngine : IOcrEngine, IDisposable
                 srcX:       x, srcY: y, srcWidth: w, srcHeight: h,
                 srcUnit:    GraphicsUnit.Pixel);
 
-            using var outMs = new MemoryStream();
-            dst.Save(outMs, ImageFormat.Png);
-            return outMs.ToArray();
+            return ImageBytes.Encode(dst);
         }
         finally
         {

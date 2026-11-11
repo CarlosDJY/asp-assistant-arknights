@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -17,47 +18,11 @@ public partial class OperatorPickerWindow : Window
         InitializeComponent();
         _filters.LoadOperators(operators.OrderBy(op => op.Tier).ThenBy(op => op.Name, StringComparer.CurrentCulture).ToList());
         DataContext = _filters;
-        TierFilters.ItemsSource = _filters.AvailableTiers.OfType<int>().ToList();
-        CoreFilters.ItemsSource = _filters.AvailableCoreCovenants.Where(name => !string.IsNullOrEmpty(name)).ToList();
-        OtherFilters.ItemsSource = _filters.AvailableOtherCovenants.Where(name => !string.IsNullOrEmpty(name)).ToList();
-        TraitFilter.ItemsSource = new[] { "全部" }.Concat(_filters.AvailableTraitTypes.OfType<string>()).ToList();
-        TimingFilter.ItemsSource = new[] { "全部" }.Concat(_filters.AvailableTriggerTimings.OfType<string>()).ToList();
-        TraitFilter.SelectedIndex = 0;
-        TimingFilter.SelectedIndex = 0;
         OperatorsList.SelectedItem = _filters.FilteredOperators.FirstOrDefault(op => op.Name == current);
         Loaded += (_, _) => SearchBox.Focus();
     }
 
-    private void OnFiltersChanged(object sender, SelectionChangedEventArgs e)
-    {
-        var list = (ListBox)sender;
-        if (list == TierFilters)
-            _filters.SelectedTierFilters = list.SelectedItems.Cast<int>().ToList();
-        else if (list == CoreFilters)
-            _filters.SetCoreCovenantFilters(list.SelectedItems.Cast<string>());
-        else
-            _filters.SetOtherCovenantFilters(list.SelectedItems.Cast<string>());
-    }
-
-    private void OnResetFiltersClick(object sender, RoutedEventArgs e)
-    {
-        TierFilters.SelectedItems.Clear();
-        CoreFilters.SelectedItems.Clear();
-        OtherFilters.SelectedItems.Clear();
-        _filters.ResetFilters();
-        TraitFilter.SelectedIndex = 0;
-        TimingFilter.SelectedIndex = 0;
-    }
-
-    private void OnSingleFilterChanged(object sender, SelectionChangedEventArgs e)
-    {
-        var combo = (ComboBox)sender;
-        var selected = combo.SelectedIndex == 0 ? null : (string?)combo.SelectedItem;
-        if (combo == TraitFilter)
-            _filters.SelectedTraitTypeFilter = selected;
-        else
-            _filters.SelectedTriggerTimingFilter = selected;
-    }
+    private void OnResetFiltersClick(object sender, RoutedEventArgs e) => _filters.ResetFilters();
 
     private void OnOperatorClick(object sender, MouseButtonEventArgs e)
     {

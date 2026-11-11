@@ -14,6 +14,8 @@ public class ShopItem
 
     public int Price { get; set; }
     public bool IsTracked { get; set; }
+    /// <summary>Tracked only as a 过渡 (transition) operator of an imported route.</summary>
+    public bool IsTransition { get; set; }
     /// <summary>Detected name bounds, normalized to the full captured client image.</summary>
     public (double X, double Y, double Width, double Height) OcrRegion { get; set; }
 }

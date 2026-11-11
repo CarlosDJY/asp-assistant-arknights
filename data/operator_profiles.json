@@ -1,0 +1,4420 @@
+{
+ "_modificationNotice": "Generated for ASP Assistant Arknights; see NOTICE.",
+ "_notice": "由 build_operator_profiles.py 从 ArknightsGameData 生成；角色标签供规划器使用，可在脚本 OVERRIDES 中手工修正。",
+ "season": "act3autochess/V3_1",
+ "operators": {
+  "Miss.Christine": {
+   "profession": "术师",
+   "subProfession": "本源术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "狂饮之宴",
+    "description": "停止攻击，向目标所在的位置释放感知灵体，感知灵体每秒对周围所有敌人造成一次相当于攻击力75%的法术伤害且对处于神经损伤爆发期间的目标额外造成相当于攻击力60%的元素伤害",
+    "spCost": 42,
+    "initSp": 5,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "狂饮之宴",
+    "description": "停止攻击，向目标所在的位置释放感知灵体，感知灵体每秒对周围所有敌人造成一次相当于攻击力85%的法术伤害且对处于神经损伤爆发期间的目标额外造成相当于攻击力75%的元素伤害",
+    "spCost": 39,
+    "initSp": 10,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "维多利亚",
+     "奥术"
+    ],
+    "amount": 3,
+    "cap": null,
+    "perRound": 3,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "Mon3tr": {
+   "profession": "医疗",
+   "subProfession": "链愈师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "策略：熔毁",
+    "description": "攻击范围改变，移动至重构体位置，攻击力+250%，攻击间隔降低，阻挡数+2，生命上限+5000，每秒流失80点生命值，同时攻击阻挡的所有敌人，伤害类型变为真实，攻击治疗自身相当于攻击力50%的生命值\n技能结束或受到致命伤害时，返回初始位置",
+    "spCost": 15,
+    "initSp": 5,
+    "duration": 25.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "策略：熔毁",
+    "description": "攻击范围改变，移动至重构体位置，攻击力+280%，攻击间隔降低，阻挡数+2，生命上限+5000，每秒流失80点生命值，同时攻击阻挡的所有敌人，伤害类型变为真实，攻击治疗自身相当于攻击力50%的生命值\n技能结束或受到致命伤害时，返回初始位置",
+    "spCost": 15,
+    "initSp": 7,
+    "duration": 25.0,
+    "spType": "攻击回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "amplifier",
+    "covenants": [],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false,
+    "amplify": {
+     "type": "capPercent",
+     "value": 0.3,
+     "scope": "around"
+    }
+   },
+   "consumes": []
+  },
+  "W": {
+   "profession": "狙击",
+   "subProfession": "炮手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "惊吓盒子",
+    "description": "下次攻击变为在攻击范围内的一个可放置地块埋下地雷（持续120秒）；地雷在敌人经过时会爆炸，爆炸后对周围所有敌人造成相当于攻击力220%的物理伤害并令其晕眩1.6秒",
+    "spCost": 11,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "惊吓盒子",
+    "description": "下次攻击变为在攻击范围内的一个可放置地块埋下地雷（持续120秒）；地雷在敌人经过时会爆炸，爆炸后对周围所有敌人造成相当于攻击力250%的物理伤害并令其晕眩1.8秒",
+    "spCost": 10,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "迅捷"
+   ]
+  },
+  "乌啾": {
+   "profession": "医疗",
+   "subProfession": "链愈师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "“捉迷藏！”",
+    "description": "流失15%当前生命值，立即进行一次治疗，并使目标每秒受到治疗量为20%攻击力的增益治疗，治疗的所有目标获得迷彩，持续10秒",
+    "spCost": 42,
+    "initSp": 30,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "“捉迷藏！”",
+    "description": "流失15%当前生命值，立即进行一次治疗，并使目标每秒受到治疗量为26%攻击力的增益治疗，治疗的所有目标获得迷彩，持续12秒",
+    "spCost": 39,
+    "initSp": 30,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "乌萨斯"
+    ],
+    "amount": 1,
+    "cap": null,
+    "perRound": 5,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "乌尔比安": {
+   "profession": "近卫",
+   "subProfession": "重剑手",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "必须开辟的通路",
+    "description": "最大生命值+40%，攻击力+200%，立即朝面前扔出一个船锚，撞击到目标或达到最远距离时停止，并对周围所有敌人造成攻击力135%的物理伤害和6秒晕眩。若船锚停留的位置可以部署，乌尔比安会移动到该位置\n可以手动结束技能，技能结束时乌尔比安会返回到初始的位置",
+    "spCost": 29,
+    "initSp": 10,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "必须开辟的通路",
+    "description": "最大生命值+60%，攻击力+230%，立即朝面前扔出一个船锚，撞击到目标或达到最远距离时停止，并对周围所有敌人造成攻击力140%的物理伤害和6秒晕眩。若船锚停留的位置可以部署，乌尔比安会移动到该位置\n可以手动结束技能，技能结束时乌尔比安会返回到初始的位置",
+    "spCost": 28,
+    "initSp": 15,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "阿戈尔"
+   ]
+  },
+  "乌有": {
+   "profession": "特种",
+   "subProfession": "行商",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "阴晴圆缺",
+    "description": "技能开启时，攻击力+30%，且以下三种效果中随机获得一种：每次攻击使目标攻击速度-25（持续5秒且不叠加）；攻击速度+20；获得+35%的物理闪避，阻挡数+1\n技能持续时间无限，可主动关闭技能；",
+    "spCost": 7,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "阴晴圆缺",
+    "description": "技能开启时，攻击力+40%，且以下三种效果中随机获得一种：每次攻击使目标攻击速度-30（持续5秒且不叠加）；攻击速度+25；获得+40%的物理闪避，阻挡数+1\n技能持续时间无限，可主动关闭技能；",
+    "spCost": 5,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "云迹": {
+   "profession": "特种",
+   "subProfession": "巡空者",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "掠空飞翎",
+    "description": "立刻起飞，攻击范围扩大，攻击力+45%，同时攻击2个敌人且可额外攻击1个飞行敌人，击中飞行敌人时使其停顿1秒",
+    "spCost": 19,
+    "initSp": 5,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "掠空飞翎",
+    "description": "立刻起飞，攻击范围扩大，攻击力+60%，同时攻击2个敌人且可额外攻击1个飞行敌人，击中飞行敌人时使其停顿1.5秒",
+    "spCost": 17,
+    "initSp": 5,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "self",
+    "covenants": [],
+    "amount": 3,
+    "cap": 6,
+    "perRound": 4.5,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "仇白": {
+   "profession": "近卫",
+   "subProfession": "领主",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "问雪",
+    "description": "攻击范围扩大，攻击力+30%，伤害类型变为法术，额外攻击2个目标，远程攻击不再降低伤害，每次攻击使自身攻击速度+10（最多叠加5次）",
+    "spCost": 61,
+    "initSp": 34,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "问雪",
+    "description": "攻击范围扩大，攻击力+40%，伤害类型变为法术，额外攻击2个目标，远程攻击不再降低伤害，每次攻击使自身攻击速度+13（最多叠加6次）",
+    "spCost": 58,
+    "initSp": 38,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "炎",
+     "灵巧"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "伊桑": {
+   "profession": "特种",
+   "subProfession": "伏击客",
+   "position": "近战",
+   "blockCount": 0,
+   "normalSkill": {
+    "name": "十字悬挂",
+    "description": "攻击力+35%，天赋的触发几率提升至2倍",
+    "spCost": 25,
+    "initSp": 0,
+    "duration": 22.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "十字悬挂",
+    "description": "攻击力+50%，天赋的触发几率提升至2.5倍",
+    "spCost": 25,
+    "initSp": 0,
+    "duration": 24.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "伺夜": {
+   "profession": "先锋",
+   "subProfession": "战术家",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "领袖的尊严",
+    "description": "技能持续时间内逐渐获得10点部署费用，攻击变为三连击；狼群与伺夜攻击被狼群阻挡的单位造成伤害时，额外造成相当于伺夜攻击力20%的法术伤害",
+    "spCost": 42,
+    "initSp": 6,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "领袖的尊严",
+    "description": "技能持续时间内逐渐获得11点部署费用，攻击变为三连击；狼群与伺夜攻击被狼群阻挡的单位造成伤害时，额外造成相当于伺夜攻击力30%的法术伤害",
+    "spCost": 39,
+    "initSp": 7,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "余": {
+   "profession": "重装",
+   "subProfession": "本源铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "灶里乾坤",
+    "description": "生命上限+50%，攻击力+50%，防御力+50%，将第二天赋效果赋予全场所有干员；生成一面跨越整个战场的火墙，其他友方穿过火墙造成法术伤害时附带相当于余攻击力6%的灼燃损伤，敌方子弹穿过火墙时有10%几率被清除",
+    "spCost": 55,
+    "initSp": 24,
+    "duration": 41.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "灶里乾坤",
+    "description": "生命上限+80%，攻击力+80%，防御力+80%，将第二天赋效果赋予全场所有干员；生成一面跨越整个战场的火墙，其他友方穿过火墙造成法术伤害时附带相当于余攻击力7%的灼燃损伤，敌方子弹穿过火墙时有15%几率被清除",
+    "spCost": 55,
+    "initSp": 33,
+    "duration": 42.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": {
+    "kind": "self",
+    "covenants": [],
+    "amount": 1,
+    "cap": 8,
+    "perRound": 6.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "佩佩": {
+   "profession": "近卫",
+   "subProfession": "撼地者",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "时光震荡",
+    "description": "攻击间隔略微增大，攻击力+150%，攻击使命中的目标晕眩0.8秒，对主目标提升至1秒，每次攻击后使溅射范围扩大且攻击力额外+13%，最多叠加4层",
+    "spCost": 57,
+    "initSp": 30,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "时光震荡",
+    "description": "攻击间隔略微增大，攻击力+180%，攻击使命中的目标晕眩0.8秒，对主目标提升至1.5秒，每次攻击后使溅射范围扩大且攻击力额外+16%，最多叠加4层",
+    "spCost": 51,
+    "initSp": 32,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "adjacent",
+    "covenants": [],
+    "amount": 1,
+    "cap": 9,
+    "perRound": 6.75,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "克莱门莎": {
+   "profession": "近卫",
+   "subProfession": "本源近卫",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "风暴潮",
+    "description": "攻击范围扩大，攻击速度+100，每次攻击对目标及其周围最多5名地面敌人造成相当于攻击力220%的物理伤害；向前方召唤浮游放逐舱，放逐舱使周围累计不超过8重量的最多15名地面敌人不断向前移动；放逐舱在移动3格后消失并留下漩涡，处于漩涡的所有敌人移动速度-70%且每秒受到200点侵蚀损伤和相当于攻击力265%的物理伤害",
+    "spCost": 22,
+    "initSp": 9,
+    "duration": 16.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "风暴潮",
+    "description": "攻击范围扩大，攻击速度+100，每次攻击对目标及其周围最多5名地面敌人造成相当于攻击力230%的物理伤害；向前方召唤浮游放逐舱，放逐舱使周围累计不超过8重量的最多15名地面敌人不断向前移动；放逐舱在移动3格后消失并留下漩涡，处于漩涡的所有敌人移动速度-70%且每秒受到200点侵蚀损伤和相当于攻击力285%的物理伤害",
+    "spCost": 20,
+    "initSp": 12,
+    "duration": 16.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "阿戈尔"
+   ]
+  },
+  "冻河": {
+   "profession": "辅助",
+   "subProfession": "游击手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "踽踽独行之春",
+    "description": "攻击速度+60，攻击对4个敌人造成攻击力175%的物理伤害并使目标晕眩0.5秒，立刻对范围内另一名干员施加触发型效果（已存在时改为将其触发）：\n开启技能时自身和冻河攻击力+70%（在15秒内衰减），并将该触发型效果转移给冻河攻击范围内技力比例最高的另一名干员；冻河技能期间拥有该效果的干员每秒获得1点技力",
+    "spCost": 27,
+    "initSp": 10,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "踽踽独行之春",
+    "description": "攻击速度+70，攻击对4个敌人造成攻击力190%的物理伤害并使目标晕眩0.5秒，立刻对范围内另一名干员施加触发型效果（已存在时改为将其触发）：\n开启技能时自身和冻河攻击力+90%（在15秒内衰减），并将该触发型效果转移给冻河攻击范围内技力比例最高的另一名干员；冻河技能期间拥有该效果的干员每秒获得1点技力",
+    "spCost": 25,
+    "initSp": 10,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "乌萨斯",
+     "迅捷"
+    ],
+    "amount": 1,
+    "cap": 16,
+    "perRound": 12.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "凛御银灰": {
+   "profession": "先锋",
+   "subProfession": "策士",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "变革已至",
+    "description": "攻击范围扩大并使敌人隐匿失效，攻击对直线范围造成攻击力140%的物理伤害和20%的脆弱；立即获得5点后持续获得24点部署费用\n首次开启时交换待部署区中费用最高（优先选择近卫/术师/狙击干员）与最低干员的基础部署费用\n技能期间“风雪之眼”变为可部署",
+    "spCost": 55,
+    "initSp": 39,
+    "duration": 48.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "变革已至",
+    "description": "攻击范围扩大并使敌人隐匿失效，攻击对直线范围造成攻击力170%的物理伤害和25%的脆弱；立即获得6点后持续获得24点部署费用\n首次开启时交换待部署区中费用最高（优先选择近卫/术师/狙击干员）与最低干员的基础部署费用\n技能期间“风雪之眼”变为可部署",
+    "spCost": 55,
+    "initSp": 42,
+    "duration": 48.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "amplifier",
+    "covenants": [
+     "谢拉格",
+     "灵巧"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false,
+    "amplify": {
+     "type": "capPercent",
+     "value": 0.75,
+     "scope": "front"
+    }
+   },
+   "consumes": []
+  },
+  "凯瑟琳": {
+   "profession": "辅助",
+   "subProfession": "工匠",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "战火淬炼",
+    "description": "停止攻击，生命上限+40%，防御力+10%，装置效果改为使目标干员每秒获得相当于凯瑟琳生命上限6%的屏障（不会超过天赋上限）",
+    "spCost": 35,
+    "initSp": 15,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "战火淬炼",
+    "description": "停止攻击，生命上限+55%，防御力+15%，装置效果改为使目标干员每秒获得相当于凯瑟琳生命上限6%的屏障（不会超过天赋上限）",
+    "spCost": 32,
+    "initSp": 15,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "初雪": {
+   "profession": "辅助",
+   "subProfession": "削弱者",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "自然震慑",
+    "description": "攻击范围内所有敌人防御力-40%，法术抗性-23%",
+    "spCost": 40,
+    "initSp": 13,
+    "duration": 14.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "自然震慑",
+    "description": "攻击范围内所有敌人防御力-45%，法术抗性-26%",
+    "spCost": 40,
+    "initSp": 16,
+    "duration": 18.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "谢拉格"
+    ],
+    "amount": 1,
+    "cap": 16,
+    "perRound": 12.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "华法琳": {
+   "profession": "医疗",
+   "subProfession": "医师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "紧急包扎",
+    "description": "下次治疗额外回复目标最大生命值的15%\n只当目标生命值不满一半时才会触发，可充能2次",
+    "spCost": 4,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "紧急包扎",
+    "description": "下次治疗额外回复目标最大生命值的19%\n只当目标生命值不满一半时才会触发，可充能3次",
+    "spCost": 4,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "grant",
+    "covenants": [],
+    "amount": 1,
+    "cap": 7,
+    "perRound": 5.25,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "卡涅利安": {
+   "profession": "术师",
+   "subProfession": "阵法术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "食噬之印",
+    "description": "攻击范围扩大，攻击力逐渐增至+140%\n蓄力额外效果：每次攻击使目标受到来自卡涅利安的伤害提升20%（最多叠加5次），持续至技能结束",
+    "spCost": 28,
+    "initSp": 0,
+    "duration": 21.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "食噬之印",
+    "description": "攻击范围扩大，攻击力逐渐增至+200%\n蓄力额外效果：每次攻击使目标受到来自卡涅利安的伤害提升20%（最多叠加5次），持续至技能结束",
+    "spCost": 28,
+    "initSp": 1,
+    "duration": 21.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "卡达": {
+   "profession": "术师",
+   "subProfession": "驭械术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "同步索敌攻击",
+    "description": "攻击范围扩大，攻击力+49%，释放浮游单元锁定敌人攻击，自身与浮游单元有23%的概率晕眩敌人0.4秒\n浮游单元锁敌后直至敌人被击杀或技能结束后返回干员身边",
+    "spCost": 45,
+    "initSp": 5,
+    "duration": 23.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "同步索敌攻击",
+    "description": "攻击范围扩大，攻击力+58%，释放浮游单元锁定敌人攻击，自身与浮游单元有23%的概率晕眩敌人0.7秒\n浮游单元锁敌后直至敌人被击杀或技能结束后返回干员身边",
+    "spCost": 45,
+    "initSp": 10,
+    "duration": 26.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "奥术"
+    ],
+    "amount": 1,
+    "cap": null,
+    "perRound": 1,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "历阵锐枪芬": {
+   "profession": "先锋",
+   "subProfession": "冲锋手",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "执守阵线",
+    "description": "攻击力+85%，防御力+25%，阻挡数+1，同时攻击阻挡的所有敌人",
+    "spCost": 0,
+    "initSp": 0,
+    "duration": 14.0,
+    "spType": "被动"
+   },
+   "eliteSkill": {
+    "name": "执守阵线",
+    "description": "攻击力+95%，防御力+30%，阻挡数+1，同时攻击阻挡的所有敌人",
+    "spCost": 0,
+    "initSp": 0,
+    "duration": 18.0,
+    "spType": "被动"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "可露希尔": {
+   "profession": "先锋",
+   "subProfession": "战术家",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "Q.E.D.",
+    "description": "技能持续时间内逐渐获得18点部署费用，攻击间隔缩短，锁定自身和援军原本攻击范围内的敌人进行攻击，造成可露希尔150%攻击力的物理伤害并施加持续3秒的4%迟钝效果（可叠加，最高40%），每攻击9次后攻击目标数+1（最多触发6次）",
+    "spCost": 39,
+    "initSp": 15,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "Q.E.D.",
+    "description": "技能持续时间内逐渐获得18点部署费用，攻击间隔缩短，锁定自身和援军原本攻击范围内的敌人进行攻击，造成可露希尔190%攻击力的物理伤害并施加持续3秒的5%迟钝效果（可叠加，最高50%），每攻击9次后攻击目标数+1（最多触发6次）",
+    "spCost": 36,
+    "initSp": 18,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "投资人"
+    ],
+    "amount": 2,
+    "cap": 16,
+    "perRound": 12.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "史尔特尔": {
+   "profession": "近卫",
+   "subProfession": "术战者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "黄昏",
+    "description": "立即恢复所有生命；攻击力+210%，攻击距离+2，攻击目标数+2，生命上限+5000，逐渐流失生命（60秒后到达最大生命20%/秒）；持续时间无限",
+    "spCost": 9,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "黄昏",
+    "description": "立即恢复所有生命；攻击力+240%，攻击距离+2，攻击目标数+2，生命上限+5000，逐渐流失生命（60秒后到达最大生命20%/秒）；持续时间无限",
+    "spCost": 8,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "突袭",
+     "不屈"
+    ],
+    "amount": 4,
+    "cap": 16,
+    "perRound": 12.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "吉星": {
+   "profession": "狙击",
+   "subProfession": "散射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "吉星高照！",
+    "description": "攻击间隔增大，攻击力+45%；攻击时将依次并且循环对命中的目标施加不同效果：停顿1秒、束缚1秒、晕眩1秒；",
+    "spCost": 47,
+    "initSp": 19,
+    "duration": 27.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "吉星高照！",
+    "description": "攻击间隔增大，攻击力+60%；攻击时将依次并且循环对命中的目标施加不同效果：停顿1.3秒、束缚1.3秒、晕眩1.3秒；",
+    "spCost": 44,
+    "initSp": 22,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "哈洛德": {
+   "profession": "医疗",
+   "subProfession": "行医",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "重症优先",
+    "description": "攻击速度+55，优先治疗元素损伤最严重的目标。治疗元素损伤累计超过一半的目标时，元素损伤回复量提升至160%",
+    "spCost": 37,
+    "initSp": 13,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "重症优先",
+    "description": "攻击速度+80，优先治疗元素损伤最严重的目标。治疗元素损伤累计超过一半的目标时，元素损伤回复量提升至200%",
+    "spCost": 35,
+    "initSp": 15,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": null,
+   "consumes": [
+    "维多利亚",
+    "谢拉格"
+   ]
+  },
+  "圣聆初雪": {
+   "profession": "术师",
+   "subProfession": "阵法术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "群山俯首",
+    "description": "攻击范围扩大，立即诱导攻击范围内的所有敌人至自身周围的可达地面，持续10秒，积雪生成速度加快，攻击力+35%，攻击速度+30，攻击无视目标10点法术抗性，每次攻击造成相当于攻击力180%的法术伤害",
+    "spCost": 56,
+    "initSp": 30,
+    "duration": 35.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "群山俯首",
+    "description": "攻击范围扩大，立即诱导攻击范围内的所有敌人至自身周围的可达地面，持续10秒，积雪生成速度加快，攻击力+70%，攻击速度+30，攻击无视目标10点法术抗性，每次攻击造成相当于攻击力210%的法术伤害",
+    "spCost": 53,
+    "initSp": 35,
+    "duration": 35.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "谢拉格"
+    ],
+    "amount": 1,
+    "cap": 24,
+    "perRound": 18.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "地灵": {
+   "profession": "辅助",
+   "subProfession": "凝滞师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "攻击力强化·β型",
+    "description": "攻击力+35%",
+    "spCost": 37,
+    "initSp": 0,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "攻击力强化·β型",
+    "description": "攻击力+50%",
+    "spCost": 37,
+    "initSp": 5,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "莱塔尼亚"
+    ],
+    "amount": 1,
+    "cap": 1,
+    "perRound": 0.75,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "塔露拉": {
+   "profession": "近卫",
+   "subProfession": "本源近卫",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "日冕重烈",
+    "description": "攻击力+108%；停止攻击以持续引导场地进入以下状态：每2.67秒在5行范围内，朝部署方向召唤“簇火”，“簇火”碰到敌人时爆炸造成攻击力130%的范围法术伤害；若目标处于灼燃损伤爆发期间则改为造成元素伤害\n过载：“簇火”生成间隔缩短至2秒，范围扩展最多13行\n被同波次的多个“簇火”命中时，后续“簇火”造成的伤害降低至15%\n该技能可随时主动关闭",
+    "spCost": 45,
+    "initSp": 38,
+    "duration": 36.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "日冕重烈",
+    "description": "攻击力+120%；停止攻击以持续引导场地进入以下状态：每2.67秒在5行范围内，朝部署方向召唤“簇火”，“簇火”碰到敌人时爆炸造成攻击力175%的范围法术伤害；若目标处于灼燃损伤爆发期间则改为造成元素伤害\n过载：“簇火”生成间隔缩短至2秒，范围扩展最多13行\n被同波次的多个“簇火”命中时，后续“簇火”造成的伤害降低至15%\n该技能可随时主动关闭",
+    "spCost": 45,
+    "initSp": 38,
+    "duration": 36.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "amplifier",
+    "covenants": [
+     "乌萨斯"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false,
+    "amplify": {
+     "type": "tempBoost",
+     "value": 4,
+     "scope": "around"
+    }
+   },
+   "consumes": []
+  },
+  "塞雷娅": {
+   "profession": "重装",
+   "subProfession": "守护者",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "急救",
+    "description": "下一次攻击会为周围血量不足一半的一名友方单位恢复相当于攻击力130%的生命\n可充能1次",
+    "spCost": 5,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "急救",
+    "description": "下一次攻击会为周围血量不足一半的一名友方单位恢复相当于攻击力150%的生命\n可充能2次",
+    "spCost": 5,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位",
+    "奶位"
+   ],
+   "stack": null,
+   "consumes": []
+  },
+  "复奏": {
+   "profession": "术师",
+   "subProfession": "扩散术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "直到终曲",
+    "description": "溅射范围扩大且立即对攻击范围内3个目标造成相当于攻击力130%的法术伤害，并使攻击到的所有敌人在6秒内每秒受到相当于复奏攻击力15%的法术伤害",
+    "spCost": 15,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "直到终曲",
+    "description": "溅射范围扩大且立即对攻击范围内3个目标造成相当于攻击力160%的法术伤害，并使攻击到的所有敌人在6秒内每秒受到相当于复奏攻击力30%的法术伤害",
+    "spCost": 13,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "莱塔尼亚",
+     "叙拉古"
+    ],
+    "amount": 2,
+    "cap": null,
+    "perRound": 2,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "夏栎": {
+   "profession": "辅助",
+   "subProfession": "护佑者",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "生灵的回响",
+    "description": "攻击速度+36，并在治疗目标时为其恢复1点技力",
+    "spCost": 32,
+    "initSp": 11,
+    "duration": 13.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "生灵的回响",
+    "description": "攻击速度+45，并在治疗目标时为其恢复1点技力",
+    "spCost": 28,
+    "initSp": 13,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": null,
+   "consumes": []
+  },
+  "夕": {
+   "profession": "术师",
+   "subProfession": "扩散术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "泼墨淋漓",
+    "description": "攻击范围扩大，攻击力+29%，攻击速度+29，攻击范围内的所有敌人且对生命值低于一半的敌人造成的法术伤害提升至120%",
+    "spCost": 47,
+    "initSp": 15,
+    "duration": 17.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "泼墨淋漓",
+    "description": "攻击范围扩大，攻击力+40%，攻击速度+40，攻击范围内的所有敌人且对生命值低于一半的敌人造成的法术伤害提升至125%",
+    "spCost": 44,
+    "initSp": 15,
+    "duration": 18.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "炎",
+     "奥术"
+    ],
+    "amount": 2,
+    "cap": 24,
+    "perRound": 18.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "夜莺": {
+   "profession": "医疗",
+   "subProfession": "群愈师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "圣域",
+    "description": "攻击范围扩大，攻击力+40%，攻击范围内的友方单位法术抗性+90%并获得15%的法术闪避",
+    "spCost": 120,
+    "initSp": 105,
+    "duration": 60.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "圣域",
+    "description": "攻击范围扩大，攻击力+50%，攻击范围内的友方单位法术抗性+105%并获得20%的法术闪避",
+    "spCost": 120,
+    "initSp": 110,
+    "duration": 60.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "self",
+    "covenants": [],
+    "amount": 1,
+    "cap": null,
+    "perRound": 1,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "奥尔佳": {
+   "profession": "近卫",
+   "subProfession": "教官",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "只为我的答案",
+    "description": "攻击力+40%，攻击距离延长，天赋效果提升至1.4倍，每次攻击使目标更容易受到友方攻击且使其受到停顿效果，持续2秒",
+    "spCost": 32,
+    "initSp": 10,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "只为我的答案",
+    "description": "攻击力+50%，攻击距离延长，天赋效果提升至1.7倍，每次攻击使目标更容易受到友方攻击且使其受到停顿效果，持续2秒",
+    "spCost": 30,
+    "initSp": 15,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "奥斯塔": {
+   "profession": "狙击",
+   "subProfession": "散射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "影钉",
+    "description": "攻击间隔增大，攻击力+35%且每次攻击令目标束缚1秒，天赋的伤害倍率翻倍",
+    "spCost": 57,
+    "initSp": 15,
+    "duration": 21.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "影钉",
+    "description": "攻击间隔增大，攻击力+50%且每次攻击令目标束缚1.2秒，天赋的伤害倍率翻倍",
+    "spCost": 54,
+    "initSp": 19,
+    "duration": 22.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "妮芙": {
+   "profession": "术师",
+   "subProfession": "本源术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "怵然震爆",
+    "description": "对敌人造成一次相当于攻击力270%的法术伤害、使其恐惧4秒，并对目标周围造成一次等额法术溅射伤害，均附带造成法术伤害18%的凋亡损伤；若攻击到的单位处于凋亡损伤爆发期间，使第一天赋造成的伤害效果提高至攻击力的70%\n可充能1次",
+    "spCost": 17,
+    "initSp": 3,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "怵然震爆",
+    "description": "对敌人造成一次相当于攻击力300%的法术伤害、使其恐惧5秒，并对目标周围造成一次等额法术溅射伤害，均附带造成法术伤害22%的凋亡损伤；若攻击到的单位处于凋亡损伤爆发期间，使第一天赋造成的伤害效果提高至攻击力的85%\n可充能2次",
+    "spCost": 14,
+    "initSp": 6,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "迅捷"
+    ],
+    "amount": 4,
+    "cap": 20,
+    "perRound": 15.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "安哲拉": {
+   "profession": "狙击",
+   "subProfession": "神射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "攻击力强化·γ型",
+    "description": "攻击力+45%",
+    "spCost": 37,
+    "initSp": 5,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "攻击力强化·γ型",
+    "description": "攻击力+60%",
+    "spCost": 35,
+    "initSp": 10,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "阿戈尔",
+     "助力"
+    ],
+    "amount": 3,
+    "cap": 9,
+    "perRound": 6.75,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "安洁莉娜": {
+   "profession": "辅助",
+   "subProfession": "凝滞师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "秘杖·反重力模式",
+    "description": "全场所有敌人失重，攻击范围扩大，攻击力+90%，可以攻击4个敌人\n技能未开启时无法普通攻击",
+    "spCost": 25,
+    "initSp": 3,
+    "duration": 14.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "秘杖·反重力模式",
+    "description": "全场所有敌人失重，攻击范围扩大，攻击力+105%，可以攻击5个敌人\n技能未开启时无法普通攻击",
+    "spCost": 25,
+    "initSp": 6,
+    "duration": 18.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "叙拉古",
+     "奇迹"
+    ],
+    "amount": 2,
+    "cap": 8,
+    "perRound": 6.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "宴": {
+   "profession": "近卫",
+   "subProfession": "武者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "落地斩·破门",
+    "description": "部署后立即流失50%当前生命，并在14秒内攻击力+65%，伤害类型变为法术",
+    "spCost": 0,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "被动"
+   },
+   "eliteSkill": {
+    "name": "落地斩·破门",
+    "description": "部署后立即流失50%当前生命，并在15秒内攻击力+80%，伤害类型变为法术",
+    "spCost": 0,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "被动"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "不屈"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "寒檀": {
+   "profession": "术师",
+   "subProfession": "扩散术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "“女巫之泪”",
+    "description": "攻击范围扩大，攻击间隔超大幅度缩短，攻击变为向攻击范围内的随机地块召唤冰凌，冰凌落地后对周围所有敌人造成1秒寒冷和相当于寒檀攻击力65%的法术伤害",
+    "spCost": 47,
+    "initSp": 20,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "“女巫之泪”",
+    "description": "攻击范围扩大，攻击间隔超大幅度缩短，攻击变为向攻击范围内的随机地块召唤冰凌，冰凌落地后对周围所有敌人造成1秒寒冷和相当于寒檀攻击力75%的法术伤害",
+    "spCost": 44,
+    "initSp": 20,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "远见"
+    ],
+    "amount": 3,
+    "cap": null,
+    "perRound": 3,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "山": {
+   "profession": "近卫",
+   "subProfession": "斗士",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "震地碎岩击",
+    "description": "攻击间隔增大，攻击力+55%，攻击变为2连击，第一天赋的发动几率提升至48%，每次攻击周围最多3个敌人并将其中等力度地推动",
+    "spCost": 47,
+    "initSp": 25,
+    "duration": 26.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "震地碎岩击",
+    "description": "攻击间隔增大，攻击力+70%，攻击变为2连击，第一天赋的发动几率提升至55%，每次攻击周围最多3个敌人并将其中等力度地推动",
+    "spCost": 44,
+    "initSp": 25,
+    "duration": 27.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "帕拉斯": {
+   "profession": "近卫",
+   "subProfession": "教官",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "英勇的祝福",
+    "description": "攻击力+55%，额外攻击两个目标，身前一格为近战位并部署我方干员时使其获得以下增益：生命值高于80%获得+35%攻击力的精力充沛、防御力+20%、阻挡数+1（若身前一格不存在干员或不为近战位时，该效果由自身获得）",
+    "spCost": 55,
+    "initSp": 25,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "英勇的祝福",
+    "description": "攻击力+70%，额外攻击两个目标，身前一格为近战位并部署我方干员时使其获得以下增益：生命值高于80%获得+40%攻击力的精力充沛、防御力+25%、阻挡数+1（若身前一格不存在干员或不为近战位时，该效果由自身获得）",
+    "spCost": 50,
+    "initSp": 30,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "adjacent",
+    "covenants": [],
+    "amount": 9,
+    "cap": null,
+    "perRound": 9,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "幽灵鲨": {
+   "profession": "近卫",
+   "subProfession": "强攻手",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "攻击力强化·γ型",
+    "description": "攻击力+45%",
+    "spCost": 37,
+    "initSp": 5,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "攻击力强化·γ型",
+    "description": "攻击力+60%",
+    "spCost": 35,
+    "initSp": 10,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "阿戈尔"
+    ],
+    "amount": 1,
+    "cap": 1,
+    "perRound": 0.75,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "异客": {
+   "profession": "术师",
+   "subProfession": "链术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "电能之触",
+    "description": "下次攻击时攻击力提升至180%，最多在4个目标间跳跃，攻击造成的停顿时间延长至1.5秒",
+    "spCost": 6,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "电能之触",
+    "description": "下次攻击时攻击力提升至210%，最多在4个目标间跳跃，攻击造成的停顿时间延长至1.5秒",
+    "spCost": 6,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "引星棘刺": {
+   "profession": "特种",
+   "subProfession": "炼金师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "解构涌潮",
+    "description": "投掷一个炼金单元，在12秒内使落点周围的地面敌人受到的治疗和回复效果降低50%，每秒受到相当于攻击力120%的法术伤害，友方单位每秒恢复相当于攻击力12%的生命；炼金单元能在12秒内缓慢沿投掷方向移动且影响范围持续扩大\n可充能1次",
+    "spCost": 27,
+    "initSp": 12,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "解构涌潮",
+    "description": "投掷一个炼金单元，在15秒内使落点周围的地面敌人受到的治疗和回复效果降低50%，每秒受到相当于攻击力140%的法术伤害，友方单位每秒恢复相当于攻击力15%的生命；炼金单元能在15秒内缓慢沿投掷方向移动且影响范围持续扩大\n可充能2次",
+    "spCost": 24,
+    "initSp": 13,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "伊比利亚",
+     "迅捷"
+    ],
+    "amount": 12,
+    "cap": null,
+    "perRound": 12,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "归溟幽灵鲨": {
+   "profession": "特种",
+   "subProfession": "傀儡师",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "生存的渴望",
+    "description": "攻击力+70%，攻击速度+22，技能持续期间内干员的生命值不会低于1\n技能结束后视为被击倒",
+    "spCost": 40,
+    "initSp": 20,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "生存的渴望",
+    "description": "攻击力+100%，攻击速度+34，技能持续期间内干员的生命值不会低于1\n技能结束后视为被击倒",
+    "spCost": 35,
+    "initSp": 25,
+    "duration": 17.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "忍冬": {
+   "profession": "先锋",
+   "subProfession": "尖兵",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "隐狐之艺",
+    "description": "技能开启时立即获得7点部署费用，攻击距离+1，攻击力+65%，攻击速度从+160逐渐衰减至+0，同时攻击阻挡的所有敌人，每次攻击晕眩敌人0.2秒\n若技能期间击倒敌人，则技能结束时进入迷彩状态，直至下一次开启技能",
+    "spCost": 21,
+    "initSp": 6,
+    "duration": 10.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "隐狐之艺",
+    "description": "技能开启时立即获得8点部署费用，攻击距离+1，攻击力+80%，攻击速度从+170逐渐衰减至+0，同时攻击阻挡的所有敌人，每次攻击晕眩敌人0.2秒\n若技能期间击倒敌人，则技能结束时进入迷彩状态，直至下一次开启技能",
+    "spCost": 20,
+    "initSp": 7,
+    "duration": 10.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "怒潮凛冬": {
+   "profession": "近卫",
+   "subProfession": "撼地者",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "绝不罢休",
+    "description": "被动效果：每次有高台触发第一天赋的效果时，获得1点技力\n自动开启：攻击范围扩大，攻击力+60%，防御力+40%\n第二次及以后使用时能力加成变为最初的两倍，且持续时间无限",
+    "spCost": 57,
+    "initSp": 20,
+    "duration": 16.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "绝不罢休",
+    "description": "被动效果：每次有高台触发第一天赋的效果时，获得1点技力\n自动开启：攻击范围扩大，攻击力+75%，防御力+50%\n第二次及以后使用时能力加成变为最初的两倍，且持续时间无限",
+    "spCost": 53,
+    "initSp": 24,
+    "duration": 16.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "乌萨斯",
+    "奇迹"
+   ]
+  },
+  "慕斯": {
+   "profession": "近卫",
+   "subProfession": "术战者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "挠伤",
+    "description": "下次攻击时攻击力+45%，5秒内使击中目标攻击力-20%",
+    "spCost": 5,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "挠伤",
+    "description": "下次攻击时攻击力+60%，5秒内使击中目标攻击力-25%",
+    "spCost": 5,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "维多利亚"
+    ],
+    "amount": 1,
+    "cap": null,
+    "perRound": 1,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "承曦格雷伊": {
+   "profession": "狙击",
+   "subProfession": "投掷手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "晨曦信标",
+    "description": "朝目标所在的位置发射一个雷电球，雷电球每1.5秒对周围所有敌人造成一次相当于攻击力95%的法术伤害并有40%的概率造成1.4秒的停顿，持续8秒\n可充能2次",
+    "spCost": 30,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "晨曦信标",
+    "description": "朝目标所在的位置发射一个雷电球，雷电球每1.5秒对周围所有敌人造成一次相当于攻击力110%的法术伤害并有40%的概率造成1.4秒的停顿，持续10秒\n可充能2次",
+    "spCost": 29,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "折光": {
+   "profession": "术师",
+   "subProfession": "本源术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "热处理变色",
+    "description": "攻击速度+55，额外攻击1个目标，攻击对处于凋亡损伤爆发期间的目标额外造成相当于攻击力50%的元素伤害",
+    "spCost": 40,
+    "initSp": 10,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "热处理变色",
+    "description": "攻击速度+75，额外攻击1个目标，攻击对处于凋亡损伤爆发期间的目标额外造成相当于攻击力60%的元素伤害",
+    "spCost": 37,
+    "initSp": 15,
+    "duration": 35.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "莱塔尼亚"
+    ],
+    "amount": 4,
+    "cap": null,
+    "perRound": 4,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "折桠": {
+   "profession": "重装",
+   "subProfession": "不屈者",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "生存决心",
+    "description": "技能开启时使自身周围的地面敌人战栗5秒；攻击力+100%，防御力+30%，同时攻击阻挡的所有敌人",
+    "spCost": 24,
+    "initSp": 0,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "生存决心",
+    "description": "技能开启时使自身周围的地面敌人战栗5秒；攻击力+120%，防御力+40%，同时攻击阻挡的所有敌人",
+    "spCost": 22,
+    "initSp": 3,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "乌萨斯"
+    ],
+    "amount": 2,
+    "cap": null,
+    "perRound": 2,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "拉普兰德": {
+   "profession": "近卫",
+   "subProfession": "领主",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "狼魂",
+    "description": "攻击力+75%，伤害类型变为法术，额外攻击一个目标，远程攻击不再降低攻击力\n技能自动开启",
+    "spCost": 27,
+    "initSp": 0,
+    "duration": 15.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "狼魂",
+    "description": "攻击力+90%，伤害类型变为法术，额外攻击一个目标，远程攻击不再降低攻击力\n技能自动开启",
+    "spCost": 24,
+    "initSp": 0,
+    "duration": 17.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "叙拉古"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "拜松": {
+   "profession": "重装",
+   "subProfession": "铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "防御力强化·γ型",
+    "description": "防御力+45%",
+    "spCost": 40,
+    "initSp": 5,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "防御力强化·γ型",
+    "description": "防御力+60%",
+    "spCost": 35,
+    "initSp": 10,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "炎"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "摆渡人": {
+   "profession": "近卫",
+   "subProfession": "强攻手",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "同胞的意志",
+    "description": "每次攻击造成相当于攻击力155%的物理伤害，并回复自身6%最大生命值；超出自身生命上限的生命值可转化为屏障\n屏障最高叠加至最大生命值的100%，技能结束后逐渐流失",
+    "spCost": 52,
+    "initSp": 25,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "同胞的意志",
+    "description": "每次攻击造成相当于攻击力175%的物理伤害，并回复自身7%最大生命值；超出自身生命上限的生命值可转化为屏障\n屏障最高叠加至最大生命值的100%，技能结束后逐渐流失",
+    "spCost": 48,
+    "initSp": 25,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "坚守",
+     "不屈"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "斥罪": {
+   "profession": "重装",
+   "subProfession": "不屈者",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "坚心苦修",
+    "description": "停止攻击，获得40%的庇护，每秒对周围所有地面敌人造成相当于攻击力90%的法术伤害，技能期间第一天赋的屏障获取效果提升60%",
+    "spCost": 37,
+    "initSp": 12,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "坚心苦修",
+    "description": "停止攻击，获得50%的庇护，每秒对周围所有地面敌人造成相当于攻击力110%的法术伤害，技能期间第一天赋的屏障获取效果提升80%",
+    "spCost": 34,
+    "initSp": 14,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": null,
+   "consumes": [
+    "不屈",
+    "叙拉古"
+   ]
+  },
+  "斯卡蒂": {
+   "profession": "近卫",
+   "subProfession": "无畏者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "跃浪击",
+    "description": "部署后20秒内攻击力+100%",
+    "spCost": 0,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "被动"
+   },
+   "eliteSkill": {
+    "name": "跃浪击",
+    "description": "部署后25秒内攻击力+120%",
+    "spCost": 0,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "被动"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "阿戈尔"
+    ],
+    "amount": 4,
+    "cap": 8,
+    "perRound": 6.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "旅骨": {
+   "profession": "特种",
+   "subProfession": "炼金师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "座浅",
+    "description": "投掷一个炼金单元，在31秒内使落点周围的地面敌人每秒受到相当于攻击力14%的法术伤害；重量大于等于3的敌人移动速度-60%，每秒额外受到相当于攻击力120%的法术伤害",
+    "spCost": 57,
+    "initSp": 26,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "座浅",
+    "description": "投掷一个炼金单元，在32秒内使落点周围的地面敌人每秒受到相当于攻击力17%的法术伤害；重量大于等于3的敌人移动速度-70%，每秒额外受到相当于攻击力150%的法术伤害",
+    "spCost": 54,
+    "initSp": 29,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "adjacent",
+    "covenants": [],
+    "amount": 3,
+    "cap": null,
+    "perRound": 3,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "星极": {
+   "profession": "近卫",
+   "subProfession": "术战者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "星辉剑",
+    "description": "攻击力+45%，防御力+45%，阻挡数+1，同时攻击阻挡的所有敌人",
+    "spCost": 27,
+    "initSp": 3,
+    "duration": 11.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "星辉剑",
+    "description": "攻击力+60%，防御力+60%，阻挡数+1，同时攻击阻挡的所有敌人",
+    "spCost": 24,
+    "initSp": 6,
+    "duration": 12.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "星源": {
+   "profession": "术师",
+   "subProfession": "链术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "双端导流",
+    "description": "下次攻击时攻击力提升至107%，同时攻击2个目标且分别最多在4个敌人间跳跃\n可充能1次",
+    "spCost": 8,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "双端导流",
+    "description": "下次攻击时攻击力提升至110%，同时攻击2个目标且分别最多在4个敌人间跳跃\n可充能2次",
+    "spCost": 8,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "机械师": {
+   "profession": "重装",
+   "subProfession": "哨戒铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "工程学十字星",
+    "description": "攻击力+160%，攻击间隔大幅增大，攻击变为对十字范围内所有敌人造成攻击力220%的法术伤害，可攻击结构性原理阻挡的目标\n结构性原理向前方冲锋，碰到敌人或高台时对范围内所有敌人造成机械师攻击力300%的物理伤害并停下，周围的敌人获得逐渐衰减的50%的虚弱效果",
+    "spCost": 43,
+    "initSp": 20,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "工程学十字星",
+    "description": "攻击力+220%，攻击间隔大幅增大，攻击变为对十字范围内所有敌人造成攻击力240%的法术伤害，可攻击结构性原理阻挡的目标\n结构性原理向前方冲锋，碰到敌人或高台时对范围内所有敌人造成机械师攻击力300%的物理伤害并停下，周围的敌人获得逐渐衰减的50%的虚弱效果",
+    "spCost": 41,
+    "initSp": 22,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": null,
+   "consumes": []
+  },
+  "杰克": {
+   "profession": "近卫",
+   "subProfession": "斗士",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "给你一拳！",
+    "description": "下次攻击的攻击力提高至180%",
+    "spCost": 4,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "给你一拳！",
+    "description": "下次攻击的攻击力提高至210%",
+    "spCost": 3,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "极光": {
+   "profession": "重装",
+   "subProfession": "决战者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "人工降雪",
+    "description": "攻击间隔略微增大，攻击力+45%，攻击对目标造成2.5秒寒冷，若目标已经处于冻结状态，则改为使本次攻击的攻击力提高至250%\n攻击装有9发子弹，打完后技能结束（期间可随时停止技能）",
+    "spCost": 24,
+    "initSp": 9,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "人工降雪",
+    "description": "攻击间隔略微增大，攻击力+60%，攻击对目标造成2.5秒寒冷，若目标已经处于冻结状态，则改为使本次攻击的攻击力提高至300%\n攻击装有9发子弹，打完后技能结束（期间可随时停止技能）",
+    "spCost": 20,
+    "initSp": 10,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "谢拉格"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "棘刺": {
+   "profession": "近卫",
+   "subProfession": "领主",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "至高之术",
+    "description": "攻击范围扩大，攻击力+33%，攻击速度+14，远程攻击不再降低攻击力\n第二次及以后使用时能力加成变为最初的两倍，且持续时间无限",
+    "spCost": 15,
+    "initSp": 0,
+    "duration": 30.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "至高之术",
+    "description": "攻击范围扩大，攻击力+40%，攻击速度+16，远程攻击不再降低攻击力\n第二次及以后使用时能力加成变为最初的两倍，且持续时间无限",
+    "spCost": 15,
+    "initSp": 0,
+    "duration": 30.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "伊比利亚"
+    ],
+    "amount": 12,
+    "cap": 12,
+    "perRound": 9.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "森蚺": {
+   "profession": "重装",
+   "subProfession": "决战者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "钢铁意志",
+    "description": "攻击力+140%，防御力+90%，阻挡数+2，每秒恢复3%生命\n技能结束后自身晕眩5秒",
+    "spCost": 52,
+    "initSp": 21,
+    "duration": 31.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "钢铁意志",
+    "description": "攻击力+170%，防御力+120%，阻挡数+2，每秒恢复3%生命\n技能结束后自身晕眩5秒",
+    "spCost": 49,
+    "initSp": 22,
+    "duration": 32.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "萨尔贡",
+     "不屈"
+    ],
+    "amount": 4,
+    "cap": 12,
+    "perRound": 9.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "歌蕾蒂娅": {
+   "profession": "特种",
+   "subProfession": "钩索师",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "缺水的碎漩狂舞",
+    "description": "对一个远处目标束缚并制造一个龙卷风使周围敌人移动速度-50%，每1.5秒造成85%攻击力的法术伤害并小力地拖拽至中心。技能结束时把目标地点周围的敌人小力地拖拽至面前",
+    "spCost": 42,
+    "initSp": 22,
+    "duration": 8.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "缺水的碎漩狂舞",
+    "description": "对一个远处目标束缚并制造一个龙卷风使周围敌人移动速度-50%，每1.5秒造成100%攻击力的法术伤害并中等力度地拖拽至中心。技能结束时把目标地点周围的敌人中等力度地拖拽至面前",
+    "spCost": 39,
+    "initSp": 24,
+    "duration": 8.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "水月": {
+   "profession": "特种",
+   "subProfession": "伏击客",
+   "position": "近战",
+   "blockCount": 0,
+   "normalSkill": {
+    "name": "囚徒困境",
+    "description": "攻击间隔小幅度缩短，攻击力+15%，第一天赋额外攻击1个目标并附加0.8秒束缚",
+    "spCost": 22,
+    "initSp": 5,
+    "duration": 17.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "囚徒困境",
+    "description": "攻击间隔缩短，攻击力+20%，第一天赋额外攻击1个目标并附加1秒束缚",
+    "spCost": 19,
+    "initSp": 5,
+    "duration": 19.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "阿戈尔"
+   ]
+  },
+  "水灯心": {
+   "profession": "狙击",
+   "subProfession": "回环射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "可驯服的",
+    "description": "攻击力+20%，回旋投射物命中后会继续附着目标，造成1秒的停顿并额外斩击目标4次",
+    "spCost": 31,
+    "initSp": 10,
+    "duration": 25.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "可驯服的",
+    "description": "攻击力+35%，回旋投射物命中后会继续附着目标，造成1秒的停顿并额外斩击目标4次",
+    "spCost": 28,
+    "initSp": 15,
+    "duration": 25.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "泡泡": {
+   "profession": "重装",
+   "subProfession": "铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "“挨打”",
+    "description": "停止攻击敌人；防御力+65%，自身更易受敌人攻击，每次受到攻击时对目标造成相当于泡泡防御力40%的物理伤害",
+    "spCost": 50,
+    "initSp": 0,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "“挨打”",
+    "description": "停止攻击敌人；防御力+85%，自身更易受敌人攻击，每次受到攻击时对目标造成相当于泡泡防御力40%的物理伤害",
+    "spCost": 49,
+    "initSp": 0,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "萨尔贡",
+     "坚守"
+    ],
+    "amount": 2,
+    "cap": 4,
+    "perRound": 3.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "波登可": {
+   "profession": "辅助",
+   "subProfession": "凝滞师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "孢子扩散",
+    "description": "立即投掷一个小瓶，碎裂后在周围产生一个持续5秒的孢子群\n孢子群范围内所有敌人被停顿且失去特殊能力，每秒受到相当于攻击力50%的法术伤害",
+    "spCost": 32,
+    "initSp": 10,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "孢子扩散",
+    "description": "立即投掷一个小瓶，碎裂后在周围产生一个持续5秒的孢子群\n孢子群范围内所有敌人被停顿且失去特殊能力，每秒受到相当于攻击力60%的法术伤害",
+    "spCost": 29,
+    "initSp": 10,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "流明": {
+   "profession": "医疗",
+   "subProfession": "疗养师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "灯火不灭",
+    "description": "攻击力+30%，攻击速度+20，优先治疗处于异常状态中的单位；只在治疗异常状态中的单位时会消耗子弹，使该次治疗量提升至攻击力的135%并解除目标所受的异常状态\n攻击装有4发子弹，打完后技能结束（期间可随时停止技能）",
+    "spCost": 61,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "灯火不灭",
+    "description": "攻击力+40%，攻击速度+20，优先治疗处于异常状态中的单位；只在治疗异常状态中的单位时会消耗子弹，使该次治疗量提升至攻击力的150%并解除目标所受的异常状态\n攻击装有6发子弹，打完后技能结束（期间可随时停止技能）",
+    "spCost": 57,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "伊比利亚",
+     "聚合"
+    ],
+    "amount": 1,
+    "cap": null,
+    "perRound": 1,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "浊心斯卡蒂": {
+   "profession": "辅助",
+   "subProfession": "吟游者",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "\"潮涌，潮枯\"",
+    "description": "特性变为自身每秒流失5%生命，使范围内所有敌人每秒受到40%攻击力的真实伤害（自身与海嗣造成的伤害可叠加），范围内所有友方单位获得相当于浊心斯卡蒂65%攻击力的鼓舞效果",
+    "spCost": 39,
+    "initSp": 15,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "\"潮涌，潮枯\"",
+    "description": "特性变为自身每秒流失5%生命，使范围内所有敌人每秒受到55%攻击力的真实伤害（自身与海嗣造成的伤害可叠加），范围内所有友方单位获得相当于浊心斯卡蒂80%攻击力的鼓舞效果",
+    "spCost": 38,
+    "initSp": 15,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "阿戈尔"
+    ],
+    "amount": 2,
+    "cap": 20,
+    "perRound": 15.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "海沫": {
+   "profession": "近卫",
+   "subProfession": "收割者",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "回首，断舍",
+    "description": "下次攻击的攻击力提升至120%，并连续攻击两次",
+    "spCost": 3,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "回首，断舍",
+    "description": "下次攻击的攻击力提升至135%，并连续攻击两次",
+    "spCost": 3,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "涤火杰西卡": {
+   "profession": "重装",
+   "subProfession": "哨戒铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "饱和迸射",
+    "description": "攻击距离+1，攻击间隔增大，攻击力+240%，防御力+50%，机动盾牌防御力+100%\n机动盾牌存在时，立刻向前发射一枚炮弹，命中或到达终点时对范围内所有敌人造成相当于攻击力250%的物理伤害，并使其晕眩5秒\n攻击装有20发弹药，打完后结束（可随时停止技能）",
+    "spCost": 50,
+    "initSp": 20,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "饱和迸射",
+    "description": "攻击距离+1，攻击间隔增大，攻击力+270%，防御力+65%，机动盾牌防御力+135%\n机动盾牌存在时，立刻向前发射一枚炮弹，命中或到达终点时对范围内所有敌人造成相当于攻击力250%的物理伤害，并使其晕眩5秒\n攻击装有20发弹药，打完后结束（可随时停止技能）",
+    "spCost": 45,
+    "initSp": 25,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "维多利亚",
+     "坚守"
+    ],
+    "amount": 2,
+    "cap": null,
+    "perRound": 2,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "淬羽赫默": {
+   "profession": "辅助",
+   "subProfession": "护佑者",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "无畏者协议",
+    "description": "攻击力+20%，第一天赋效果提升至1.5倍；技能期间仅一次，攻击范围内的一名干员受到致命伤时，使其生命值在6秒内不低于1\n同一次作战中最多使用2次，可主动关闭（期间可随时停止技能）",
+    "spCost": 46,
+    "initSp": 20,
+    "duration": 60.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "无畏者协议",
+    "description": "攻击力+30%，第一天赋效果提升至1.8倍；技能期间仅一次，攻击范围内的一名干员受到致命伤时，使其生命值在7秒内不低于1\n同一次作战中最多使用2次，可主动关闭（期间可随时停止技能）",
+    "spCost": 42,
+    "initSp": 20,
+    "duration": 60.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "self",
+    "covenants": [],
+    "amount": 1,
+    "cap": null,
+    "perRound": 1,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "深巡": {
+   "profession": "重装",
+   "subProfession": "哨戒铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "行动能力剥夺",
+    "description": "攻击距离加长，攻击力+30%，攻击速度+25，攻击变为向正前方发射的毒性鳍刺，能穿过3个目标且造成1秒停顿。",
+    "spCost": 39,
+    "initSp": 21,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "行动能力剥夺",
+    "description": "攻击距离加长，攻击力+40%，攻击速度+30，攻击变为向正前方发射的毒性鳍刺，能穿过3个目标且造成1秒停顿。",
+    "spCost": 36,
+    "initSp": 22,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": null,
+   "consumes": [
+    "阿戈尔"
+   ]
+  },
+  "深靛": {
+   "profession": "术师",
+   "subProfession": "秘术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "光影迷宫",
+    "description": "攻击间隔略微缩短，天赋的触发几率提升至2倍，攻击范围内处于束缚状态的敌人每0.5秒受到相当于深靛攻击力12%的法术伤害",
+    "spCost": 47,
+    "initSp": 10,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "光影迷宫",
+    "description": "攻击间隔一定程度缩短，天赋的触发几率提升至2.5倍，攻击范围内处于束缚状态的敌人每0.5秒受到相当于深靛攻击力15%的法术伤害",
+    "spCost": 44,
+    "initSp": 15,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "伊比利亚"
+    ],
+    "amount": 2,
+    "cap": null,
+    "perRound": 2,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "渡桥": {
+   "profession": "先锋",
+   "subProfession": "战术家",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "承压功率",
+    "description": "技能持续时间内逐渐获得12点部署费用，攻击力+45%；樱桃三号停止攻击，阻挡数+1，防御力+95%\n技能结束后樱桃三号销毁自身",
+    "spCost": 47,
+    "initSp": 15,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "承压功率",
+    "description": "技能持续时间内逐渐获得12点部署费用，攻击力+60%；樱桃三号停止攻击，阻挡数+1，防御力+110%\n技能结束后樱桃三号销毁自身",
+    "spCost": 44,
+    "initSp": 17,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "adjacent",
+    "covenants": [],
+    "amount": 2,
+    "cap": null,
+    "perRound": 2,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "温蒂": {
+   "profession": "特种",
+   "subProfession": "推击手",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "液氮大炮",
+    "description": "立即发射一个压缩液氮炮，造成相当于攻击力290%的群体法术伤害并将敌人中等力度地推开，令其5秒内移动时受到正比于距离的真实伤害；如果蓄水炮在周围4格内的话也会同样进行发射",
+    "spCost": 40,
+    "initSp": 13,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "液氮大炮",
+    "description": "立即发射一个压缩液氮炮，造成相当于攻击力320%的群体法术伤害并将敌人较大力地推开，令其6秒内移动时受到正比于距离的真实伤害；如果蓄水炮在周围4格内的话也会同样进行发射",
+    "spCost": 37,
+    "initSp": 16,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "溯光星源": {
+   "profession": "辅助",
+   "subProfession": "凝滞师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "并流连锁",
+    "description": "攻击范围扩大，攻击力+35%，攻击间隔缩短，持续锁定2个敌人进行攻击，被锁定的敌人会互相链接；每个被链接的敌人会把即将受到法术伤害的15%额外传导给其他链接目标",
+    "spCost": 45,
+    "initSp": 18,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "并流连锁",
+    "description": "攻击范围扩大，攻击力+50%，攻击间隔缩短，持续锁定2个敌人进行攻击，被锁定的敌人会互相链接；每个被链接的敌人会把即将受到法术伤害的20%额外传导给其他链接目标",
+    "spCost": 40,
+    "initSp": 21,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "奥术"
+    ],
+    "amount": 2,
+    "cap": 18,
+    "perRound": 13.5,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "灰喉": {
+   "profession": "狙击",
+   "subProfession": "速射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "回流",
+    "description": "攻击力+15%，攻击变为3连射",
+    "spCost": 37,
+    "initSp": 11,
+    "duration": 16.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "回流",
+    "description": "攻击力+20%，攻击变为3连射",
+    "spCost": 34,
+    "initSp": 12,
+    "duration": 17.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "精准"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "灵知": {
+   "profession": "辅助",
+   "subProfession": "削弱者",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "零度爆发",
+    "description": "对范围内所有敌人造成2.5秒寒冷和相当于攻击力130%的法术伤害；蓄力：额外造成一层寒冷",
+    "spCost": 8,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "零度爆发",
+    "description": "对范围内所有敌人造成3秒寒冷和相当于攻击力160%的法术伤害；蓄力：额外造成一层寒冷",
+    "spCost": 7,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "烈夏": {
+   "profession": "近卫",
+   "subProfession": "领主",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "一呼百应",
+    "description": "立刻使技能就绪的【乌萨斯学生自治团】干员同时开启技能，自身攻击力+50%，额外攻击一个目标，远程攻击不再降低攻击力",
+    "spCost": 43,
+    "initSp": 9,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "一呼百应",
+    "description": "立刻使技能就绪的【乌萨斯学生自治团】干员同时开启技能，自身攻击力+80%，额外攻击一个目标，远程攻击不再降低攻击力",
+    "spCost": 35,
+    "initSp": 12,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "乌萨斯"
+    ],
+    "amount": 4,
+    "cap": null,
+    "perRound": 4,
+    "temporary": true
+   },
+   "consumes": []
+  },
+  "烛煌": {
+   "profession": "术师",
+   "subProfession": "本源术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "众恶的焚场",
+    "description": "攻击范围改变，攻击力+70%，攻击间隔大幅缩短，攻击变为群体攻击；若目标处于灼燃损伤爆发期间则额外造成攻击力60%的元素伤害\n自身每秒流失最大生命的3%，攻击装有18发弹药，全场有敌人进入灼燃损伤爆发时获得2颗额外弹药，弹药打完后结束（可随时停止技能）",
+    "spCost": 37,
+    "initSp": 13,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "众恶的焚场",
+    "description": "攻击范围改变，攻击力+85%，攻击间隔大幅缩短，攻击变为群体攻击；若目标处于灼燃损伤爆发期间则额外造成攻击力70%的元素伤害\n自身每秒流失最大生命的3%，攻击装有21发弹药，全场有敌人进入灼燃损伤爆发时获得2颗额外弹药，弹药打完后结束（可随时停止技能）",
+    "spCost": 34,
+    "initSp": 16,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "炎",
+     "维多利亚"
+    ],
+    "amount": 1,
+    "cap": 12,
+    "perRound": 9.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "焰尾": {
+   "profession": "先锋",
+   "subProfession": "尖兵",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "焰心",
+    "description": "技能持续时间内逐渐获得8点部署费用，攻击间隔缩短，攻击力+45%，阻挡数+1，获得60%的物理和法术闪避",
+    "spCost": 21,
+    "initSp": 2,
+    "duration": 8.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "焰心",
+    "description": "技能持续时间内逐渐获得8点部署费用，攻击间隔缩短，攻击力+60%，阻挡数+1，获得80%的物理和法术闪避",
+    "spCost": 19,
+    "initSp": 3,
+    "duration": 8.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "卡西米尔",
+     "迅捷"
+    ],
+    "amount": 1,
+    "cap": null,
+    "perRound": 1,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "玛恩纳": {
+   "profession": "近卫",
+   "subProfession": "解放者",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "未照耀的荣光",
+    "description": "攻击范围扩大，特性提升至2倍（每击倒一名敌人时特性倍率-10%），攻击对5个目标造成相当于125%攻击力的物理伤害。范围内所有敌人受到卡西米尔干员攻击时额外附带玛恩纳10%攻击力的真实伤害",
+    "spCost": 50,
+    "initSp": 15,
+    "duration": 26.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "未照耀的荣光",
+    "description": "攻击范围扩大，特性提升至2倍（每击倒一名敌人时特性倍率-10%），攻击对5个目标造成相当于150%攻击力的物理伤害。范围内所有敌人受到卡西米尔干员攻击时额外附带玛恩纳11%攻击力的真实伤害",
+    "spCost": 45,
+    "initSp": 20,
+    "duration": 26.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "卡西米尔"
+   ]
+  },
+  "瑕光": {
+   "profession": "重装",
+   "subProfession": "守护者",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "先贤化身",
+    "description": "攻击力+65%，防御力+25%，每次攻击额外造成相当于攻击力60%的法术伤害，并恢复周围一名其他友方单位相当于攻击力70%的生命",
+    "spCost": 29,
+    "initSp": 15,
+    "duration": 23.0,
+    "spType": "受击回复"
+   },
+   "eliteSkill": {
+    "name": "先贤化身",
+    "description": "攻击力+80%，防御力+30%，每次攻击额外造成相当于攻击力70%的法术伤害，并恢复周围一名其他友方单位相当于攻击力80%的生命",
+    "spCost": 28,
+    "initSp": 15,
+    "duration": 26.0,
+    "spType": "受击回复"
+   },
+   "roles": [
+    "盾位",
+    "奶位"
+   ],
+   "stack": {
+    "kind": "self",
+    "covenants": [],
+    "amount": 3,
+    "cap": 9,
+    "perRound": 6.75,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "瑰盐": {
+   "profession": "医疗",
+   "subProfession": "群愈师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "绝妙的长效药呀",
+    "description": "攻击间隔小幅度缩短，攻击范围内的友方干员受到的物理与法术伤害的20%变为持续5秒的生命流失",
+    "spCost": 43,
+    "initSp": 19,
+    "duration": 27.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "绝妙的长效药呀",
+    "description": "攻击间隔缩短，攻击范围内的友方干员受到的物理与法术伤害的30%变为持续5秒的生命流失",
+    "spCost": 40,
+    "initSp": 21,
+    "duration": 27.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": null,
+   "consumes": [
+    "伊比利亚"
+   ]
+  },
+  "白铁": {
+   "profession": "辅助",
+   "subProfession": "工匠",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "铁钳号·原型机",
+    "description": "携带此技能时：装置可被我方干员攻击但不会受伤，可通过技能造成群体物理伤害但会流失生命\n开启时立即获得一个装置，攻击力+25%，攻击速度+25",
+    "spCost": 45,
+    "initSp": 15,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "铁钳号·原型机",
+    "description": "携带此技能时：装置可被我方干员攻击但不会受伤，可通过技能造成群体物理伤害但会流失生命\n开启时立即获得一个装置，攻击力+40%，攻击速度+40",
+    "spCost": 40,
+    "initSp": 20,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "真理": {
+   "profession": "辅助",
+   "subProfession": "凝滞师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "文学风暴",
+    "description": "攻击力+25%，攻击范围扩大，额外攻击两个目标",
+    "spCost": 50,
+    "initSp": 10,
+    "duration": 22.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "文学风暴",
+    "description": "攻击力+30%，攻击范围扩大，额外攻击两个目标",
+    "spCost": 50,
+    "initSp": 20,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "真言": {
+   "profession": "术师",
+   "subProfession": "本源术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "无言为真",
+    "description": "攻击范围扩大，范围内敌人隐匿失效且麻痹层数上限降为2，攻击力+170%同时攻击2个目标，范围中干员开启技能时（包括自身）使范围内敌人获得2层麻痹（至多3次），范围内敌人麻痹层数每超过上限1层在目标及1名敌人间跳跃1次110%攻击力的元素伤害，跳跃间存在短暂间隔",
+    "spCost": 52,
+    "initSp": 24,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "无言为真",
+    "description": "攻击范围扩大，范围内敌人隐匿失效且麻痹层数上限降为2，攻击力+210%同时攻击2个目标，范围中干员开启技能时（包括自身）使范围内敌人获得2层麻痹（至多3次），范围内敌人麻痹层数每超过上限1层在目标及1名敌人间跳跃1次145%攻击力的元素伤害，跳跃间存在短暂间隔",
+    "spCost": 46,
+    "initSp": 26,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "萨尔贡"
+   ]
+  },
+  "矩": {
+   "profession": "狙击",
+   "subProfession": "攻城手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "良翼难乘",
+    "description": "攻击力+62%，额外攻击1个目标；技能期间对攻击范围内生命值低于一半的敌人仅一次造成相当于攻击力100%的额外物理伤害（该次伤害有短暂间隔）\n每个敌人最多受到一次额外物理伤害",
+    "spCost": 47,
+    "initSp": 21,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "良翼难乘",
+    "description": "攻击力+75%，额外攻击1个目标；技能期间对攻击范围内生命值低于一半的敌人仅一次造成相当于攻击力100%的额外物理伤害（该次伤害有短暂间隔）\n每个敌人最多受到一次额外物理伤害",
+    "spCost": 44,
+    "initSp": 22,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "炎"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "砾": {
+   "profession": "特种",
+   "subProfession": "处决者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "影袭",
+    "description": "部署后防御力+270%，在7秒内持续衰减",
+    "spCost": 0,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "被动"
+   },
+   "eliteSkill": {
+    "name": "影袭",
+    "description": "部署后防御力+340%，在8秒内持续衰减",
+    "spCost": 0,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "被动"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "卡西米尔",
+     "不屈"
+    ],
+    "amount": 2,
+    "cap": 12,
+    "perRound": 9.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "空弦": {
+   "profession": "狙击",
+   "subProfession": "速射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "箭矢·暴风",
+    "description": "攻击力+10%，攻击距离+1，攻击变为3连击，每次可以攻击2个敌人",
+    "spCost": 37,
+    "initSp": 15,
+    "duration": 20.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "箭矢·暴风",
+    "description": "攻击力+15%，攻击距离+1，攻击变为3连击，每次可以攻击2个敌人",
+    "spCost": 34,
+    "initSp": 15,
+    "duration": 20.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "adjacent",
+    "covenants": [],
+    "amount": 3,
+    "cap": null,
+    "perRound": 3,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "纯烬艾雅法拉": {
+   "profession": "医疗",
+   "subProfession": "行医",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "火山回响",
+    "description": "攻击范围扩大至整个战场，治疗变为35%治疗量和元素损伤回复量的5连发，优先治疗不同的目标，第二天赋的效果提升至2.9倍",
+    "spCost": 75,
+    "initSp": 30,
+    "duration": 50.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "火山回响",
+    "description": "攻击范围扩大至整个战场，治疗变为45%治疗量和元素损伤回复量的5连发，优先治疗不同的目标，第二天赋的效果提升至3.8倍",
+    "spCost": 70,
+    "initSp": 40,
+    "duration": 50.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "莱塔尼亚",
+     "聚合"
+    ],
+    "amount": 2,
+    "cap": 20,
+    "perRound": 15.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "维伊": {
+   "profession": "术师",
+   "subProfession": "秘术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "“用赤铁铭记”",
+    "description": "攻击速度+110，储存的能量发射后会在敌人间（优先不同目标）跳跃一次，并造成相当于130%攻击力的法术伤害，转置能量改为跳跃3次\n攻击装有18发弹药，仅在发射每个储存能量时消耗1发弹药，发射转置能量消耗3发弹药，弹药打完后结束（可随时停止技能）",
+    "spCost": 57,
+    "initSp": 22,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "“用赤铁铭记”",
+    "description": "攻击速度+140，储存的能量发射后会在敌人间（优先不同目标）跳跃一次，并造成相当于140%攻击力的法术伤害，转置能量改为跳跃3次\n攻击装有21发弹药，仅在发射每个储存能量时消耗1发弹药，发射转置能量消耗3发弹药，弹药打完后结束（可随时停止技能）",
+    "spCost": 51,
+    "initSp": 24,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "乌萨斯"
+   ]
+  },
+  "维娜·维多利亚": {
+   "profession": "近卫",
+   "subProfession": "术战者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "俱以我之名",
+    "description": "立即在天赋一生效范围内可部署地面召唤“黄金盟誓”；技能期间可攻击被天赋一生效范围友方单位阻挡的敌人，攻击力+145%，攻击目标数+1，攻击间隔缩短，攻击时伤害类型变为真实",
+    "spCost": 65,
+    "initSp": 25,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "俱以我之名",
+    "description": "立即在天赋一生效范围内可部署地面召唤“黄金盟誓”；技能期间可攻击被天赋一生效范围友方单位阻挡的敌人，攻击力+160%，攻击目标数+2，攻击间隔缩短，攻击时伤害类型变为真实",
+    "spCost": 60,
+    "initSp": 30,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "维多利亚",
+     "奇迹"
+    ],
+    "amount": 2,
+    "cap": null,
+    "perRound": 2,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "缪尔赛思": {
+   "profession": "先锋",
+   "subProfession": "战术家",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "浅层非熵适应",
+    "description": "立即获得13点费用，自身与流形攻击力+22%，若流形为近战复制体时每2秒对周围八格敌人向自己中心小力度地拖拽并使所有阻挡的单位持续晕眩，若为远程复制体时刷新所有流形且攻击附带持续1.5秒的束缚",
+    "spCost": 42,
+    "initSp": 10,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "浅层非熵适应",
+    "description": "立即获得14点费用，自身与流形攻击力+35%，若流形为近战复制体时每2秒对周围八格敌人向自己中心小力度地拖拽并使所有阻挡的单位持续晕眩，若为远程复制体时刷新所有流形且攻击附带持续1.5秒的束缚",
+    "spCost": 39,
+    "initSp": 15,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "罗比菈塔": {
+   "profession": "辅助",
+   "subProfession": "工匠",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "全自动造型仪",
+    "description": "停止攻击，阻挡数+1，防御力+35%，技能结束时获得一个造型仪",
+    "spCost": 40,
+    "initSp": 5,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "全自动造型仪",
+    "description": "停止攻击，阻挡数+1，防御力+50%，技能结束时获得一个造型仪",
+    "spCost": 35,
+    "initSp": 10,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "坚守",
+     "助力"
+    ],
+    "amount": 2,
+    "cap": null,
+    "perRound": 2,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "耀骑士临光": {
+   "profession": "近卫",
+   "subProfession": "无畏者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "耀阳颔首",
+    "description": "在周围四格可部署地面召唤一把\"耀阳\"对周围敌人造成90%耀骑士临光攻击力的真实伤害并晕眩3秒，自身攻击范围扩大，攻击力+70%、防御力+40%，攻击自身与\"耀阳\"阻挡的单位时伤害类型变为真实",
+    "spCost": 55,
+    "initSp": 15,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "耀阳颔首",
+    "description": "在周围四格可部署地面召唤一把\"耀阳\"对周围敌人造成100%耀骑士临光攻击力的真实伤害并晕眩3秒，自身攻击范围扩大，攻击力+100%、防御力+70%，攻击自身与\"耀阳\"阻挡的单位时伤害类型变为真实",
+    "spCost": 50,
+    "initSp": 20,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "卡西米尔",
+     "突袭"
+    ],
+    "amount": 6,
+    "cap": 12,
+    "perRound": 9.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "老鲤": {
+   "profession": "特种",
+   "subProfession": "行商",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "驱凶辟邪",
+    "description": "被动效果：攻击速度+15；主动开启：标记目标使其更易受我方攻击，5秒后标记爆炸对周围造成230%的法术伤害。期间我方每对目标造成一次伤害，爆炸伤害增加老鲤攻击力的10%（最多增加20次，达到上限或目标被击倒时提前爆炸）",
+    "spCost": 11,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "驱凶辟邪",
+    "description": "被动效果：攻击速度+20；主动开启：标记目标使其更易受我方攻击，5秒后标记爆炸对周围造成260%的法术伤害。期间我方每对目标造成一次伤害，爆炸伤害增加老鲤攻击力的15%（最多增加25次，达到上限或目标被击倒时提前爆炸）",
+    "spCost": 10,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "投资人",
+    "炎"
+   ]
+  },
+  "耶拉": {
+   "profession": "术师",
+   "subProfession": "驭械术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "心随意动",
+    "description": "浮游单元+1，释放浮游单元锁定敌人攻击，攻击力+29%，自身与浮游单元攻击有15%概率对敌人造成2.5秒寒冷。\n浮游单元锁敌后直至敌人被击杀或技能结束后返回干员身边",
+    "spCost": 47,
+    "initSp": 15,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "心随意动",
+    "description": "浮游单元+1，释放浮游单元锁定敌人攻击，攻击力+40%，自身与浮游单元攻击有20%概率对敌人造成2.5秒寒冷。\n浮游单元锁敌后直至敌人被击杀或技能结束后返回干员身边",
+    "spCost": 44,
+    "initSp": 20,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "至简": {
+   "profession": "术师",
+   "subProfession": "驭械术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "神工意匠",
+    "description": "下次攻击造成相当于攻击力130%的法术伤害，并连续攻击两次\n可充能2次",
+    "spCost": 7,
+    "initSp": 1,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "神工意匠",
+    "description": "下次攻击造成相当于攻击力160%的法术伤害，并连续攻击两次\n可充能3次",
+    "spCost": 6,
+    "initSp": 2,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "艾丝黛尔": {
+   "profession": "近卫",
+   "subProfession": "强攻手",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "攻击力强化·β型",
+    "description": "攻击力+35%",
+    "spCost": 37,
+    "initSp": 0,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "攻击力强化·β型",
+    "description": "攻击力+50%",
+    "spCost": 37,
+    "initSp": 5,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "萨尔贡"
+    ],
+    "amount": 1,
+    "cap": 2,
+    "perRound": 1.5,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "艾丽妮": {
+   "profession": "近卫",
+   "subProfession": "剑豪",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "判决",
+    "description": "对周围所有地面敌人造成相当于攻击力250%的物理伤害并使其浮空2秒，然后快速轰击10次，每次对随机目标周围小范围内所有敌人造成相当于攻击力200%的物理伤害",
+    "spCost": 32,
+    "initSp": 8,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "判决",
+    "description": "对周围所有地面敌人造成相当于攻击力250%的物理伤害并使其浮空3秒，然后快速轰击10次，每次对随机目标周围小范围内所有敌人造成相当于攻击力230%的物理伤害",
+    "spCost": 30,
+    "initSp": 16,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "艾雅法拉": {
+   "profession": "术师",
+   "subProfession": "中坚术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "火山",
+    "description": "攻击力+70%，攻击范围增大，攻击间隔大幅度缩短，攻击变为随机对攻击范围内至多4个敌人发射熔岩",
+    "spCost": 80,
+    "initSp": 33,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "火山",
+    "description": "攻击力+85%，攻击范围增大，攻击间隔大幅度缩短，攻击变为随机对攻击范围内至多5个敌人发射熔岩",
+    "spCost": 80,
+    "initSp": 40,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "奥术",
+    "莱塔尼亚"
+   ]
+  },
+  "荒芜拉普兰德": {
+   "profession": "术师",
+   "subProfession": "驭械术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "终幕·浩劫",
+    "description": "浮游单元+2，攻击力+45%，释放特殊形态的浮游单元散开后在整个战场范围各自追逐较近的敌人，追上时使目标恐惧2秒并锁定其攻击，浮游单元周围的敌人移动速度-30%且每秒受到相当于攻击力100%的法术伤害（不叠加）；浮游单元在锁定目标倒下后重新索敌，直至技能结束后返回干员身边",
+    "spCost": 69,
+    "initSp": 38,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "终幕·浩劫",
+    "description": "浮游单元+2，攻击力+60%，释放特殊形态的浮游单元散开后在整个战场范围各自追逐较近的敌人，追上时使目标恐惧2秒并锁定其攻击，浮游单元周围的敌人移动速度-40%且每秒受到相当于攻击力100%的法术伤害（不叠加）；浮游单元在锁定目标倒下后重新索敌，直至技能结束后返回干员身边",
+    "spCost": 63,
+    "initSp": 38,
+    "duration": 40.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "叙拉古"
+    ],
+    "amount": 2,
+    "cap": 20,
+    "perRound": 15.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "莎草": {
+   "profession": "医疗",
+   "subProfession": "链愈师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "巧思乍现",
+    "description": "下次治疗时的治疗量提升至攻击力的160%，天赋附加屏障效果提升至150%\n可充能2次",
+    "spCost": 9,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "巧思乍现",
+    "description": "下次治疗时的治疗量提升至攻击力的175%，天赋附加屏障效果提升至200%\n可充能2次",
+    "spCost": 9,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": null,
+   "consumes": []
+  },
+  "蓝毒": {
+   "profession": "狙击",
+   "subProfession": "速射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "二重射击·自动",
+    "description": "下次攻击额外攻击一个目标，造成相当于攻击力140%的物理伤害",
+    "spCost": 3,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "二重射击·自动",
+    "description": "下次攻击额外攻击一个目标，造成相当于攻击力155%的物理伤害",
+    "spCost": 3,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "伊比利亚"
+   ]
+  },
+  "蕾缪安": {
+   "profession": "狙击",
+   "subProfession": "神射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "礼炮·强制追思",
+    "description": "停止攻击，每0.5秒消耗1发子弹依次锁定敌人，技能结束时对每名被锁定的敌人所在位置进行轰炸，轰炸造成攻击力240%的范围物理伤害（中心伤害提升至攻击力的360%）\n攻击装有5发弹药，打完后结束（可随时停止技能）",
+    "spCost": 45,
+    "initSp": 26,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "礼炮·强制追思",
+    "description": "停止攻击，每0.5秒消耗1发子弹依次锁定敌人，技能结束时对每名被锁定的敌人所在位置进行轰炸，轰炸造成攻击力270%的范围物理伤害（中心伤害提升至攻击力的390%）\n攻击装有5发弹药，打完后结束（可随时停止技能）",
+    "spCost": 42,
+    "initSp": 29,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "精准"
+   ]
+  },
+  "薇薇安娜": {
+   "profession": "近卫",
+   "subProfession": "术战者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "“明灭”",
+    "description": "攻击间隔延长，攻击力+55%，防御力+40%，法术抗性+15，攻击变为二连击，第二天赋的触发几率提升至1.8倍，优先攻击精英或领袖敌人\n第二次及以后使用时，攻击距离+2，攻击变为三连击，持续时间延长至25秒",
+    "spCost": 32,
+    "initSp": 9,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "“明灭”",
+    "description": "攻击间隔延长，攻击力+75%，防御力+60%，法术抗性+20，攻击变为二连击，第二天赋的触发几率提升至2倍，优先攻击精英或领袖敌人\n第二次及以后使用时，攻击距离+2，攻击变为三连击，持续时间延长至25秒",
+    "spCost": 30,
+    "initSp": 12,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "amplifier",
+    "covenants": [],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false,
+    "amplify": {
+     "type": "capFlat",
+     "value": 7,
+     "scope": "sameCovenant"
+    }
+   },
+   "consumes": []
+  },
+  "蛇屠箱": {
+   "profession": "重装",
+   "subProfession": "铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "壳状防御",
+    "description": "停止攻击敌人；阻挡数+1，防御力+75%，每秒恢复最大生命的1%",
+    "spCost": 40,
+    "initSp": 0,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "壳状防御",
+    "description": "停止攻击敌人；阻挡数+1，防御力+95%，每秒恢复最大生命的2%",
+    "spCost": 40,
+    "initSp": 0,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "坚守"
+    ],
+    "amount": 4,
+    "cap": null,
+    "perRound": 4,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "褐果": {
+   "profession": "医疗",
+   "subProfession": "行医",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "积微成著",
+    "description": "立即进行一次治疗，并且该次治疗元素损伤回复量提升至200%\n可以充能1次",
+    "spCost": 17,
+    "initSp": 4,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "积微成著",
+    "description": "立即进行一次治疗，并且该次治疗元素损伤回复量提升至250%\n可以充能2次",
+    "spCost": 14,
+    "initSp": 6,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "聚合"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "角峰": {
+   "profession": "重装",
+   "subProfession": "铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "抗寒体质",
+    "description": "生命上限+30%，防御力+10%，法术抗性+60%",
+    "spCost": 47,
+    "initSp": 0,
+    "duration": 27.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "抗寒体质",
+    "description": "生命上限+40%，防御力+15%，法术抗性+70%",
+    "spCost": 44,
+    "initSp": 5,
+    "duration": 27.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": null,
+   "consumes": []
+  },
+  "贝洛内": {
+   "profession": "近卫",
+   "subProfession": "斗士",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "军师的手段",
+    "description": "攻击范围扩大，攻击速度+40，每次攻击对3名目标造成相当于攻击力155%的物理伤害；技能期间第一天赋使目标防御力降低的效果改为最多叠加8次，并且叠满后对目标造成持续的停顿效果",
+    "spCost": 29,
+    "initSp": 14,
+    "duration": 15.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "军师的手段",
+    "description": "攻击范围扩大，攻击速度+60，每次攻击对3名目标造成相当于攻击力170%的物理伤害；技能期间第一天赋使目标防御力降低的效果改为最多叠加8次，并且叠满后对目标造成持续的停顿效果",
+    "spCost": 26,
+    "initSp": 14,
+    "duration": 18.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "叙拉古",
+    "突袭"
+   ]
+  },
+  "赫德雷": {
+   "profession": "近卫",
+   "subProfession": "重剑手",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "死境硝烟",
+    "description": "每秒流失100点生命，并使自身攻击过和攻击过自身的敌人每秒受到200点真实伤害；攻击距离+1，生命上限+30%，攻击力+60%，每次攻击回复自身5%的生命且有25%概率使目标晕眩3秒",
+    "spCost": 70,
+    "initSp": 40,
+    "duration": 70.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "死境硝烟",
+    "description": "每秒流失100点生命，并使自身攻击过和攻击过自身的敌人每秒受到200点真实伤害；攻击距离+1，生命上限+45%，攻击力+90%，每次攻击回复自身5%的生命且有25%概率使目标晕眩4秒",
+    "spCost": 60,
+    "initSp": 40,
+    "duration": 70.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "突袭"
+    ],
+    "amount": 4,
+    "cap": 16,
+    "perRound": 12.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "赫拉格": {
+   "profession": "近卫",
+   "subProfession": "武者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "弦月",
+    "description": "攻击力+35%，攻击变为二连击，获得75%的物理闪避",
+    "spCost": 32,
+    "initSp": 5,
+    "duration": 11.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "弦月",
+    "description": "攻击力+50%，攻击变为二连击，获得75%的物理闪避",
+    "spCost": 29,
+    "initSp": 10,
+    "duration": 12.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "乌萨斯",
+     "突袭"
+    ],
+    "amount": 4,
+    "cap": 12,
+    "perRound": 9.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "车尔尼": {
+   "profession": "重装",
+   "subProfession": "驭法铁卫",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "曲惊四座",
+    "description": "生命上限+50%，自身更容易受到敌人攻击，每次受到攻击使自身攻击力提升+20%（最多10层），技能结束时对周围所有敌人造成相当于攻击力170%的法术伤害",
+    "spCost": 37,
+    "initSp": 3,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "曲惊四座",
+    "description": "生命上限+70%，自身更容易受到敌人攻击，每次受到攻击使自身攻击力提升+24%（最多10层），技能结束时对周围所有敌人造成相当于攻击力190%的法术伤害",
+    "spCost": 34,
+    "initSp": 6,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位"
+   ],
+   "stack": null,
+   "consumes": []
+  },
+  "远牙": {
+   "profession": "狙击",
+   "subProfession": "神射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "同盟支援",
+    "description": "可以攻击到范围外被阻挡的敌方单位，攻击速度+75",
+    "spCost": 40,
+    "initSp": 18,
+    "duration": 28.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "同盟支援",
+    "description": "可以攻击到范围外被阻挡的敌方单位，攻击速度+90",
+    "spCost": 40,
+    "initSp": 21,
+    "duration": 31.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "迷迭香": {
+   "profession": "狙击",
+   "subProfession": "投掷手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "末梢阻断",
+    "description": "攻击间隔增大，攻击力+20%，溅射范围扩大，每次攻击额外造成2次余震；受到攻击和余震的目标有20%的几率晕眩0.9秒",
+    "spCost": 37,
+    "initSp": 20,
+    "duration": 33.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "末梢阻断",
+    "description": "攻击间隔增大，攻击力+30%，溅射范围扩大，每次攻击额外造成2次余震；受到攻击和余震的目标有20%的几率晕眩1.1秒",
+    "spCost": 34,
+    "initSp": 20,
+    "duration": 36.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "精准",
+     "助力"
+    ],
+    "amount": 10,
+    "cap": null,
+    "perRound": 10,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "逻各斯": {
+   "profession": "术师",
+   "subProfession": "中坚术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "延异视阈",
+    "description": "攻击范围扩大，攻击力+160%，同时攻击3个目标，使攻击范围内敌方子弹的飞行速度大幅降低、并在技能结束时将其全部清除",
+    "spCost": 45,
+    "initSp": 9,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "延异视阈",
+    "description": "攻击范围扩大，攻击力+220%，同时攻击3个目标，使攻击范围内敌方子弹的飞行速度大幅降低、并在技能结束时将其全部清除",
+    "spCost": 45,
+    "initSp": 18,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "奥术",
+     "远见"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": [
+    "奥术",
+    "远见"
+   ]
+  },
+  "遥": {
+   "profession": "辅助",
+   "subProfession": "护佑者",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "幽隙栖萤",
+    "description": "友方单位受到遥的治疗效果时，对周围2名敌人造成相当于治疗量140%的法术伤害\n第二次及以后使用时攻击力+20%，且持续时间无限",
+    "spCost": 21,
+    "initSp": 0,
+    "duration": 22.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "幽隙栖萤",
+    "description": "治疗目标数+1，浮光泡影的目标数+1；友方单位受到遥的治疗效果时，对周围3名敌人造成相当于治疗量200%的法术伤害\n第二次及以后使用时攻击力+25%，且持续时间无限",
+    "spCost": 20,
+    "initSp": 0,
+    "duration": 23.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "聚合",
+     "奇迹"
+    ],
+    "amount": 1,
+    "cap": 12,
+    "perRound": 9.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "酒神": {
+   "profession": "辅助",
+   "subProfession": "巫役",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "空剧场",
+    "description": "攻击范围扩大，攻击力+75%，优先攻击未处于损伤爆发期间的敌人，技能期间酒神造成过神经损伤的敌人每秒受到攻击力10%的神经损伤直至爆发；范围内敌人神经损伤冷却恢复速度+50%，神经损伤爆发时在其地面位置生成/刷新一个迷狂牢笼",
+    "spCost": 40,
+    "initSp": 9,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "空剧场",
+    "description": "攻击范围扩大，攻击力+95%，优先攻击未处于损伤爆发期间的敌人，技能期间酒神造成过神经损伤的敌人每秒受到攻击力10%的神经损伤直至爆发；范围内敌人神经损伤冷却恢复速度+50%，神经损伤爆发时在其地面位置生成/刷新一个迷狂牢笼",
+    "spCost": 40,
+    "initSp": 18,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "野鬃": {
+   "profession": "先锋",
+   "subProfession": "冲锋手",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "夹枪冲锋",
+    "description": "攻击范围扩大，攻击力+45%，攻击会把目标往攻击方向中等力度地推开",
+    "spCost": 40,
+    "initSp": 20,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "夹枪冲锋",
+    "description": "攻击范围扩大，攻击力+60%，攻击会把目标往攻击方向中等力度地推开",
+    "spCost": 40,
+    "initSp": 25,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "卡西米尔"
+    ],
+    "amount": 1,
+    "cap": 2,
+    "perRound": 1.5,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "铃兰": {
+   "profession": "辅助",
+   "subProfession": "凝滞师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "狐火渺然",
+    "description": "停止攻击，攻击范围扩大，第二天赋效果提升至1.4倍，攻击范围内的所有敌人被停顿，且每秒回复范围内所有友方单位相当于攻击力9%的生命",
+    "spCost": 70,
+    "initSp": 43,
+    "duration": 27.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "狐火渺然",
+    "description": "停止攻击，攻击范围扩大，第二天赋效果提升至1.7倍，攻击范围内的所有敌人被停顿，且每秒回复范围内所有友方单位相当于攻击力11%的生命",
+    "spCost": 70,
+    "initSp": 46,
+    "duration": 29.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": []
+  },
+  "铸铁": {
+   "profession": "近卫",
+   "subProfession": "术战者",
+   "position": "近战",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "生命回复·γ型",
+    "description": "立即恢复最大生命的40%",
+    "spCost": 27,
+    "initSp": 8,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "生命回复·γ型",
+    "description": "立即恢复最大生命的50%",
+    "spCost": 24,
+    "initSp": 9,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "突袭"
+    ],
+    "amount": 3,
+    "cap": null,
+    "perRound": 3,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "锏": {
+   "profession": "近卫",
+   "subProfession": "剑豪",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "归于宁静",
+    "description": "持续发动总计10次斩击，每次斩击对最多5名敌人造成相当于攻击力180%的物理伤害，天赋的发动概率提升至100%，并持续将敌人中等力度地拖拽至自身中心，之后将造成一次相当于攻击力300%的物理伤害并将敌人较大力地拖拽至自身中心",
+    "spCost": 35,
+    "initSp": 10,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "归于宁静",
+    "description": "持续发动总计10次斩击，每次斩击对最多6名敌人造成相当于攻击力200%的物理伤害，天赋的发动概率提升至100%，并持续将敌人中等力度地拖拽至自身中心，之后将造成一次相当于攻击力300%的物理伤害并将敌人较大力地拖拽至自身中心",
+    "spCost": 33,
+    "initSp": 15,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "卡西米尔",
+    "莱塔尼亚",
+    "谢拉格"
+   ]
+  },
+  "锡人": {
+   "profession": "特种",
+   "subProfession": "炼金师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "“大拉里”",
+    "description": "投掷一个炼金单元，在11秒内使落点周围的地面敌人每秒受到相当于攻击力65%的法术伤害、友方单位每秒恢复相当于攻击力15%的生命\n可充能1次",
+    "spCost": 30,
+    "initSp": 12,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "“大拉里”",
+    "description": "投掷一个炼金单元，在12秒内使落点周围的地面敌人每秒受到相当于攻击力80%的法术伤害、友方单位每秒恢复相当于攻击力20%的生命\n可充能2次",
+    "spCost": 25,
+    "initSp": 14,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "投资人"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "阿米娅": {
+   "profession": "术师",
+   "subProfession": "中坚术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "精神爆发",
+    "description": "每次攻击变为攻击力39%的7连发，随机攻击范围内的目标\n技能自动开启，持续时间结束后阿米娅晕眩10秒",
+    "spCost": 100,
+    "initSp": 0,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "精神爆发",
+    "description": "每次攻击变为攻击力45%的7连发，随机攻击范围内的目标\n技能自动开启，持续时间结束后阿米娅晕眩10秒",
+    "spCost": 100,
+    "initSp": 0,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "amplifier",
+    "covenants": [],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false,
+    "amplify": {
+     "type": "perEvent",
+     "value": 1,
+     "scope": "front"
+    }
+   },
+   "consumes": []
+  },
+  "陨星": {
+   "profession": "狙击",
+   "subProfession": "炮手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "霰射弹头",
+    "description": "下次攻击的爆炸范围扩大，造成相当于攻击力150%的物理伤害",
+    "spCost": 4,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "eliteSkill": {
+    "name": "霰射弹头",
+    "description": "下次攻击的爆炸范围扩大，造成相当于攻击力170%的物理伤害",
+    "spCost": 4,
+    "initSp": 0,
+    "duration": 0.0,
+    "spType": "攻击回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "迅捷"
+    ],
+    "amount": 1,
+    "cap": 2,
+    "perRound": 1.5,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "隐德来希": {
+   "profession": "近卫",
+   "subProfession": "收割者",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "灵与欲的惜别",
+    "description": "攻击范围扩大，攻击力+80%，攻击速度+100，立刻为攻击范围内最多3名生命值最高的地面敌人召唤对应的心烛，每次攻击对心烛至少造成35%攻击力的伤害，心烛继承原敌人当前60%的生命值，被攻击时原敌人也会流失同等生命值\n心烛只受隐德来希攻击的影响",
+    "spCost": 36,
+    "initSp": 20,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "灵与欲的惜别",
+    "description": "攻击范围扩大，攻击力+110%，攻击速度+100，立刻为攻击范围内最多3名生命值最高的地面敌人召唤对应的心烛，每次攻击对心烛至少造成35%攻击力的伤害，心烛继承原敌人当前60%的生命值，被攻击时原敌人也会流失同等生命值\n心烛只受隐德来希攻击的影响",
+    "spCost": 35,
+    "initSp": 20,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": null,
+   "consumes": [
+    "不屈",
+    "灵巧"
+   ]
+  },
+  "雪猎": {
+   "profession": "狙击",
+   "subProfession": "猎手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "风雪连弩",
+    "description": "立即使用特殊子弹发动相当于攻击力160%的两连击（对非移动敌人提升至185%）\n可充能1次",
+    "spCost": 20,
+    "initSp": 7,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "风雪连弩",
+    "description": "立即使用特殊子弹发动相当于攻击力180%的两连击（对非移动敌人提升至210%）\n可充能2次",
+    "spCost": 14,
+    "initSp": 7,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "谢拉格",
+     "精准"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "霍尔海雅": {
+   "profession": "术师",
+   "subProfession": "中坚术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "群星逶迤",
+    "description": "攻击变为攻击力27%的9连发，随机攻击范围内的目标，每发有10%的概率使目标浮空1秒",
+    "spCost": 36,
+    "initSp": 21,
+    "duration": 16.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "群星逶迤",
+    "description": "攻击变为攻击力35%的9连发，随机攻击范围内的目标，每发有12%的概率使目标浮空1秒",
+    "spCost": 32,
+    "initSp": 22,
+    "duration": 16.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "self",
+    "covenants": [],
+    "amount": 4,
+    "cap": 12,
+    "perRound": 9.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "霜叶": {
+   "profession": "近卫",
+   "subProfession": "领主",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "凝冰枪刃",
+    "description": "攻击速度+20；每次攻击使命中目标移动速度-36%，并有20%的几率使其束缚1.5秒",
+    "spCost": 57,
+    "initSp": 0,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "凝冰枪刃",
+    "description": "攻击速度+35；每次攻击使命中目标移动速度-42%，并有25%的几率使其束缚1.5秒",
+    "spCost": 54,
+    "initSp": 0,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "灵巧"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "青枳": {
+   "profession": "先锋",
+   "subProfession": "尖兵",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "冲锋号令·γ型",
+    "description": "立即获得12点部署费用",
+    "spCost": 41,
+    "initSp": 12,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "冲锋号令·γ型",
+    "description": "立即获得12点部署费用",
+    "spCost": 38,
+    "initSp": 14,
+    "duration": 0.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "adjacent",
+    "covenants": [],
+    "amount": 3,
+    "cap": null,
+    "perRound": 3,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "风丸": {
+   "profession": "特种",
+   "subProfession": "傀儡师",
+   "position": "近战",
+   "blockCount": 2,
+   "normalSkill": {
+    "name": "纸艺·双影",
+    "description": "立即流失50%当前生命，攻击力+70%，并在周围的近战部署位召唤协助作战",
+    "spCost": 25,
+    "initSp": 5,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "纸艺·双影",
+    "description": "立即流失50%当前生命，攻击力+90%，并在周围的近战部署位召唤协助作战",
+    "spCost": 20,
+    "initSp": 10,
+    "duration": 20.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "不屈"
+    ],
+    "amount": 2,
+    "cap": 10,
+    "perRound": 7.5,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "风絮": {
+   "profession": "医疗",
+   "subProfession": "守望者",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "扶风起",
+    "description": "立刻起飞，攻击力+80%，可以额外治疗一名起飞的干员，治疗目标时对目标周围的至多2名单位造成攻击力40%的治疗效果",
+    "spCost": 45,
+    "initSp": 20,
+    "duration": 22.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "扶风起",
+    "description": "立刻起飞，攻击力+105%，可以额外治疗一名起飞的干员，治疗目标时对目标周围的至多2名单位造成攻击力50%的治疗效果",
+    "spCost": 40,
+    "initSp": 20,
+    "duration": 25.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "炎",
+     "聚合"
+    ],
+    "amount": 2,
+    "cap": 16,
+    "perRound": 12.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "魔王": {
+   "profession": "辅助",
+   "subProfession": "吟游者",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "编织重构现世",
+    "description": "攻击范围扩大，自身特性效果提高至65%，“微尘”不再消失，攻击范围内所有其它友方单位获得相当于魔王65%的最大生命值的鼓舞效果，每隔2秒重新分配攻击范围内所有友方单位的生命",
+    "spCost": 80,
+    "initSp": 35,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "编织重构现世",
+    "description": "攻击范围扩大，自身特性效果提高至75%，“微尘”不再消失，攻击范围内所有其它友方单位获得相当于魔王80%的最大生命值的鼓舞效果，每隔2秒重新分配攻击范围内所有友方单位的生命",
+    "spCost": 70,
+    "initSp": 35,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "奶位"
+   ],
+   "stack": null,
+   "consumes": []
+  },
+  "鸿雪": {
+   "profession": "狙击",
+   "subProfession": "重射手",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "点题",
+    "description": "被动效果：携带此技能时，“打字机”的再部署时间缩短至65%\n主动开启：立即对前方进行3次攻击，每次造成自身攻击力180%的物理伤害\n可充能2次",
+    "spCost": 11,
+    "initSp": 3,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "点题",
+    "description": "被动效果：携带此技能时，“打字机”的再部署时间缩短至60%\n主动开启：立即对前方进行3次攻击，每次造成自身攻击力200%的物理伤害\n可充能2次",
+    "spCost": 10,
+    "initSp": 6,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "萨尔贡",
+     "精准"
+    ],
+    "amount": 4,
+    "cap": 16,
+    "perRound": 12.0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "黍": {
+   "profession": "重装",
+   "subProfession": "守护者",
+   "position": "近战",
+   "blockCount": 3,
+   "normalSkill": {
+    "name": "离离枯荣",
+    "description": "治疗范围扩大，攻击同时可治疗我方干员，攻击力+22%，有地面敌人处于播种地块时技能范围内的我方单位攻击力+15%、攻击速度+15，敌人经过播种地块时获得如下效果：当远离该地块超过4格时被传送回该地块",
+    "spCost": 55,
+    "initSp": 25,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "离离枯荣",
+    "description": "治疗范围扩大，攻击同时可治疗我方干员，攻击力+34%，有地面敌人处于播种地块时技能范围内的我方单位攻击力+20%、攻击速度+20，敌人经过播种地块时获得如下效果：当远离该地块超过3格时被传送回该地块",
+    "spCost": 50,
+    "initSp": 30,
+    "duration": 30.0,
+    "spType": "自动回复"
+   },
+   "roles": [
+    "盾位",
+    "奶位"
+   ],
+   "stack": {
+    "kind": "once",
+    "covenants": [
+     "炎",
+     "远见"
+    ],
+    "amount": 0,
+    "cap": null,
+    "perRound": 0,
+    "temporary": false
+   },
+   "consumes": []
+  },
+  "黑键": {
+   "profession": "术师",
+   "subProfession": "秘术师",
+   "position": "远程",
+   "blockCount": 1,
+   "normalSkill": {
+    "name": "荒芜回响",
+    "description": "消耗所有攻击能量，在攻击范围内的可放置地块召唤消耗能量数+1个旧日残影（持续30秒），残影在敌人接近时激活，对周围的敌人造成攻击力170%的法术伤害并以中等力度拖拽敌人至自身中心",
+    "spCost": 15,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "eliteSkill": {
+    "name": "荒芜回响",
+    "description": "消耗所有攻击能量，在攻击范围内的可放置地块召唤消耗能量数+1个旧日残影（持续30秒），残影在敌人接近时激活，对周围的敌人造成攻击力200%的法术伤害并以中等力度拖拽敌人至自身中心",
+    "spCost": 14,
+    "initSp": 0,
+    "duration": -1.0,
+    "spType": "自动回复"
+   },
+   "roles": [],
+   "stack": {
+    "kind": "covenant",
+    "covenants": [
+     "莱塔尼亚",
+     "精准"
+    ],
+    "amount": 1,
+    "cap": 8,
+    "perRound": 6.0,
+    "temporary": false
+   },
+   "consumes": []
+  }
+ }
+}

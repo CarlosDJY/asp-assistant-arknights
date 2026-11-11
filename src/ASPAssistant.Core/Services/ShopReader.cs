@@ -95,9 +95,7 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
                 controlLeft, (int)Math.Round(height * (theme == GameShopTheme.Terminal ? 1006 : 980) / 1080.0),
                 controlWidth, controlHeight, GraphicsUnit.Pixel);
         }
-        using var encoded = new MemoryStream();
-        strip.Save(encoded, ImageFormat.Png);
-        var ocrInput = encoded.ToArray();
+        var ocrInput = ImageBytes.Encode(strip);
         var texts = await engine.RecognizeRegionAsync(ocrInput, 0, 0, strip.Width, strip.Height);
         if (!texts.Any(t => t.Text.Contains("收起", StringComparison.Ordinal) && t.Box.X + t.Box.W > width * 1.6))
             return [];

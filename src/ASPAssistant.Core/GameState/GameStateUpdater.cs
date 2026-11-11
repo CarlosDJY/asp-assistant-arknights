@@ -7,12 +7,16 @@ public static class GameStateUpdater
     public static void UpdateShopTracking(List<ShopItem> shopItems, List<TrackingEntry> tracked)
     {
         var trackedNames = new HashSet<string>(tracked.Select(t => t.Name));
+        var finalNames = new HashSet<string>(tracked.Where(t => t.Role == TrackingRole.Final).Select(t => t.Name));
         foreach (var item in shopItems)
+        {
             item.IsTracked = trackedNames.Contains(item.Name);
+            item.IsTransition = item.IsTracked && !finalNames.Contains(item.Name);
+        }
 
         AppLogger.Info("ShopScan",
             $"UpdateShopTracking: trackedNames=[{string.Join(", ", trackedNames)}] " +
-            $"shopItems=[{string.Join(", ", shopItems.Select(i => $"{i.Name}→tracked={i.IsTracked}"))}]");
+            $"shopItems=[{string.Join(", ", shopItems.Select(i => $"{i.Name}→tracked={i.IsTracked}{(i.IsTransition ? "(过渡)" : "")}"))}]");
     }
 
     public static Dictionary<string, int> ComputeCovenantCounts(

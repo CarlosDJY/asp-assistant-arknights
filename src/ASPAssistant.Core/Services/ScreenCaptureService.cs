@@ -66,7 +66,7 @@ public class ScreenCaptureService
         try
         {
             // Capture at native resolution.
-            using var raw = new Bitmap(captureWidth, captureHeight, PixelFormat.Format32bppArgb);
+            using var raw = new Bitmap(captureWidth, captureHeight, PixelFormat.Format24bppRgb);
             using (var g = Graphics.FromImage(raw))
                 g.CopyFromScreen(rect.Left, rect.Top, 0, 0,
                     new System.Drawing.Size(captureWidth, captureHeight));
@@ -90,7 +90,7 @@ public class ScreenCaptureService
                 float scale = (float)MaxCaptureWidth / captureWidth;
                 int scaledW = MaxCaptureWidth;
                 int scaledH = (int)(captureHeight * scale);
-                var resized = new Bitmap(scaledW, scaledH, PixelFormat.Format32bppArgb);
+                var resized = new Bitmap(scaledW, scaledH, PixelFormat.Format24bppRgb);
                 using var gr = Graphics.FromImage(resized);
                 gr.InterpolationMode = InterpolationMode.Bilinear;
                 gr.DrawImage(raw, 0, 0, scaledW, scaledH);
@@ -99,9 +99,8 @@ public class ScreenCaptureService
 
             try
             {
-                using var ms = new MemoryStream();
-                output.Save(ms, ImageFormat.Png);
-                var png = ms.ToArray();
+                // BMP, not PNG: see ImageBytes (encode + every OCR decode become near memory copies).
+                var png = ImageBytes.Encode(output);
                 AppLogger.Info("ScreenCapture", $"Captured {captureWidth}x{captureHeight} ({png.Length} bytes)");
                 return png;
             }

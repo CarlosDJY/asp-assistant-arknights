@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ASPAssistant.Core.Models;
@@ -8,6 +8,53 @@ namespace ASPAssistant.Core.ViewModels;
 public partial class EquipmentBrowseViewModel : ObservableObject
 {
     private List<Equipment> _allEquipment = [];
+
+    // ── Filter card chips (nothing selected = all) ─────────────────────────
+    public ObservableCollection<FilterChip> TierChips { get; } = [];
+    public ObservableCollection<FilterChip> CategoryChips { get; } = [];
+
+    public IReadOnlyList<FilterChip> ActiveChips => TierChips.Concat(CategoryChips).Where(c => c.IsSelected).ToList();
+    public bool HasActiveChips => ActiveChips.Count > 0;
+    public int ChipFilterCount => ActiveChips.Count;
+    public int MatchedCount => FilteredEquipment.Count;
+
+    /// <summary>0 = 全部, 1 = 普通, 2 = 转职 (the switch outside the filter card).</summary>
+    public int TypeIndex
+    {
+        get => SelectedTypeFilter switch { "普通" => 1, "转职" => 2, _ => 0 };
+        set => SelectedTypeFilter = value switch { 1 => "普通", 2 => "转职", _ => "" };
+    }
+
+    [CommunityToolkit.Mvvm.Input.RelayCommand]
+    public void RemoveChip(FilterChip chip) => chip.IsSelected = false;
+
+    private static readonly string[] RomanLabels = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ"];
+
+    private void BuildChips()
+    {
+        TierChips.Clear();
+        foreach (var t in AvailableTiers.OfType<int>())
+            TierChips.Add(new FilterChip(FilterChipKind.Tier, t.ToString(), t is >= 1 and <= 6 ? RomanLabels[t] : t.ToString(), OnChipToggled));
+        CategoryChips.Clear();
+        foreach (var c in AvailableCategories.Where(c => c.Length > 0))
+            CategoryChips.Add(new FilterChip(FilterChipKind.Category, c, c, OnChipToggled)
+                { Count = _allEquipment.Count(e => e.Categories.Contains(c)) });
+    }
+
+    private void OnChipToggled(FilterChip chip)
+    {
+        if (chip.Kind == FilterChipKind.Tier)
+            _selectedTierFilters = TierChips.Where(c => c.IsSelected).Select(c => int.Parse(c.Value)).Order().ToList();
+        else
+            _selectedCategoryFilters = CategoryChips.Where(c => c.IsSelected).Select(c => c.Value).ToList();
+        ApplyFilters();
+    }
+
+    private void SyncChips()
+    {
+        foreach (var c in TierChips) c.SetSelected(int.TryParse(c.Value, out var t) && _selectedTierFilters.Contains(t));
+        foreach (var c in CategoryChips) c.SetSelected(_selectedCategoryFilters.Contains(c.Value));
+    }
 
     [ObservableProperty]
     private ObservableCollection<Equipment> _filteredEquipment = [];
@@ -97,13 +144,19 @@ public partial class EquipmentBrowseViewModel : ObservableObject
         var stillAvailable = SelectedCategoryFilters.Where(AvailableCategories.Contains).ToList();
         if (stillAvailable.Count != SelectedCategoryFilters.Count)
             _selectedCategoryFilters = stillAvailable;
+        _allEquipment = equipment;
+        BuildChips();
 
         ApplyFilters();
     }
 
     partial void OnSearchTextChanged(string value) => ApplyFilters();
     partial void OnCategoryMatchAllChanged(bool value) => ApplyFilters();
-    partial void OnSelectedTypeFilterChanged(string value) => ApplyFilters();
+    partial void OnSelectedTypeFilterChanged(string value)
+    {
+        OnPropertyChanged(nameof(TypeIndex));
+        ApplyFilters();
+    }
 
     private void ApplyFilters()
     {
@@ -137,11 +190,19 @@ public partial class EquipmentBrowseViewModel : ObservableObject
                 : filtered.Where(e => e.Categories.Any(selected.Contains));
         }
 
+        // Name or effect text ("搜索装备或效果").
         if (!string.IsNullOrEmpty(SearchText))
             filtered = filtered.Where(e =>
-                e.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+                e.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
+                || e.Normal.EffectDescription.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
+                || e.Elite.EffectDescription.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
 
-        FilteredEquipment = new ObservableCollection<Equipment>(filtered);
+        OperatorBrowseViewModel.SyncList(FilteredEquipment, filtered.ToList());
+        SyncChips();
+        OnPropertyChanged(nameof(ActiveChips));
+        OnPropertyChanged(nameof(HasActiveChips));
+        OnPropertyChanged(nameof(ChipFilterCount));
+        OnPropertyChanged(nameof(MatchedCount));
         OnPropertyChanged(nameof(ActiveFilterCount));
         OnPropertyChanged(nameof(EmptyListMessage));
     }

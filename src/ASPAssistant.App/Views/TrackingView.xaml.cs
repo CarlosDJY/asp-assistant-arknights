@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
@@ -62,6 +62,8 @@ public partial class TrackingView : UserControl
     {
         if (e.PropertyName is nameof(TrackingViewModel.TrackedOperators) or nameof(TrackingViewModel.TrackedEquipment))
             HookCollections();
+        else if (e.PropertyName is nameof(TrackingViewModel.TerminalLevel) or nameof(TrackingViewModel.TerminalLevelText))
+            RefreshSummary();
     }
 
     private void HookCollections()
@@ -88,7 +90,7 @@ public partial class TrackingView : UserControl
 
         var lineup = new Lineup
         {
-            Slots = operators.Select(e => new LineupSlot
+            Slots = operators.Where(e => e.Role == TrackingRole.Final).Select(e => new LineupSlot
             {
                 OperatorName = e.Name, TransformedCovenant = e.TransformedCovenant
             }).ToList()
@@ -97,33 +99,60 @@ public partial class TrackingView : UserControl
             .OrderByDescending(s => s.BondType == "SEASON").ThenByDescending(s => s.Count)
             .Select(s => new TrackedCovenantChip(s.Name, s.Count, s.BondType == "SEASON")).ToList();
         TrackedCovenantChips.ItemsSource = tally;
-        CovenantSection.Visibility = tally.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        TrackedCovenantChips.Visibility = tally.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        var db = OperatorDatabase;
+        var cells = operators.Select(e => TrackedCell.From(e, db.GetValueOrDefault(e.Name))).ToList();
+        Fill(FinalSection, FinalCells, FinalCount, cells.Where(c => c.Kind == TrackedCellKind.Final).ToList());
+        Fill(TransitionSection, TransitionCells, TransitionCount, cells.Where(c => c.Kind == TrackedCellKind.Transition).ToList());
+        var past = cells.Where(c => c.Kind == TrackedCellKind.Past).ToList();
+        Fill(PastSection, PastCells, PastCount, past);
+        EquipmentSection.Visibility = equipmentCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        // Terminal level card
+        var level = _vm?.TerminalLevel ?? 0;
+        LevelNumber.Text = level > 0 ? level.ToString() : "–";
+        LevelTitle.Text = level > 0 ? $"终端 {level} 级" : "终端等级未识别";
+        var source = _vm is null || level == 0 ? "打开商店后按升级卡自动识别"
+            : _vm.ManualTerminalLevel is not null ? "手动指定 · 自动识别追上后恢复自动"
+            : _vm.IsTerminalLevelRestored ? "上次记录 · 打开商店后确认"
+            : "自动识别";
+        var pastStages = operators.Where(e => e.IsExpired).SelectMany(e => e.Stages.Split(['、', '→', '·', ' '],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).Distinct().ToList();
+        LevelDetail.Text = pastStages.Count > 0 && level > 0 ? $"{source} · {string.Join("、", pastStages)}已过" : source;
+        LevelDetail.ToolTip = _vm?.TerminalLevelText;
+        PastHint.Text = level > 0 ? $"终端 {level} 级起不再标出" : "不再标出";
     }
 
-    private void OnClearPlannedTransformation(object sender, RoutedEventArgs e)
-        => _vm!.ClearPlannedTransformation(((TrackingEntry)((Button)sender).DataContext).Name);
+    private static void Fill(FrameworkElement section, ItemsControl list, TextBlock count, IReadOnlyList<TrackedCell> cells)
+    {
+        list.ItemsSource = cells;
+        count.Text = $"{cells.Count} 名";
+        section.Visibility = cells.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnCellRemove(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is TrackedCell cell) RemoveTrackingRequested?.Invoke(cell.Name);
+    }
+
+    private void OnCellClearTransform(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is TrackedCell cell) _vm?.ClearPlannedTransformation(cell.Name);
+    }
 
     public void SetEquipment(IReadOnlyList<Equipment> equipment)
         => SetValue(EquipmentDatabaseProperty, equipment.ToDictionary(e => e.Name));
 
     private void OnTrackedEquipmentToggled(object sender, RoutedEventArgs e)
     {
-        if (e.OriginalSource is TrackedEquipmentCard { DataContext: Equipment equipment })
+        if (e.OriginalSource is EquipmentCell { DataContext: Equipment equipment })
             RemoveTrackingRequested?.Invoke(equipment.Name);
-    }
-
-    private void OnTrackedOperatorToggled(object sender, RoutedEventArgs e)
-    {
-        if (e.OriginalSource is OperatorCard { DataContext: Operator op })
-            RemoveTrackingRequested?.Invoke(op.Name);
     }
 
     private void OnRemoveTracking(object sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && btn.Tag is string name)
-        {
-            RemoveTrackingRequested?.Invoke(name);
-        }
+        if ((sender as FrameworkElement)?.DataContext is TrackingEntry entry) RemoveTrackingRequested?.Invoke(entry.Name);
     }
 
     private void OnClearAllTracking(object sender, RoutedEventArgs e)
@@ -133,3 +162,30 @@ public partial class TrackingView : UserControl
 }
 
 public sealed record TrackedCovenantChip(string Name, int Count, bool IsCore);
+
+public enum TrackedCellKind { Final, Transition, Past }
+
+/// <summary>One tracked operator on the tracking page: grouped by role, ringed in the shop marker color.</summary>
+public sealed record TrackedCell(string Name, TrackedCellKind Kind, string Sub, Operator? Operator, string TransformedCovenant)
+{
+    public string Initial => Name.Length > 0 ? Name[..1] : "";
+    public string IconPath => Operator?.IconPath ?? "";
+    public bool HasDetails => Operator is not null;
+    public bool HasTransform => !string.IsNullOrEmpty(TransformedCovenant);
+
+    public static TrackedCell From(TrackingEntry entry, Operator? op)
+    {
+        var kind = entry.IsExpired ? TrackedCellKind.Past
+            : entry.IsTransition ? TrackedCellKind.Transition : TrackedCellKind.Final;
+        string sub;
+        if (kind != TrackedCellKind.Final && !string.IsNullOrEmpty(entry.Stages)) sub = entry.Stages;
+        else
+        {
+            var covenants = op is null ? new List<string>() : [.. op.CoreCovenants, .. op.AdditionalCovenants];
+            var text = string.Join(" · ", covenants.Distinct());
+            sub = !string.IsNullOrEmpty(entry.TransformedCovenant) ? $"转职 {entry.TransformedCovenant}" + (text.Length > 0 ? $" · {text}" : "")
+                : text.Length > 0 ? text : op is null ? "无数据" : "";
+        }
+        return new TrackedCell(entry.Name, kind, sub, op, entry.TransformedCovenant);
+    }
+}
