@@ -21,8 +21,8 @@ public record BanScreenResult(
 /// Orchestrates the ban-screen analysis: one screenshot of the "确认本局信息" screen,
 /// enemy recognition plus <see cref="BanCovenantReader"/> for both covenant panels.
 ///
-/// Both opening and in-game info pages are supported. Incomplete scans never publish
-/// replacement state and never scroll the game; the user can retry from the same page.
+/// Both opening and in-game info pages are supported. Incomplete covenant scans never
+/// replace state; complete covenants may publish independently of enemy recognition.
 /// </summary>
 public sealed class BanScreenAnalyzer
 {
@@ -42,8 +42,7 @@ public sealed class BanScreenAnalyzer
     public event Action<string>? AnalysisFailed;
 
     /// <summary>
-    /// Raised when enemy recognition completes (before the full analysis finishes).
-    /// Fired even if recognition returns partial results.
+    /// Raised when complete enemy information is available, before covenant publication.
     /// </summary>
     public event Action<EnemyResult>? EnemyDetected;
 
@@ -65,6 +64,12 @@ public sealed class BanScreenAnalyzer
 
     // Re-entry guard: only one analysis can run at a time.
     private int _running;
+
+    // 同一张截图重复点击时直接复用上次结果（截图字节哈希相等即视为同一画面）。
+    private string? _lastShotHash;
+    private BanScreenResult? _lastResult;
+    private IReadOnlyList<string>? _lastAutoBans;
+    private EnemyResult? _lastEnemy;
 
     public BanScreenAnalyzer(
         Func<Task<byte[]?>> captureInformationScreen,
@@ -113,40 +118,77 @@ public sealed class BanScreenAnalyzer
                 return;
             }
 
-            var (imgWidth, imgHeight) = GetPngDimensions(shot);
-            AppLogger.SaveArtifact("ban-attempt", shot, ".png");
-            AppLogger.Info("BanAnalyzer", $"Screenshot ready: {imgWidth}x{imgHeight}");
-            AppConsole.WriteLine($"[BanAnalyzer] 截图完成 ({imgWidth}×{imgHeight})");
-
-            if (!await _informationDetector.IsInformationScreenAsync(shot, imgWidth, imgHeight))
+            var shotHash = HashShot(shot);
+            if (_lastResult is not null && shotHash == _lastShotHash)
             {
-                AnalysisFailed?.Invoke("未找到完整的核心/附加盟约区域，请打开本局信息页并保持面板顶部可见。");
+                AppLogger.Info("BanAnalyzer", "Identical screenshot, reusing the previous analysis");
+                AutoBanListComputed?.Invoke(_lastAutoBans ?? []);
+                if (_lastEnemy is not null) EnemyDetected?.Invoke(_lastEnemy);
+                AnalysisCompleted?.Invoke(_lastResult);
                 return;
             }
+
+            var (rawWidth, rawHeight) = GetPngDimensions(shot);
+            AppLogger.SaveArtifact("ban-attempt", shot, ".png");
+            AppLogger.Info("BanAnalyzer", $"Screenshot ready: {rawWidth}x{rawHeight}");
+
+            // 小图（例如被缩放过的录像截图）先把文字放大到 OCR 能读的尺寸；
+            // 区域都是百分比，布局不受影响，后续全部使用放大后的尺寸。
+            (shot, var imgWidth, var imgHeight) = ScreenshotNormalizer.EnsureAnalysable(shot, rawWidth, rawHeight);
+            if (imgWidth != rawWidth)
+                AppConsole.WriteLine($"[BanAnalyzer] 截图 {rawWidth}×{rawHeight} → 放大到 {imgWidth}×{imgHeight}");
+            AppConsole.WriteLine($"[BanAnalyzer] 截图完成 ({imgWidth}×{imgHeight})");
+
             var enemy = await _enemyRecognizer.RecognizeAsync(shot, imgWidth, imgHeight);
             var read = await BanCovenantReader.ReadAsync(
                 _ocr, _ocrStrategy, shot, imgWidth, imgHeight,
                 _coreCovenantNames, _additionalCovenantNames);
-            if (read.Core.Count != _coreCovenantNames.Count || read.Additional.Count != _additionalCovenantNames.Count
-                || read.UnnamedCore.Count > 0 || read.UnnamedAdditional.Count > 0)
+
+            // 标题判定已经包含在上面那次 OCR 里（省掉一次独立的检测调用）；
+            // 只有标题缺失时才用检测器区分“不是信息页”和“信息页被滚动”。
+            if (!read.SawCoreHeader || !read.SawAdditionalHeader)
             {
-                AnalysisFailed?.Invoke($"本次信息未完整读出（核心 {read.Core.Count}、附加 {read.Additional.Count}、未命名 {read.UnnamedCore.Count + read.UnnamedAdditional.Count}），未替换现有结果；请保持页面完整可见后重试。");
+                var looksLikeInfo = await _informationDetector.IsInformationScreenAsync(shot, imgWidth, imgHeight);
+                AnalysisFailed?.Invoke(looksLikeInfo
+                    ? "未找到完整的核心/附加盟约区域，请打开本局信息页并保持面板顶部可见。"
+                    : "当前画面不是本局信息页，请切换到“确认本局信息”后重试。");
                 return;
             }
-            var enemyFaction = enemy?.BossName;
+            // 两类盟约都可能只显示“本局阵容包含的条目”（标题会注明“部分盟约所含干员阵容
+            // 不完整”），所以不能要求与数据文件里的总数相等；真正的完整性判据是：
+            // 至少读到一项，且没有出现“有图标却没有名字”的槽位。
+            // 检测到图标网格时，完整性 = 每个槽都读到了名字；没检测到网格（异常画面）时，
+            // 退回数量下限，避免“只读到 1 个”也被当成完整结果发布出去。
+            var hasCore = read.CoreSlots > 0 ? read.Core.Count == read.CoreSlots : read.Core.Count >= 6;
+            var hasAdditional = read.AdditionalSlots > 0
+                ? read.Additional.Count == read.AdditionalSlots
+                : read.Additional.Count >= 4;
+            var unnamed = read.UnnamedCore.Count + read.UnnamedAdditional.Count;
+            if (!hasCore || !hasAdditional || unnamed > 0)
+            {
+                AnalysisFailed?.Invoke($"本次信息未完整读出（核心 {read.Core.Count}、附加 {read.Additional.Count}、未命名 {unnamed}），未替换现有结果；请保持页面完整可见后重试。");
+                return;
+            }
+            var hasEnemy = enemy is not null && enemy.BossName.Length > 0 && enemy.EnemyTypes.Count > 0;
+            var enemyFaction = hasEnemy ? enemy!.BossName : null;
 
             sw.Stop();
             var result = new BanScreenResult(read.Core, read.Additional, enemyFaction);
             var autoBans = ComputeAutoBans(result);
             LogRecognitionSummary(result, autoBans);
             AutoBanListComputed?.Invoke(autoBans);
-            if (enemy is not null && enemy.BossName.Length > 0 && enemy.EnemyTypes.Count > 0)
-                EnemyDetected?.Invoke(enemy);
-            else
-                AppLogger.Warn("BanAnalyzer", "Covenant Ban read succeeded, but enemy region was incomplete; publishing covenant result only");
+            if (hasEnemy) EnemyDetected?.Invoke(enemy!);
+            else AppLogger.Warn("BanAnalyzer", "Covenant Ban read succeeded, but enemy region was incomplete; publishing covenant result only");
             LogResults(result, sw.ElapsedMilliseconds);
 
+            _lastShotHash = shotHash;
+            _lastResult = result;
+            _lastAutoBans = autoBans;
+            _lastEnemy = hasEnemy ? enemy : null;
             AnalysisCompleted?.Invoke(result);
+            await ShowTimedGameOverlayMessageAsync(hasEnemy
+                ? "识别成功！ASP Assistant 祝您卫戍愉快！"
+                : "盟约已录入，敌人信息可在敌人页重试", 2000);
         }
         catch (Exception ex)
         {
@@ -275,6 +317,10 @@ public sealed class BanScreenAnalyzer
     }
 
     // ── Utility ───────────────────────────────────────────────────────────────
+
+    /// <summary>截图内容哈希：用来判断“是不是同一张画面”，命中就直接复用上次结果。</summary>
+    private static string HashShot(byte[] shot) =>
+        Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(shot));
 
     private static (int Width, int Height) GetPngDimensions(byte[] png)
     {

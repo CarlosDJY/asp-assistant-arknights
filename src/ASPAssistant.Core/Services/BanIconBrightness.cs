@@ -44,12 +44,19 @@ public static class BanIconBrightness
     public static double[] MeasureGreenFractions(
         byte[] png, int imgWidth, int imgHeight, IReadOnlyList<OcrTextResult> names)
     {
+        if (names.Count == 0) return new double[names.Count];
+        using var pixels = BanScreenPixels.Load(png);
+        return pixels is null
+            ? new double[names.Count]
+            : MeasureGreenFractions(pixels, imgWidth, imgHeight, names);
+    }
+
+    /// <summary>复用已解码像素的版本（省一次 PNG 解码）。</summary>
+    public static double[] MeasureGreenFractions(
+        BanScreenPixels pixels, int imgWidth, int imgHeight, IReadOnlyList<OcrTextResult> names)
+    {
         var fractions = new double[names.Count];
         if (names.Count == 0)
-            return fractions;
-
-        using var pixels = BanScreenPixels.Load(png);
-        if (pixels == null)
             return fractions;
 
         int width = pixels.Width;

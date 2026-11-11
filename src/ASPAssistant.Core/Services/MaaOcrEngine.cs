@@ -40,6 +40,8 @@ public sealed class MaaOcrEngine : IOcrEngine, IDisposable
     [
         // ── Add entries here as OCR errors are discovered from logs ──────
         ("榭", "谢"),
+        // 部分字体把「萨」渲染得接近繁体「薩」，PaddleOCR 会直接输出繁体字。
+        ("薩", "萨"),
         // ("垫", "蛰"),
     ];
 

@@ -41,6 +41,7 @@
             <Border x:Name="SettingsPanel" DockPanel.Dock="Top" Visibility="Collapsed"
                     Background="{DynamicResource PanelBackgroundBrush}"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1" Padding="10,6,10,10">
+                <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8">
                         <Button DockPanel.Dock="Right" Content="✕" Click="OnToggleSettings"
@@ -64,6 +65,15 @@
                     <CheckBox x:Name="MultiLineupTrackingToggle" Content="同时追踪多个队伍"
                               Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12"
                               ToolTip="开启后追踪新阵容会追加目标；关闭后下次追踪会替换当前列表" />
+                    <DockPanel Margin="0,10,0,0" LastChildFill="True">
+                        <Button x:Name="ResetSidePanelPositionButton" DockPanel.Dock="Right" Content="侧边栏重置"
+                                Click="OnResetSidePanelPosition" Style="{StaticResource TrackingButton}"
+                                Padding="8,4" Margin="8,0,0,0" FontSize="11"
+                                ToolTip="清除记忆偏移，保留尺寸并恢复默认吸附" />
+                        <CheckBox x:Name="FreeSidePanelMovementToggle" Content="侧边栏自由移动"
+                                  Foreground="{DynamicResource TextPrimaryBrush}" FontSize="12" VerticalAlignment="Center"
+                                  ToolTip="勾选后不跟随游戏移动；取消勾选时记住当前位置并恢复跟随" />
+                    </DockPanel>
                     <DockPanel Margin="0,12,0,0">
                         <Button x:Name="CheckUpdateButton" DockPanel.Dock="Right" Content="检查更新"
                                 Click="OnCheckUpdate" Style="{StaticResource ClickableButtonBase}"
@@ -78,6 +88,7 @@
                                FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"
                                Foreground="{DynamicResource TextSecondaryBrush}" />
                 </StackPanel>
+                </ScrollViewer>
             </Border>
 
             <!-- Update notification banner (hidden until a new version is found) -->
@@ -136,12 +147,18 @@
                                    VerticalAlignment="Center" />
                     </DockPanel>
                     <!-- Download progress bar (visible during background download) -->
-                    <ProgressBar x:Name="UpdateBannerProgress"
-                                 Height="2" Margin="0,4,0,0"
-                                 Minimum="0" Maximum="100" Value="0"
-                                 Visibility="Collapsed"
-                                 Background="{DynamicResource NeutralStrongBrush}" Foreground="{DynamicResource SuccessBrush}"
-                                 BorderThickness="0" />
+                    <DockPanel Margin="0,4,0,0">
+                        <TextBlock x:Name="UpdateBannerPercent" DockPanel.Dock="Right"
+                                   Text="" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource SuccessTextBrush}" Visibility="Collapsed" />
+                        <ProgressBar x:Name="UpdateBannerProgress"
+                                     Height="2"
+                                     Minimum="0" Maximum="100" Value="0"
+                                     Visibility="Collapsed"
+                                     VerticalAlignment="Center"
+                                     Background="{DynamicResource NeutralStrongBrush}" Foreground="{DynamicResource SuccessBrush}"
+                                     BorderThickness="0" />
+                    </DockPanel>
                 </StackPanel>
             </Border>
 

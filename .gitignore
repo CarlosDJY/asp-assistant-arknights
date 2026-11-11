@@ -108,5 +108,7 @@ __pycache__/
 /light-theme.json
 /game-theme.json
 /multiple-lineups.json
+/side-panel-position.json
+/side-panel-position.json.tmp
 # 本地维护记录，不随仓库/发布包分发
 MODIFICATIONS.md

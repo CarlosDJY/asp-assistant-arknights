@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
 using System.Globalization;
 using System.Windows.Data;
 
@@ -11,7 +12,7 @@ public class TierToRomanConverter : IValueConverter
     {
         if (value is int tier && tier >= 1 && tier <= 6)
             return RomanNumerals[tier];
-        return value?.ToString() ?? "";
+        return value?.ToString() ?? parameter?.ToString() ?? "";
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

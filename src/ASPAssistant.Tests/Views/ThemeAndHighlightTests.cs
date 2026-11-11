@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -17,6 +18,7 @@ using ASPAssistant.App.Controls;
 using ASPAssistant.App.Views;
 using ASPAssistant.App.Windows;
 using ASPAssistant.Core.Data;
+using ASPAssistant.Core.Interop;
 using ASPAssistant.Core.Models;
 using ASPAssistant.Core.Services;
 using ASPAssistant.Core.ViewModels;
@@ -24,15 +26,72 @@ using FluentAssertions;
 
 namespace ASPAssistant.Tests.Views;
 
+[Collection("Update environment")]
 public class ThemeAndHighlightTests
 {
+    [Fact]
+    public void UpdateDialog_ReportsDownloadProgress()
+    {
+        Exception? failure = null;
+        var thread = new Thread(() =>
+        {
+            // 同一 AppDomain 只能有一个 WPF Application；多个测试共用它，谁创建谁负责关闭。
+            var ownsApplication = Application.Current is null;
+            var application = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            try
+            {
+                foreach (var resource in new[] { "Themes/Dark.xaml", "Styles.xaml", "Logo.xaml" })
+                    application.Resources.MergedDictionaries.Add(new ResourceDictionary
+                    {
+                        Source = new Uri($"/ASPAssistant.App;component/Resources/{resource}", UriKind.Relative)
+                    });
+
+                var info = new ASPAssistant.Core.Services.UpdateInfo(
+                    "v9.9.9", "9.9.9", "- 测试更新说明", "https://example.test/a.zip", "a.zip", null);
+                // 不 Show()：在测试宿主里显示窗口会拉起到前台并可能拖垮 testhost。
+                var dialog = new UpdateDialog(info);
+                dialog.ReportProgress(0.42);
+                var bar = (System.Windows.Controls.ProgressBar)dialog.FindName("DialogProgress");
+                var percent = (TextBlock)dialog.FindName("ProgressPercentText");
+                var hint = (TextBlock)dialog.FindName("DownloadHintText");
+                bar.Value.Should().Be(42);
+                percent.Text.Should().Be("42%");
+                hint.Text.Should().StartWith("正在下载安装包");
+
+                dialog.ReportProgress(1.0);
+                bar.Value.Should().Be(100);
+                percent.Text.Should().Be("100%");
+                hint.Text.Should().Contain("立即重启");
+                dialog.ReportFailure("更新源返回 HTTP 503");
+                hint.Text.Should().Contain("下载失败").And.Contain("503").And.Contain("重试");
+                bar.Visibility.Should().Be(Visibility.Collapsed);
+                percent.Visibility.Should().Be(Visibility.Collapsed);
+                dialog.ReportProgress(0);
+                bar.Visibility.Should().Be(Visibility.Visible);
+                percent.Visibility.Should().Be(Visibility.Visible);
+                bar.Value.Should().Be(0);
+                percent.Text.Should().Be("0%");
+                hint.Text.Should().StartWith("正在下载安装包");
+                dialog.Close();
+            }
+            catch (Exception ex) { failure = ex; }
+            finally { if (ownsApplication) application.Shutdown(); }
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        thread.Join(TimeSpan.FromSeconds(60)).Should().BeTrue("WPF dialog test should finish");
+        if (failure is not null) ExceptionDispatchInfo.Capture(failure).Throw();
+    }
+
     [Fact]
     public void ThemeSwitch_UpdatesControlsAndPreservesHighlightAndSelection()
     {
         Exception? failure = null;
         var thread = new Thread(() =>
         {
-            var application = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+            // 同一 AppDomain 只能有一个 WPF Application；多个测试共用它，谁创建谁负责关闭。
+            var ownsApplication = Application.Current is null;
+            var application = Application.Current ?? new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
             var host = new Window { ShowActivated = false, ShowInTaskbar = false };
             try
             {
@@ -70,6 +129,52 @@ public class ThemeAndHighlightTests
                         vm.FilteredOperators.Should().BeEquivalentTo(tierCandidates
                             .Where(op => expected.Length == 0 || expected.Contains(op.Tier)));
                     });
+
+                    var availability = (ListBox)view.FindName("AvailabilityFilterList");
+                    var tiers = (ListBox)view.FindName("TierFilterList");
+                    var otherCovenants = (ListBox)view.FindName("OtherCovenantFilterList");
+                    var traits = (ListBox)view.FindName("TraitFilterList");
+                    var timing = (ListBox)view.FindName("TriggerTimingFilterList");
+                    foreach (var single in new[] { availability, traits, timing })
+                        single.SelectedIndex = 1;
+                    foreach (var multiple in new[] { tiers, coreList, otherCovenants })
+                    {
+                        multiple.SelectedItems.Clear();
+                        multiple.SelectedItems.Add(multiple.Items[1]);
+                        multiple.SelectedItems.Add(multiple.Items[2]);
+                    }
+                    ((CheckBox)view.FindName("CoreCovenantMatchAllToggle")).IsChecked = true;
+                    ((CheckBox)view.FindName("OtherCovenantMatchAllToggle")).IsChecked = true;
+                    vm.SearchText = "塔露拉";
+                    vm.ActiveFilterCount.Should().BeGreaterThan(0);
+                    vm.SelectedTierFilters.Should().HaveCount(2);
+                    vm.CoreCovenantMatchAll.Should().BeTrue();
+                    vm.OtherCovenantMatchAll.Should().BeTrue();
+                    view.UpdateLayout();
+                    for (var reset = 0; reset < 2; reset++)
+                    {
+                        ((Button)view.FindName("ResetFiltersButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                        view.UpdateLayout();
+                        foreach (var list in new[] { availability, tiers, coreList, otherCovenants, traits, timing })
+                        {
+                            list.SelectedIndex.Should().Be(0);
+                            list.SelectedItems.Count.Should().BeLessThanOrEqualTo(1);
+                        }
+                        vm.SearchText.Should().BeEmpty();
+                        Descendants<TextBox>(view).First().Text.Should().BeEmpty();
+                        vm.SelectedTierFilters.Should().BeEmpty();
+                        vm.SelectedAvailabilityFilter.Should().Be(AvailabilityFilter.All);
+                        vm.SelectedTraitTypeFilter.Should().BeNull();
+                        vm.SelectedTriggerTimingFilter.Should().BeNull();
+                        vm.CoreCovenantMatchAll.Should().BeFalse();
+                        vm.OtherCovenantMatchAll.Should().BeFalse();
+                        ((CheckBox)view.FindName("CoreCovenantMatchAllToggle")).IsChecked.Should().BeFalse();
+                        ((CheckBox)view.FindName("OtherCovenantMatchAllToggle")).IsChecked.Should().BeFalse();
+                        vm.ActiveFilterTags.Should().BeEmpty();
+                        vm.ActiveFilterCount.Should().Be(0);
+                        vm.FilteredOperators.Should().BeEquivalentTo(operators);
+                        vm.HighlightedCovenants.Should().BeEquivalentTo("乌萨斯", "奥术");
+                    }
 
                     var item = (ListBoxItem)coreList.ItemContainerGenerator.ContainerFromItem("乌萨斯");
                     item.IsSelected = true;
@@ -128,6 +233,7 @@ public class ThemeAndHighlightTests
 
                 var (equipment, manualJobChanges) = store.LoadEquipmentAsync().GetAwaiter().GetResult();
                 var (covenants, mappings) = store.LoadCovenantsAsync().GetAwaiter().GetResult();
+                var strategies = store.LoadStrategiesAsync().GetAwaiter().GetResult();
                 var equipmentVm = new EquipmentBrowseViewModel();
                 equipmentVm.LoadEquipment(equipment,
                     operators.SelectMany(o => o.CoreCovenants.Concat(o.AdditionalCovenants)), manualJobChanges, mappings);
@@ -144,10 +250,187 @@ public class ThemeAndHighlightTests
                 using var failedShareHttp = new HttpClient(new FailedShareHandler());
                 var sidePanel = new SidePanelWindow(vm, equipmentVm, trackingVm,
                     new GameStateViewModel(), new BanViewModel(), enemyVm,
-                    lineupVm, new LineupShareService(failedShareHttp), operators, equipment, new SettingsManager(output), GameShopTheme.Terminal);
+                    lineupVm, new LineupShareService(failedShareHttp), operators, equipment, strategies, new SettingsManager(output), GameShopTheme.Terminal,
+                    new SidePanelPositionSettings(), new LineupPlanner(operators, covenants), covenants);
                 try
                 {
                     SynchronizationContext.SetSynchronizationContext(new DispatcherSynchronizationContext(Dispatcher.CurrentDispatcher));
+                    // 仅显示透明、不激活的测试窗口，核对真实 HWND 的物理边界。
+                    sidePanel.Opacity = 0;
+                    sidePanel.ShowActivated = false;
+                    sidePanel.ShowInTaskbar = false;
+                    sidePanel.Show();
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    var sideHwnd = new System.Windows.Interop.WindowInteropHelper(sidePanel).Handle;
+                    var work = User32.GetMonitorGeometry(0, 0).WorkArea;
+                    var gameBounds = new RECT
+                    {
+                        Left = work.Left + 20, Top = work.Top + 20,
+                        Right = work.Right - 10, Bottom = Math.Min(work.Bottom - 20, work.Top + 640),
+                    };
+                    sidePanel.UpdatePosition(gameBounds, false);
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    sidePanel.UpdatePosition(gameBounds, false);
+                    var sideBounds = User32.ReadWindowRect(sideHwnd);
+                    var sideScale = User32.GetWindowDpiScale(sideHwnd);
+                    sideBounds.Right.Should().Be(gameBounds.Right);
+                    sideBounds.Top.Should().Be(gameBounds.Top);
+                    sideBounds.Height.Should().Be(gameBounds.Height);
+                    sideBounds.Width.Should().Be((int)Math.Round(310 * sideScale));
+                    User32.GetForegroundWindow().Should().NotBe(sideHwnd);
+
+                    User32.SendMessage(sideHwnd, User32.WM_ENTERSIZEMOVE, IntPtr.Zero, IntPtr.Zero);
+                    var manualBounds = new RECT
+                    {
+                        Left = work.Left + 50, Top = work.Top + 50,
+                        Right = work.Left + 50 + sideBounds.Width,
+                        Bottom = work.Top + 50 + (int)Math.Round(300 * sideScale),
+                    };
+                    User32.SetWindowBounds(sideHwnd, manualBounds);
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    User32.SendMessage(sideHwnd, User32.WM_EXITSIZEMOVE, IntPtr.Zero, IntPtr.Zero);
+                    var freeMovement = (CheckBox)sidePanel.FindName("FreeSidePanelMovementToggle");
+                    var resetPosition = (Button)sidePanel.FindName("ResetSidePanelPositionButton");
+                    WaitForPreferenceSave(freeMovement);
+                    sidePanel.UpdatePosition(gameBounds, false);
+                    User32.ReadWindowRect(sideHwnd).Should().BeEquivalentTo(manualBounds);
+
+                    SidePanelPositionSettings LoadSavedPosition()
+                    {
+                        var task = new SettingsManager(output).LoadSidePanelPositionAsync();
+                        WaitForUi(() => task.IsCompleted, "position settings should load");
+                        return task.GetAwaiter().GetResult();
+                    }
+                    freeMovement.Content.Should().Be("侧边栏自由移动");
+                    resetPosition.Content.Should().Be("侧边栏重置");
+                    freeMovement.IsChecked = true;
+                    WaitForPreferenceSave(freeMovement);
+                    var movedGame = gameBounds;
+                    movedGame.Left -= 30;
+                    movedGame.Right -= 30;
+                    movedGame.Top += 30;
+                    movedGame.Bottom += 30;
+                    sidePanel.UpdatePosition(movedGame, true);
+                    User32.ReadWindowRect(sideHwnd).Should().BeEquivalentTo(manualBounds,
+                        "free movement must ignore game movement and mode changes");
+                    User32.SendMessage(sideHwnd, User32.WM_ENTERSIZEMOVE, IntPtr.Zero, IntPtr.Zero);
+                    manualBounds.Left += 40;
+                    manualBounds.Right += 40;
+                    manualBounds.Top += 30;
+                    manualBounds.Bottom += 30;
+                    User32.SetWindowBounds(sideHwnd, manualBounds);
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    User32.SendMessage(sideHwnd, User32.WM_EXITSIZEMOVE, IntPtr.Zero, IntPtr.Zero);
+                    WaitForPreferenceSave(freeMovement);
+                    var savedFree = LoadSavedPosition();
+                    savedFree.FreeMovement.Should().BeTrue();
+                    var restoredFree = new SidePanelWindow(vm, equipmentVm, trackingVm,
+                        new GameStateViewModel(), new BanViewModel(), enemyVm, lineupVm,
+                        new LineupShareService(failedShareHttp), operators, equipment, strategies,
+                        new SettingsManager(output), GameShopTheme.Terminal, savedFree)
+                    { Opacity = 0, ShowActivated = false, ShowInTaskbar = false };
+                    try
+                    {
+                        restoredFree.Show();
+                        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                        ((CheckBox)restoredFree.FindName("FreeSidePanelMovementToggle")).IsChecked.Should().BeTrue();
+                        var restoredHwnd = new System.Windows.Interop.WindowInteropHelper(restoredFree).Handle;
+                        User32.ReadWindowRect(restoredHwnd).Should().BeEquivalentTo(manualBounds);
+                        restoredFree.UpdatePosition(gameBounds, false);
+                        User32.ReadWindowRect(restoredHwnd).Should().BeEquivalentTo(manualBounds);
+                    }
+                    finally { restoredFree.Close(); }
+
+                    freeMovement.IsChecked = false;
+                    WaitForPreferenceSave(freeMovement);
+                    User32.ReadWindowRect(sideHwnd).Should().BeEquivalentTo(manualBounds,
+                        "disabling free movement should capture the current position without snapping");
+                    var savedFollow = LoadSavedPosition();
+                    savedFollow.FreeMovement.Should().BeFalse();
+                    savedFollow.FollowOffsetDip.Should().NotBeNull();
+                    movedGame.Left += 20;
+                    movedGame.Right += 20;
+                    movedGame.Top += 15;
+                    movedGame.Bottom += 15;
+                    sidePanel.UpdatePosition(movedGame, false);
+                    var followedBounds = User32.ReadWindowRect(sideHwnd);
+                    followedBounds.Left.Should().Be(manualBounds.Left + 20);
+                    followedBounds.Top.Should().Be(manualBounds.Top + 15);
+                    followedBounds.Height.Should().Be(manualBounds.Height);
+                    var restoredFollow = new SidePanelWindow(vm, equipmentVm, trackingVm,
+                        new GameStateViewModel(), new BanViewModel(), enemyVm, lineupVm,
+                        new LineupShareService(failedShareHttp), operators, equipment, strategies,
+                        new SettingsManager(output), GameShopTheme.Terminal, savedFollow)
+                    { Opacity = 0, ShowActivated = false, ShowInTaskbar = false };
+                    try
+                    {
+                        restoredFollow.Show();
+                        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                        restoredFollow.UpdatePosition(movedGame, false);
+                        User32.ReadWindowRect(new System.Windows.Interop.WindowInteropHelper(restoredFollow).Handle)
+                            .Should().BeEquivalentTo(followedBounds);
+                    }
+                    finally { restoredFollow.Close(); }
+                    sidePanel.UpdatePosition(movedGame, true);
+                    User32.ReadWindowRect(sideHwnd).Should().BeEquivalentTo(followedBounds);
+                    freeMovement.IsChecked = true;
+                    WaitForPreferenceSave(freeMovement);
+                    resetPosition.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    WaitForPreferenceSave(freeMovement);
+                    freeMovement.IsChecked.Should().BeFalse();
+                    var resetBounds = User32.ReadWindowRect(sideHwnd);
+                    resetBounds.Right.Should().Be(movedGame.Right);
+                    resetBounds.Width.Should().Be(followedBounds.Width);
+                    resetBounds.Height.Should().Be(followedBounds.Height);
+                    var savedReset = LoadSavedPosition();
+                    savedReset.FreeMovement.Should().BeFalse();
+                    savedReset.FollowOffsetDip.Should().BeNull();
+                    sidePanel.ClearGamePosition();
+                    resetPosition.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    User32.ReadWindowRect(sideHwnd).Should().BeEquivalentTo(resetBounds);
+                    ((TextBlock)sidePanel.FindName("ToastText")).Text.Should().Contain("未找到明日方舟");
+                    LoadSavedPosition().Should().Be(savedReset);
+                    sidePanel.UpdatePosition(gameBounds, false);
+
+                    var overlay = new OverlayWindow { Opacity = 0, ShowActivated = false, ShowInTaskbar = false };
+                    try
+                    {
+                        var clientBounds = new RECT
+                        {
+                            Left = work.Left + 40, Top = work.Top + 40,
+                            Right = work.Left + 40 + Math.Min(800, work.Width - 80),
+                            Bottom = work.Top + 40 + Math.Min(600, work.Height - 80),
+                        };
+                        overlay.UpdatePosition(clientBounds);
+                        overlay.Show();
+                        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                        var overlayHwnd = new System.Windows.Interop.WindowInteropHelper(overlay).Handle;
+                        User32.ReadWindowRect(overlayHwnd).Should().BeEquivalentTo(clientBounds);
+                        var overlayScale = User32.GetWindowDpiScale(overlayHwnd);
+                        overlay.ActualWidth.Should().BeApproximately(clientBounds.Width / overlayScale, 1);
+                        overlay.ActualHeight.Should().BeApproximately(clientBounds.Height / overlayScale, 1);
+                        overlay.UpdateShopItems([new ShopItem
+                        {
+                            Id = "dpi-marker", Name = "塔露拉", IsTracked = true, OcrRegion = (0.4, 0.8, 0.1, 0.03),
+                        }]);
+                        var canvas = (Canvas)overlay.FindName("OverlayCanvas");
+                        var marker = canvas.Children.OfType<Grid>().Single();
+                        Canvas.GetLeft(marker).Should().BeApproximately(overlay.ActualWidth * 0.5 - 27, 0.001);
+                        Canvas.GetTop(marker).Should().BeApproximately(overlay.ActualHeight * 0.8 - 29, 0.001);
+                        // 即使变化小于原有 6 DIP 容差，视口改变后也必须重新投影已有标记。
+                        clientBounds.Right += 4;
+                        clientBounds.Bottom += 4;
+                        overlay.UpdatePosition(clientBounds);
+                        Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                        User32.ReadWindowRect(overlayHwnd).Should().BeEquivalentTo(clientBounds);
+                        canvas.Children.OfType<Grid>().Single().Should().BeSameAs(marker);
+                        Canvas.GetLeft(marker).Should().BeApproximately(overlay.ActualWidth * 0.5 - 27, 0.001);
+                        Canvas.GetTop(marker).Should().BeApproximately(overlay.ActualHeight * 0.8 - 29, 0.001);
+                        (User32.GetWindowLong(overlayHwnd, User32.GWL_EXSTYLE) & User32.WS_EX_NOACTIVATE).Should().NotBe(0);
+                        User32.GetForegroundWindow().Should().NotBe(sideHwnd).And.NotBe(overlayHwnd);
+                    }
+                    finally { overlay.Close(); }
+
                     sidePanel.SetGameMinimized(true);
                     sidePanel.WindowState.Should().Be(WindowState.Minimized);
                     sidePanel.SetGameMinimized(false);
@@ -170,6 +453,24 @@ public class ThemeAndHighlightTests
                     gameThemes.Items.Cast<ListBoxItem>().Select(i => i.Content).Should()
                         .Equal("卫戍协议终端", "乌萨斯齐心团", "“全能的”可露希尔");
                     gameThemes.SelectedIndex.Should().Be(0);
+                    // 矮侧栏的设置区必须能滚动，新增位置控件不能挤掉已有更新入口。
+                    settingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    var settingsScroll = (ScrollViewer)sidePanel.FindName("SettingsScroll");
+                    settingsScroll.ScrollableHeight.Should().BeGreaterThan(0);
+                    settingsScroll.ScrollToBottom();
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                    settingsScroll.VerticalOffset.Should().BeGreaterThan(0);
+                    settingsScroll.ScrollToTop();
+                    settingsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    var previewBounds = WindowGeometry.ClampBounds(new RECT
+                    {
+                        Left = work.Left + 20, Top = work.Top + 20,
+                        Right = work.Left + 20 + (int)Math.Round(310 * sideScale),
+                        Bottom = work.Top + 20 + (int)Math.Round(900 * sideScale),
+                    }, work);
+                    User32.SetWindowBounds(sideHwnd, previewBounds);
+                    Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
                     GameShopTheme changedTheme = GameShopTheme.Terminal;
                     sidePanel.GameThemeChanged += theme => changedTheme = theme;
                     foreach (var isLight in new[] { false, true })
@@ -211,6 +512,32 @@ public class ThemeAndHighlightTests
                             page.ActualWidth.Should().BeGreaterThan(290);
                             ((SolidColorBrush)page.Background).Color.Should().Be(isLight
                                 ? Color.FromRgb(247, 249, 252) : Color.FromRgb(26, 26, 46));
+                            if (page is LineupPlannerView plannerView)
+                            {
+                                plannerView.DataContext.Should().BeSameAs(sidePanel.PlannerVm);
+                                sidePanel.PlannerVm.CoreCovenants.Should().HaveCount(10);
+                                sidePanel.PlannerVm.ExtraCovenants.Should().HaveCount(16);
+                                sidePanel.PlannerVm.AllCovenants.Should().Contain(c => c.HasEffects);
+                                var levelButton = Descendants<Button>(plannerView).First(b => b.Name == "lv1");
+                                levelButton.IsEnabled.Should().BeTrue();
+                                var levelText = Descendants<TextBlock>(levelButton).Single(t => t.Text == "Ⅰ");
+                                ((SolidColorBrush)levelText.Foreground).Color.Should().Be(
+                                    ((SolidColorBrush)levelButton.Foreground).Color,
+                                    "the planner level label must follow its button's theme foreground");
+                                sidePanel.Width = 280;
+                                content.Measure(new Size(280, 900));
+                                content.Arrange(new Rect(0, 0, 280, 900));
+                                content.UpdateLayout();
+                                content.ActualWidth.Should().Be(280);
+                                foreach (var button in Descendants<Button>(plannerView).Where(b => b.Name is "lv1" or "lv2"))
+                                    button.TranslatePoint(new Point(button.ActualWidth, 0), plannerView).X
+                                        .Should().BeLessThanOrEqualTo(plannerView.ActualWidth);
+                                Save(content, Path.Combine(output, isLight ? "light-planner-narrow.png" : "dark-planner-narrow.png"));
+                                sidePanel.Width = 310;
+                                content.Measure(new Size(310, 900));
+                                content.Arrange(new Rect(0, 0, 310, 900));
+                                content.UpdateLayout();
+                            }
                             if (page is EnemyView enemyView)
                             {
                                 var button = (Button)enemyView.FindName("RecognizeEnemyButton");
@@ -382,7 +709,7 @@ public class ThemeAndHighlightTests
                                 detail.PlacementTarget = (UIElement)hoverCard.FindName("CardBorder");
                                 detail.MaxHeight = 100;
                                 var row = (Border)hoverCard.FindName("CardBorder");
-                                row.ActualHeight.Should().Be(40);
+                                row.ActualHeight.Should().Be(42);
                                 detail.Opacity = 0; // Exercise the popup lifecycle without displaying test UI.
                                 detail.IsOpen = true;
                                 Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
@@ -506,9 +833,11 @@ public class ThemeAndHighlightTests
                                 removeUnknownEquipment.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                                 trackingVm.IsTracked("旧版已移除装备").Should().BeFalse();
                                 content.UpdateLayout();
+                                sidePanel.Width = 280;
                                 content.Measure(new Size(280, 900));
                                 content.Arrange(new Rect(0, 0, 280, 900));
                                 content.UpdateLayout();
+                                content.ActualWidth.Should().Be(280);
                                 foreach (var equipmentCard in Descendants<TrackedEquipmentCard>(trackingView))
                                 {
                                     var equipmentBorder = (Border)equipmentCard.FindName("CardBorder");
@@ -521,6 +850,46 @@ public class ThemeAndHighlightTests
                                     }
                                 }
                                 Save(content, Path.Combine(output, isLight ? "light-tracking-narrow.png" : "dark-tracking-narrow.png"));
+                                var previousEntries = trackingVm.AllEntries.ToList();
+                                var multipleLineups = trackingVm.TrackMultipleLineups;
+                                try
+                                {
+                                    trackingVm.TrackMultipleLineups = false;
+                                    var target = covenants.First(c => c.BondType == "SEASON"
+                                        && !operators.Single(o => o.Name == "烈夏").CoreCovenants.Contains(c.Name)).Name;
+                                    var plannedLineup = new Lineup { Slots =
+                                    [
+                                        new() { OperatorName = "烈夏", TransformedCovenant = target },
+                                        new() { OperatorName = "魔王" }
+                                    ] };
+                                    trackingVm.TrackLineup(plannedLineup);
+                                    content.UpdateLayout();
+                                    var chips = (ItemsControl)trackingView.FindName("TrackedCovenantChips");
+                                    chips.Items.Cast<TrackedCovenantChip>().ToDictionary(c => c.Name, c => c.Count)
+                                        .Should().BeEquivalentTo(lineupVm.Calculator.Compute(plannedLineup)
+                                            .Where(s => s.Count > 0).ToDictionary(s => s.Name, s => s.Count));
+                                    var cancelTransform = Descendants<Button>(trackingView)
+                                        .Single(b => b.DataContext is TrackingEntry { Name: "烈夏" } && b.Content as string == target);
+                                    cancelTransform.Visibility.Should().Be(Visibility.Visible);
+                                    Descendants<TextBlock>(cancelTransform).Should().Contain(t => t.Text.Contains($"转职：{target}"));
+                                    (cancelTransform.TranslatePoint(new Point(), trackingView).X + cancelTransform.ActualWidth)
+                                        .Should().BeLessThanOrEqualTo(trackingView.ActualWidth);
+                                    Save(content, Path.Combine(output, isLight ? "light-tracking-transform.png" : "dark-tracking-transform.png"));
+                                    cancelTransform.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                                    content.UpdateLayout();
+                                    trackingVm.TrackedOperators.Single(e => e.Name == "烈夏").TransformedCovenant.Should().BeEmpty();
+                                    chips.Items.Cast<TrackedCovenantChip>().Should().NotContain(c => c.Name == target);
+                                    plannedLineup.Slots[0].TransformedCovenant.Should().Be(target);
+                                }
+                                finally
+                                {
+                                    trackingVm.LoadEntries(previousEntries);
+                                    trackingVm.TrackMultipleLineups = multipleLineups;
+                                }
+                                sidePanel.Width = 310;
+                                content.Measure(new Size(310, 900));
+                                content.Arrange(new Rect(0, 0, 310, 900));
+                                content.UpdateLayout();
                                 content.Measure(new Size(310, 900));
                                 content.Arrange(new Rect(0, 0, 310, 900));
                                 content.UpdateLayout();
@@ -587,6 +956,106 @@ public class ThemeAndHighlightTests
                             ((TextBlock)fallbackWindow.FindName("CopyStatusText")).Text.Should().Contain("已复制");
                         }
                         finally { fallbackWindow.Close(); }
+
+                        var editorVm = new LineupEditorViewModel(null, operators, equipment, lineupVm.Calculator);
+                        editorVm.SetStrategy(0, "band_amiya");
+                        editorVm.SetStrategy(1, "band_upgrade");
+                        var longestStrategy = strategies.MaxBy(s => s.Description.Length)!;
+                        editorVm.SetStrategy(2, longestStrategy.Id);
+                        editorVm.SetStrategy(3, "unknown-shared-strategy");
+                        var editor = new LineupEditorWindow(editorVm, strategies);
+                        try
+                        {
+                            var phaseTabs = (WrapPanel)editor.FindName("PhaseTabs");
+                            phaseTabs.Children.Cast<Button>().Select(b => b.Content).Should().Equal("前期", "中期", "后期", "挂件", "策略");
+                            ((Button)phaseTabs.Children[4]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            var editorContent = (Border)editor.Content;
+                            editorContent.Measure(new Size(980, 660));
+                            editorContent.Arrange(new Rect(0, 0, 980, 660));
+                            editorContent.UpdateLayout();
+                            var slots = (ItemsControl)editor.FindName("SlotsHost");
+                            slots.Items.Count.Should().Be(9);
+                            var firstCard = (Border)slots.Items[0];
+                            Descendants<TextBlock>(firstCard).Should().NotContain(t => t.Text.Contains("解锁要求"));
+                            Descendants<TextBlock>(firstCard).Should().Contain(t => t.Text == strategies.Single(s => s.Id == "band_amiya").Description);
+                            Descendants<Button>(firstCard).Select(b => b.Content).Should().Equal("✕", "阵容核心", "优选", "次选");
+                            Descendants<Image>(firstCard).Single().Source.Should().NotBeNull();
+                            Descendants<TextBlock>((Border)slots.Items[1]).Should().Contain(t => t.Text == strategies.Single(s => s.Id == "band_upgrade").Description);
+                            Descendants<TextBlock>((Border)slots.Items[2]).Should().Contain(t => t.Text == longestStrategy.Description);
+                            foreach (var card in slots.Items.Cast<Border>().Take(3))
+                                Descendants<TextBlock>(card).Should().NotContain(t => t.Text.Contains("解锁要求："));
+                            Descendants<TextBlock>((Border)slots.Items[3]).Should().Contain(t => t.Text == "资料未收录");
+                            Descendants<Button>((Border)slots.Items[3]).Single(b => (string)b.Content == "✕")
+                                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            ((Border)editor.FindName("CovenantPanel")).Visibility.Should().Be(Visibility.Collapsed);
+                            var core = Descendants<Button>(firstCard).Single(b => (string)b.Content == "阵容核心");
+                            core.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            editorContent.UpdateLayout();
+                            core = Descendants<Button>(firstCard).Single(b => (string)b.Content == "阵容核心");
+                            core.Tag.Should().Be("core");
+                            ((SolidColorBrush)core.Foreground).Color.Should().Be(
+                                ((SolidColorBrush)application.FindResource("FilterSelectedBrush")).Color);
+                            editorVm.StrategySlots[0].Tags.Should().Contain(StrategyTag.阵容核心);
+                            Descendants<Button>(firstCard).Single(b => (string)b.Content == "优选")
+                                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            editorVm.StrategySlots[0].Tags.Should().Contain(StrategyTag.优选);
+                            editorContent.UpdateLayout();
+                            Save(editorContent, Path.Combine(output, isLight ? "light-strategy-editor.png" : "dark-strategy-editor.png"));
+                            editorContent.Measure(new Size(720, 500));
+                            editorContent.Arrange(new Rect(0, 0, 720, 500));
+                            editorContent.UpdateLayout();
+                            Save(editorContent, Path.Combine(output, isLight ? "light-strategy-editor-narrow.png" : "dark-strategy-editor-narrow.png"));
+                            foreach (var card in slots.Items.Cast<Border>().Take(3))
+                            {
+                                foreach (var text in Descendants<TextBlock>(card))
+                                {
+                                    (text.TranslatePoint(new Point(), card).X + text.ActualWidth)
+                                        .Should().BeLessThanOrEqualTo(card.ActualWidth + 1);
+                                    (text.TranslatePoint(new Point(), card).Y + text.ActualHeight)
+                                        .Should().BeLessThanOrEqualTo(card.ActualHeight + 1);
+                                    text.ActualHeight.Should().BeGreaterThanOrEqualTo(
+                                        text.DesiredSize.Height - text.Margin.Top - text.Margin.Bottom - 1);
+                                }
+                            }
+                            Descendants<Button>((Border)slots.Items[1]).Single(b => (string)b.Content == "✕")
+                                .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            editorVm.StrategySlots[1].StrategyId.Should().BeEmpty();
+                            ((Button)phaseTabs.Children[3]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            ((Border)editor.FindName("CovenantPanel")).Visibility.Should().Be(Visibility.Visible);
+                            Descendants<Button>((Border)slots.Items[0]).Single().Content.Should().Be("+ 选择干员");
+                            ((Button)phaseTabs.Children[4]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            Descendants<TextBlock>((Border)slots.Items[0]).Should().Contain(t => t.Text == "众志合一");
+                            editorVm.SelectPhase(LineupPhase.后期);
+                            editorVm.SetSlotOperator(0, "烈夏");
+                            editorVm.Slots[0].TransformedCovenant = "炎";
+                            editorVm.Recalculate();
+                            ((Button)phaseTabs.Children[2]).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            editorContent.UpdateLayout();
+                            var transformedCard = (Border)slots.Items[0];
+                            var cancelTransform = Descendants<Button>(transformedCard)
+                                .Single(b => b.Content as string == "转职：炎 ✕");
+                            (cancelTransform.TranslatePoint(new Point(), transformedCard).X + cancelTransform.ActualWidth)
+                                .Should().BeLessThanOrEqualTo(transformedCard.ActualWidth);
+                            Save(editorContent, Path.Combine(output, isLight ? "light-editor-transform.png" : "dark-editor-transform.png"));
+                            cancelTransform.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            editorVm.ToLineup().Slots.Single().TransformedCovenant.Should().BeEmpty();
+                            editorVm.ActiveStats.Should().NotContain(s => s.Name == "炎");
+                        }
+                        finally { editor.Close(); }
+
+                        var strategyPicker = new SimplePickerDialog("选择策略", strategies.Select(s => new SimplePickerDialog.PickerItem(
+                            s.Id, $"{s.Name} · {s.Initiator}", s.IconPath, null, s.Description)), null);
+                        try
+                        {
+                            ((CheckBox)strategyPicker.FindName("CoreEquipmentToggle")).Visibility.Should().Be(Visibility.Collapsed);
+                            var search = (TextBox)strategyPicker.FindName("SearchBox");
+                            var options = (ListBox)strategyPicker.FindName("ItemsList");
+                            search.Text = "阿米娅";
+                            options.Items.Cast<SimplePickerDialog.PickerItem>().Single().Key.Should().Be("band_amiya");
+                            search.Text = "至纯凝结";
+                            options.Items.Cast<SimplePickerDialog.PickerItem>().Single().Key.Should().Be("band_upgrade");
+                        }
+                        finally { strategyPicker.Close(); }
                     }
                     var closeAttempts = 0;
                     var closingShareWindow = new ShareLinkWindow("https://dpaste.com/TEST12345", _ =>
@@ -674,10 +1143,54 @@ public class ThemeAndHighlightTests
                         updateStatus.Text.Should().Contain("503");
                         updateServer.Pending().Should().BeFalse("reopening an active update must reuse the existing download");
                         ((TextBlock)sidePanel.FindName("UpdateActionText")).Text.Should().Be("重试");
-                        updateAction.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-                        updateStatus.Text.Should().Contain("正在下载");
-                        RespondToUpdateRequest(updateServer, 503, "{}");
-                        WaitForUi(() => updateStatus.Text.StartsWith("下载失败"), "retry must issue a fresh download request");
+                        var progressDialog = new UpdateDialog(new UpdateInfo(futureTag, "99.0.0", "", feed, "test.zip", null));
+                        var dialogField = typeof(SidePanelWindow).GetField("_openUpdateDialog", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+                        var lastProgress = typeof(SidePanelWindow).GetField("_lastUpdateProgress", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+                        dialogField.SetValue(sidePanel, progressDialog);
+                        lastProgress.SetValue(sidePanel, 0.83);
+                        progressDialog.ReportProgress(0.83);
+                        try
+                        {
+                            updateAction.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            updateStatus.Text.Should().Contain("正在下载");
+                            lastProgress.GetValue(sidePanel).Should().Be(0.0);
+                            ((ProgressBar)progressDialog.FindName("DialogProgress")).Value.Should().Be(0);
+                            ((TextBlock)progressDialog.FindName("ProgressPercentText")).Text.Should().Be("0%");
+                            RespondToUpdateRequest(updateServer, 503, "{}");
+                            WaitForUi(() => updateStatus.Text.StartsWith("下载失败"), "retry must issue a fresh download request");
+                            Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
+                            ((TextBlock)progressDialog.FindName("DownloadHintText")).Text.Should().Contain("下载失败").And.Contain("503");
+                            ((ProgressBar)progressDialog.FindName("DialogProgress")).Visibility.Should().Be(Visibility.Collapsed);
+                        }
+                        finally { dialogField.SetValue(sidePanel, null); progressDialog.Close(); }
+
+                        var launchRoot = Directory.CreateTempSubdirectory("ASPAssistant-UpdateUI-").FullName;
+                        var previousPath = Environment.GetEnvironmentVariable("PATH");
+                        var updater = (UpdateService)typeof(SidePanelWindow).GetField("_updateService", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!.GetValue(sidePanel)!;
+                        var readyField = typeof(SidePanelWindow).GetField("_isDownloadReady", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+                        try
+                        {
+                            foreach (var folder in new[] { AppContext.BaseDirectory, Environment.CurrentDirectory,
+                                Environment.SystemDirectory, Environment.GetFolderPath(Environment.SpecialFolder.Windows) })
+                                File.Exists(Path.Combine(folder, "powershell.exe")).Should().BeFalse("this isolated test must make the updater executable unresolvable");
+                            var script = Path.Combine(launchRoot, "pending.ps1");
+                            File.WriteAllText(script, "# Not executed by this test");
+                            typeof(UpdateService).GetProperty(nameof(UpdateService.PendingScriptPath))!.SetValue(updater, script);
+                            readyField.SetValue(sidePanel, true);
+                            Environment.SetEnvironmentVariable("PATH", "");
+                            updateAction.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                            updateStatus.Text.Should().Contain("无法启动更新程序").And.Contain("辅助未关闭");
+                            readyField.GetValue(sidePanel).Should().Be(true);
+                            updater.PendingScriptPath.Should().Be(script);
+                        }
+                        finally
+                        {
+                            Environment.SetEnvironmentVariable("PATH", previousPath);
+                            readyField.SetValue(sidePanel, false);
+                            typeof(UpdateService).GetProperty(nameof(UpdateService.PendingScriptPath))!.SetValue(updater, null);
+                            Path.GetFullPath(launchRoot).StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase).Should().BeTrue();
+                            Directory.Delete(launchRoot, true);
+                        }
                     }
                     finally
                     {
@@ -697,7 +1210,7 @@ public class ThemeAndHighlightTests
             finally
             {
                 host.Close();
-                application.Shutdown();
+                if (ownsApplication) application.Shutdown();
             }
         }) { IsBackground = true };
         thread.SetApartmentState(ApartmentState.STA);
@@ -711,6 +1224,12 @@ public class ThemeAndHighlightTests
 
     private static void AssertTierClicks(ListBox tiers, Action<int[]> assertFiltered)
     {
+        string[] roman = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ"];
+        for (var i = 0; i < tiers.Items.Count; i++)
+        {
+            var container = (ListBoxItem)tiers.ItemContainerGenerator.ContainerFromIndex(i);
+            Descendants<TextBlock>(container).Single().Text.Should().Be(i == 0 ? "全部" : roman[(int)tiers.Items[i]]);
+        }
         void Click(int index)
         {
             var item = (ListBoxItem)tiers.ItemContainerGenerator.ContainerFromIndex(index);

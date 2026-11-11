@@ -9,12 +9,15 @@
     <UserControl.Resources>
         <converters:TrackedOperatorConverter x:Key="TrackedOperator" />
         <converters:TrackedEquipmentConverter x:Key="TrackedEquipment" />
-        <converters:NameToIconConverter x:Key="NameToIcon" />
+        <DataTemplate DataType="{x:Type models:Equipment}">
+            <controls:TrackedEquipmentCard TrackingToggled="OnTrackedEquipmentToggled" />
+        </DataTemplate>
 
         <DataTemplate DataType="{x:Type models:Operator}">
             <controls:OperatorCard IsTrackingList="True" TrackingToggled="OnTrackedOperatorToggled" />
         </DataTemplate>
 
+        <!-- Tracked name that is not in the operator data -->
         <DataTemplate DataType="{x:Type models:TrackingEntry}">
             <Border Style="{StaticResource ItemCardBorder}" Padding="8,6" Margin="0,0,0,4" CornerRadius="6"
                     ToolTip="当前数据中没有该追踪项的详情">
@@ -25,9 +28,6 @@
                                FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </DockPanel>
             </Border>
-        </DataTemplate>
-        <DataTemplate DataType="{x:Type models:Equipment}">
-            <controls:TrackedEquipmentCard TrackingToggled="OnTrackedEquipmentToggled" />
         </DataTemplate>
     </UserControl.Resources>
 
@@ -50,7 +50,7 @@
 
                 <!-- Covenants the tracked operators bring -->
                 <StackPanel x:Name="CovenantSection" Visibility="Collapsed" Margin="0,0,0,10">
-                    <ContentControl Style="{StaticResource FilterGroupHeader}" Content="目标盟约分布" />
+                    <ContentControl Style="{StaticResource FilterGroupHeader}" Content="目标盟约分布（含计划转职）" />
                     <ItemsControl x:Name="TrackedCovenantChips" Focusable="False">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
@@ -92,15 +92,31 @@
                     <ItemsControl ItemsSource="{Binding TrackedOperators}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <ContentControl Focusable="False">
-                                    <ContentControl.Content>
-                                        <MultiBinding Converter="{StaticResource TrackedOperator}" Mode="OneWay">
-                                            <Binding />
-                                            <Binding Path="OperatorDatabase"
-                                                     RelativeSource="{RelativeSource AncestorType=UserControl}" />
-                                        </MultiBinding>
-                                    </ContentControl.Content>
-                                </ContentControl>
+                                <StackPanel>
+                                    <ContentControl Focusable="False">
+                                        <ContentControl.Content>
+                                            <MultiBinding Converter="{StaticResource TrackedOperator}" Mode="OneWay">
+                                                <Binding />
+                                                <Binding Path="OperatorDatabase"
+                                                         RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                            </MultiBinding>
+                                        </ContentControl.Content>
+                                    </ContentControl>
+                                    <Button Content="{Binding TransformedCovenant}" ContentStringFormat="转职：{0} ✕"
+                                            Click="OnClearPlannedTransformation"
+                                            HorizontalAlignment="Left" Margin="4,0,0,6"
+                                            ToolTip="取消此干员的计划转职，仅修改追踪列表。同名干员采用最近追踪阵容的转职计划。">
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SmallActionButton}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding TransformedCovenant}" Value="">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
@@ -123,12 +139,11 @@
                     <ItemsControl ItemsSource="{Binding TrackedEquipment}" Focusable="False">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <ContentControl>
+                                <ContentControl Focusable="False">
                                     <ContentControl.Content>
                                         <MultiBinding Converter="{StaticResource TrackedEquipment}" Mode="OneWay">
                                             <Binding />
-                                            <Binding Path="EquipmentDatabase"
-                                                     RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                            <Binding Path="EquipmentDatabase" RelativeSource="{RelativeSource AncestorType=UserControl}" />
                                         </MultiBinding>
                                     </ContentControl.Content>
                                 </ContentControl>

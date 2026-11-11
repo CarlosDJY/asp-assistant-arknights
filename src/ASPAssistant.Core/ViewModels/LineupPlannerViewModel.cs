@@ -179,7 +179,7 @@ public sealed partial class PlannerVariantCell : ObservableObject
     public string Text => Count > 0 ? Count.ToString() : "—";
     public string ToolTip => Count > 0
         ? $"{People} 人 · {Transforms} 转：{Count} 套，最高附加分 {BestScore}" + (IsLimited ? "（达到搜索上限，可能还有其他组合）" : "")
-        : IsLimited ? $"{People} 人 · {Transforms} 转：达到搜索上限仍未找到" : $"{People} 人 · {Transforms} 转：无解";
+        : IsLimited ? $"{People} 人 · {Transforms} 转：达到搜索上限仍未找到" : $"{People} 人 · {Transforms} 转：未找到候选";
 
     [ObservableProperty]
     private bool _isSelected;
@@ -616,8 +616,9 @@ public partial class LineupPlannerViewModel : ObservableObject
         if (VariantCells.Any(c => c.IsLimited)) detail += " · 部分组达到搜索上限";
         StatusDetail = detail;
 
-        var unsolved = VariantCells.Where(c => !c.HasResults).Select(c => $"{c.People} 人·{c.Transforms} 转").ToList();
-        var hint = unsolved.Count == 0 ? "" : $"{string.Join("、", unsolved)}无解";
+        var unsolved = VariantCells.Where(c => !c.HasResults)
+            .Select(c => $"{c.People} 人·{c.Transforms} 转" + (c.IsLimited ? "（搜索受限）" : "")).ToList();
+        var hint = unsolved.Count == 0 ? "" : $"尚未找到候选：{string.Join("、", unsolved)}";
         ResultHint = hint;
     }
 

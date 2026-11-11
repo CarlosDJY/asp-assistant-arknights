@@ -109,7 +109,7 @@
         </Style>
     </Window.Resources>
 
-    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+    <Border Background="{DynamicResource PanelBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
         <DockPanel>
             <!-- Title bar -->
             <Border DockPanel.Dock="Top" Background="{DynamicResource TitleBackgroundBrush}" MouseLeftButtonDown="OnTitleBarDrag">
@@ -152,7 +152,7 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- Slots grid -->
-                <DockPanel Grid.Column="0" Margin="12">
+                <DockPanel x:Name="SlotsPanel" Grid.Column="0" Margin="12">
                     <!-- Top: name + summary -->
                     <Border DockPanel.Dock="Top" Background="{DynamicResource CardBackgroundBrush}"
                             BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
@@ -195,7 +195,7 @@
                 </DockPanel>
 
                 <!-- Right: covenant breakdown -->
-                <Border Grid.Column="1" Background="{DynamicResource CardBackgroundBrush}"
+                <Border x:Name="CovenantPanel" Grid.Column="1" Background="{DynamicResource CardBackgroundBrush}"
                         BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Top" Text="盟约层数"

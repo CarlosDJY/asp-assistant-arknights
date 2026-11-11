@@ -21,7 +21,7 @@ public class WindowTrackerService : IDisposable
     public bool IsGameFocused { get; private set; }
     public bool IsGameFound => _gameWindowHandle != IntPtr.Zero
                                 && User32.IsWindow(_gameWindowHandle);
-    public bool ShouldAttachInside { get; private set; }
+    public uint CurrentGameDpi { get; private set; }
     public bool IsFullscreen { get; private set; }
     public bool IsGameMinimized { get; private set; }
 
@@ -96,16 +96,14 @@ public class WindowTrackerService : IDisposable
             }
             IsGameMinimized = false;
 
-            // Use the monitor that contains the game window's right edge so that
-            // multi-monitor setups resolve correctly regardless of primary screen.
-            var monitorRect = User32.GetMonitorRect(windowRect.Right - 1, windowRect.Top);
-            var rightSpace = monitorRect.Right - windowRect.Right;
+            var monitorRect = User32.GetMonitorRect(windowRect.Right - 1, windowRect.Top + windowRect.Height / 2);
             var isFullscreen = CheckIsFullscreen(windowRect, monitorRect);
-            var shouldAttachInside = rightSpace < 320 || isFullscreen;
+            var dpi = User32.GetDpiForWindow(_gameWindowHandle);
+            if (dpi == 0) return; // 读取窗口矩形后，游戏窗口可能已经被关闭。
 
-            var changed = IsGameWindowChanged(CurrentGameRect, ShouldAttachInside, IsFullscreen,
-                windowRect, shouldAttachInside, isFullscreen);
-            ShouldAttachInside = shouldAttachInside;
+            var changed = IsGameWindowChanged(CurrentGameRect, IsFullscreen, CurrentGameDpi,
+                windowRect, isFullscreen, dpi);
+            CurrentGameDpi = dpi;
             IsFullscreen = isFullscreen;
             CurrentGameRect = windowRect;
 
@@ -129,8 +127,8 @@ public class WindowTrackerService : IDisposable
         return rect.Left <= monitorRect.Left && rect.Width >= monitorRect.Width - 10;
     }
 
-    public static bool IsGameWindowChanged(RECT? previous, bool previousAttachInside, bool previousFullscreen,
-        RECT current, bool currentAttachInside, bool currentFullscreen)
+    public static bool IsGameWindowChanged(RECT? previous, bool previousFullscreen, uint previousDpi,
+        RECT current, bool currentFullscreen, uint currentDpi)
     {
         if (previous is null) return true;
         var p = previous.Value;
@@ -138,7 +136,7 @@ public class WindowTrackerService : IDisposable
                p.Top != current.Top ||
                p.Right != current.Right ||
                p.Bottom != current.Bottom ||
-               previousAttachInside != currentAttachInside ||
+               previousDpi != currentDpi ||
                previousFullscreen != currentFullscreen;
     }
 

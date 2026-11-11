@@ -35,6 +35,7 @@ public partial class SidePanelWindow : Window
     private readonly LineupShareService _lineupShareService;
     private readonly IReadOnlyList<Operator> _allOperators;
     private readonly IReadOnlyList<Equipment> _allEquipment;
+    private readonly IReadOnlyList<Strategy> _allStrategies;
     private readonly LineupPlanner _lineupPlanner;
     private readonly IReadOnlyList<CovenantInfo> _covenants;
     private readonly DispatcherTimer _toastHideTimer;
@@ -43,21 +44,25 @@ public partial class SidePanelWindow : Window
     private bool _isCheckingForUpdates;
     private bool _hasCheckedForUpdates;
     private readonly SettingsManager _settingsManager;
+    private SidePanelPositionSettings _positionSettings;
+    private RECT? _lastGameRect;
     public GameShopTheme GameTheme { get; private set; }
     public event Action<GameShopTheme>? GameThemeChanged;
     private UpdateInfo? _pendingUpdate;
     private Task? _downloadTask;
     private bool _isDownloadReady;
+    private UpdateDialog? _openUpdateDialog;
+    private double _lastUpdateProgress;
+    private string? _downloadError;
 
     // 用户意图追踪
-    private bool _isUserPositioned;       // 用户手动移动过窗口
-    private bool _isUserSized;            // 用户手动调整过窗口高度
+    private double? _userHeightDip;       // 用户手动设置的逻辑高度，跨 DPI 时不反复取整
+    private double _preferredWidthDip;
     private bool _isProgrammaticChange;   // 程序正在设置位置/尺寸，抑制事件响应
     private bool _isRestoring;            // 正在从最小化恢复，抑制事件响应
     private WindowState _previousWindowState;
     private WindowState? _stateBeforeGameMinimized;
-    // WPF 初始 Show() 会触发 SizeChanged/LocationChanged，在首次 UpdatePosition 前清除误设的标志
-    private bool _layoutInitialized;
+    private bool _isUserMovingOrSizing;
 
     // Global hotkey (Ctrl+Shift+/) for manual screenshot scan
     private const int HotkeyIdManualScan = 0x4153; // 'AS' — arbitrary unique app-scoped ID
@@ -66,10 +71,6 @@ public partial class SidePanelWindow : Window
     // 全屏状态追踪
     private bool _wasFullscreen;
     private bool _fullscreenBannerDismissed;
-
-    // 全屏时侧边栏的起始/结束位置（占游戏窗口高度的比例）
-    private const double FullscreenTopRatio    = 0.22;  // 从顶部留出 22%
-    private const double FullscreenBottomRatio = 0.68;  // 底部截止在 68% 处（留出底部 32%）
 
     public SidePanelWindow(
         OperatorBrowseViewModel operatorVm,
@@ -82,8 +83,10 @@ public partial class SidePanelWindow : Window
         LineupShareService lineupShareService,
         IReadOnlyList<Operator> allOperators,
         IReadOnlyList<Equipment> allEquipment,
+        IReadOnlyList<Strategy> allStrategies,
         SettingsManager settingsManager,
         GameShopTheme gameTheme,
+        SidePanelPositionSettings positionSettings,
         LineupPlanner? lineupPlanner = null,
         IReadOnlyList<CovenantInfo>? covenants = null)
     {
@@ -97,20 +100,32 @@ public partial class SidePanelWindow : Window
         _lineupShareService = lineupShareService;
         _allOperators = allOperators;
         _allEquipment = allEquipment;
+        _allStrategies = allStrategies;
         _lineupPlanner = lineupPlanner ?? new LineupPlanner(allOperators, covenants ?? []);
         _covenants = covenants ?? [];
         _settingsManager = settingsManager;
+        _positionSettings = positionSettings;
         GameTheme = gameTheme;
 
         InitializeComponent();
+        _preferredWidthDip = Width;
+        if (positionSettings.Placement is { } placement)
+        {
+            _preferredWidthDip = Math.Clamp(placement.WidthDip, MinWidth, MaxWidth);
+            Width = _preferredWidthDip;
+            _userHeightDip = placement.HeightDip;
+        }
         CurrentVersionText.Text = $"当前版本：v{typeof(SidePanelWindow).Assembly.GetName().Version!.ToString(3)}";
         UiThemeSelector.SelectedIndex = ThemeManager.IsLight ? 1 : 0;
         GameThemeSelector.SelectedIndex = (int)gameTheme;
         MultiLineupTrackingToggle.IsChecked = trackingVm.TrackMultipleLineups;
+        FreeSidePanelMovementToggle.IsChecked = positionSettings.FreeMovement;
         UiThemeSelector.SelectionChanged += OnUiThemeChanged;
         GameThemeSelector.SelectionChanged += OnGameThemeChanged;
         MultiLineupTrackingToggle.Checked += OnMultipleLineupsChanged;
         MultiLineupTrackingToggle.Unchecked += OnMultipleLineupsChanged;
+        FreeSidePanelMovementToggle.Checked += OnFreeSidePanelMovementChanged;
+        FreeSidePanelMovementToggle.Unchecked += OnFreeSidePanelMovementChanged;
 
         _toastHideTimer = new DispatcherTimer
         {
@@ -118,9 +133,23 @@ public partial class SidePanelWindow : Window
         };
         _toastHideTimer.Tick += (_, _) => HideToast();
 
-        LocationChanged += OnLocationChanged;
         SizeChanged     += OnSizeChanged;
         StateChanged    += OnStateChanged;
+        Loaded += (_, _) =>
+        {
+            if (!_positionSettings.FreeMovement || _positionSettings.Placement is not { } saved) return;
+            _isProgrammaticChange = true;
+            try
+            {
+                var hwnd = new WindowInteropHelper(this).Handle;
+                var work = User32.GetMonitorGeometry((int)saved.Left, (int)saved.Top).WorkArea;
+                saved = saved with { WidthDip = _preferredWidthDip };
+                // 第一次移动使 HWND 切换到记忆位置所在屏幕，再使用该屏的 DPI 恢复尺寸。
+                User32.SetWindowBounds(hwnd, WindowGeometry.RestoreBounds(saved, work, User32.GetWindowDpiScale(hwnd)));
+                User32.SetWindowBounds(hwnd, WindowGeometry.RestoreBounds(saved, work, User32.GetWindowDpiScale(hwnd)));
+            }
+            finally { _isProgrammaticChange = false; }
+        };
 
         trackingVm.GameState = gameStateVm;
 
@@ -128,6 +157,7 @@ public partial class SidePanelWindow : Window
         EquipmentView.DataContext = equipmentVm;
         TrackingView.SetOperators(allOperators);
         TrackingView.SetEquipment(allEquipment);
+        TrackingView.SetCovenantCalculator(lineupVm.Calculator);
         TrackingView.DataContext = trackingVm;
         EnemyView.DataContext = enemyVm;
         EnemyView.RecognitionRequested += () => EnemyRecognitionRequested?.Invoke();
@@ -183,6 +213,21 @@ public partial class SidePanelWindow : Window
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (msg == User32.WM_ENTERSIZEMOVE) _isUserMovingOrSizing = true;
+        if (msg == User32.WM_EXITSIZEMOVE)
+        {
+            _isUserMovingOrSizing = false;
+            var placement = CaptureSidePanelPlacement();
+            _userHeightDip = placement.HeightDip;
+            _positionSettings = _positionSettings with
+            {
+                Placement = placement,
+                FollowOffsetDip = !_positionSettings.FreeMovement && _lastGameRect is { } game
+                    ? WindowGeometry.CaptureFollowOffset(game, placement, User32.GetWindowDpiScale(hwnd))
+                    : _positionSettings.FollowOffsetDip,
+            };
+            _ = SavePreferenceAsync(() => _settingsManager.SaveSidePanelPositionAsync(_positionSettings), FreeSidePanelMovementToggle);
+        }
         if (msg == User32.WM_HOTKEY && wParam.ToInt32() == HotkeyIdManualScan)
         {
             ManualScanRequested?.Invoke();
@@ -263,6 +308,8 @@ public partial class SidePanelWindow : Window
             UpdateActionText.Text = "查看更新";
             UpdateBannerProgress.Value = 0;
             UpdateBannerProgress.Visibility = Visibility.Visible;
+            UpdateBannerPercent.Text = "0%";
+            UpdateBannerPercent.Visibility = Visibility.Visible;
             UpdateBanner.Visibility = Visibility.Visible;
             _downloadTask = RunBackgroundDownloadAsync(info);
         }
@@ -276,11 +323,21 @@ public partial class SidePanelWindow : Window
 
     private async Task RunBackgroundDownloadAsync(UpdateInfo info)
     {
+        _lastUpdateProgress = 0;
+        _downloadError = null;
+        UpdateBannerProgress.Value = 0;
+        UpdateBannerPercent.Text = "0%";
+        UpdateBannerPercent.Visibility = Visibility.Visible;
+        _openUpdateDialog?.ReportProgress(0);
         var progress = new Progress<double>(value =>
         {
             Dispatcher.Invoke(() =>
             {
+                if (_downloadError is not null) return;
+                _lastUpdateProgress = value;
                 UpdateBannerProgress.Value = value * 100;
+                UpdateBannerPercent.Text = $"{(int)Math.Round(value * 100)}%";
+                _openUpdateDialog?.ReportProgress(value);
             });
         });
 
@@ -292,22 +349,28 @@ public partial class SidePanelWindow : Window
             Dispatcher.Invoke(() =>
             {
                 UpdateBannerProgress.Visibility = Visibility.Collapsed;
+                UpdateBannerPercent.Text = "100%";
+                UpdateBannerPercent.Visibility = Visibility.Visible;
                 UpdateActionIcon.Text = "↻ ";
                 UpdateActionText.Text = "立即重启";
-                UpdateStatusText.Text = $"新版本 {info.TagName} 已就绪，点击“立即重启”完成更新";
+                UpdateStatusText.Text = $"新版本 {info.TagName} 已就绪，点击“立即重启”完成更新（会自动关闭并重新打开）";
+                _openUpdateDialog?.ReportProgress(1.0);
             });
         }
         catch (Exception ex)
         {
             var reason = UpdateService.DescribeError(ex);
+            _downloadError = reason;
             AppLogger.Warn("Update", $"Download or apply failed: {reason}");
             Dispatcher.Invoke(() =>
             {
                 UpdateBannerProgress.Visibility = Visibility.Collapsed;
+                UpdateBannerPercent.Visibility = Visibility.Collapsed;
                 UpdateBannerText.Text = $"下载失败（{reason}），点击重试";
                 UpdateActionIcon.Text = "↺ ";
                 UpdateActionText.Text = "重试";
                 UpdateStatusText.Text = $"下载失败：{reason}，可在更新横幅中重试";
+                _openUpdateDialog?.ReportFailure(reason);
             });
             _isDownloadReady = false;
         }
@@ -317,7 +380,25 @@ public partial class SidePanelWindow : Window
     {
         if (_isDownloadReady)
         {
-            Application.Current.Shutdown();
+            // 先让更新脚本接管，再退出本进程；脚本会等本进程结束后替换目录并启动新版。
+            try
+            {
+                if (!_updateService.LaunchPendingUpdateScript())
+                {
+                    UpdateStatusText.Text = "更新文件已失效，请点击“检查更新”重新下载";
+                    _isDownloadReady = false;
+                    return;
+                }
+            }
+            catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or IOException or UnauthorizedAccessException)
+            {
+                AppLogger.Warn("Update", $"无法启动更新程序：{ex.Message}");
+                UpdateStatusText.Text = $"无法启动更新程序：{ex.Message}。辅助未关闭，可点击“立即重启”重试。";
+                return;
+            }
+
+            UpdateStatusText.Text = "正在退出以完成更新…";
+            System.Windows.Application.Current.Shutdown();
             return;
         }
 
@@ -342,7 +423,16 @@ public partial class SidePanelWindow : Window
         {
             Owner = this
         };
-        dialog.ShowDialog();
+        dialog.ReportProgress(_lastUpdateProgress);
+        _openUpdateDialog = dialog;
+        try
+        {
+            dialog.ShowDialog();
+        }
+        finally
+        {
+            _openUpdateDialog = null;
+        }
     }
 
     private async void OnSkipVersion(object sender, RoutedEventArgs e)
@@ -377,50 +467,59 @@ public partial class SidePanelWindow : Window
         finally { _isProgrammaticChange = false; }
     }
 
-    public void UpdatePosition(RECT gameRect, bool attachInside, bool isFullscreen, bool gameActuallyMoved)
+    public void ClearGamePosition() => _lastGameRect = null;
+
+    public void UpdatePosition(RECT gameRect, bool isFullscreen)
     {
+        _lastGameRect = gameRect;
+        if (WindowState != WindowState.Normal || _isUserMovingOrSizing) return;
         _isProgrammaticChange = true;
         try
         {
-            // 首次调用：清除 WPF 初始布局期间可能误设的标志
-            if (!_layoutInitialized)
-            {
-                _layoutInitialized = true;
-                _isUserSized = false;
-                _isUserPositioned = false;
-            }
-
-            if (gameActuallyMoved)
-                _isUserPositioned = false;
-
-            // 全屏/窗口模式切换时重置用户手动标志，让位置和高度自动适配新模式
             if (isFullscreen != _wasFullscreen)
             {
-                _isUserSized      = false;
-                _isUserPositioned = false;
+                if (!_positionSettings.FreeMovement && _positionSettings.Placement is null)
+                    _userHeightDip = null;
                 _wasFullscreen    = isFullscreen;
                 UpdateFullscreenBanner(isFullscreen);
             }
 
-            var monitorRight = Core.Interop.User32.GetMonitorRect(gameRect.Right - 1, gameRect.Top).Right;
-            var targetLeft = attachInside
-                ? monitorRight - Width
-                : (double)gameRect.Right;
-            var targetTop = isFullscreen
-                ? gameRect.Top + gameRect.Height * FullscreenTopRatio
-                : (double)gameRect.Top;
-            var targetHeight = isFullscreen
-                ? gameRect.Height * (FullscreenBottomRatio - FullscreenTopRatio)
-                : (double)gameRect.Height;
-
-            if (!_isUserPositioned)
+            var hwnd = new WindowInteropHelper(this).EnsureHandle();
+            var current = User32.ReadWindowRect(hwnd);
+            if (_positionSettings.FreeMovement)
             {
-                Left = targetLeft;
-                Top  = targetTop;
+                var work = User32.GetMonitorGeometry(current.Left + current.Width / 2, current.Top + current.Height / 2).WorkArea;
+                User32.SetWindowBounds(hwnd, WindowGeometry.ClampBounds(current, work));
+                return;
+            }
+            var offset = _positionSettings.FollowOffsetDip;
+            var scale = User32.GetWindowDpiScale(hwnd);
+            var monitor = offset is null
+                ? User32.GetMonitorGeometry(gameRect.Right - 1, gameRect.Top + gameRect.Height / 2)
+                : User32.GetMonitorGeometry(
+                    (int)Math.Clamp(gameRect.Right + offset.X * scale + current.Width / 2, int.MinValue, int.MaxValue),
+                    (int)Math.Clamp(gameRect.Top + offset.Y * scale + current.Height / 2, int.MinValue, int.MaxValue));
+
+            // 先将原生窗口移到目标屏，WPF 处理 DPI 变化后再读取该窗口的真实缩放。
+            // 不对虚拟桌面的绝对坐标除以缩放率，避免不同 DPI 和负坐标屏幕错位。
+            var centerX = current.Left + current.Width / 2;
+            var centerY = current.Top + current.Height / 2;
+            if (centerX < monitor.Bounds.Left || centerX >= monitor.Bounds.Right
+                || centerY < monitor.Bounds.Top || centerY >= monitor.Bounds.Bottom)
+            {
+                var left = monitor.Bounds.Left + (monitor.Bounds.Width - current.Width) / 2;
+                var top = monitor.Bounds.Top + (monitor.Bounds.Height - current.Height) / 2;
+                User32.SetWindowBounds(hwnd, new RECT
+                {
+                    Left = left, Top = top, Right = left + current.Width, Bottom = top + current.Height,
+                });
             }
 
-            if (!_isUserSized)
-                Height = targetHeight;
+            scale = User32.GetWindowDpiScale(hwnd);
+            var target = offset is null
+                ? WindowGeometry.SidePanelBounds(gameRect, monitor.WorkArea, scale, _preferredWidthDip, _userHeightDip, isFullscreen)
+                : WindowGeometry.FollowBounds(gameRect, monitor.WorkArea, scale, _preferredWidthDip, _userHeightDip, isFullscreen, offset);
+            User32.SetWindowBounds(hwnd, target);
         }
         finally
         {
@@ -442,16 +541,11 @@ public partial class SidePanelWindow : Window
         FullscreenBanner.Visibility = Visibility.Collapsed;
     }
 
-    private void OnLocationChanged(object? sender, EventArgs e)
-    {
-        if (!_isProgrammaticChange && !_isRestoring)
-            _isUserPositioned = true;
-    }
-
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (!_isProgrammaticChange && !_isRestoring && e.HeightChanged)
-            _isUserSized = true;
+        if (!_isUserMovingOrSizing || _isProgrammaticChange || _isRestoring) return;
+        if (e.HeightChanged) _userHeightDip = e.NewSize.Height;
+        if (e.WidthChanged) _preferredWidthDip = e.NewSize.Width;
     }
 
     private void OnStateChanged(object? sender, EventArgs e)
@@ -486,6 +580,45 @@ public partial class SidePanelWindow : Window
     private void OnToggleSettings(object sender, RoutedEventArgs e)
     {
         SettingsPanel.Visibility = SettingsPanel.Visibility == Visibility.Visible ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private SidePanelPlacement CaptureSidePanelPlacement()
+    {
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
+        var rect = User32.ReadWindowRect(hwnd);
+        return new SidePanelPlacement(rect.Left, rect.Top, _preferredWidthDip, rect.Height / User32.GetWindowDpiScale(hwnd));
+    }
+
+    private async void OnFreeSidePanelMovementChanged(object sender, RoutedEventArgs e)
+    {
+        var enabled = FreeSidePanelMovementToggle.IsChecked == true;
+        if (enabled == _positionSettings.FreeMovement) return; // 重置按钮同步复选框时不重新记录偏移。
+        var placement = CaptureSidePanelPlacement();
+        _userHeightDip = placement.HeightDip;
+        _positionSettings = _positionSettings with
+        {
+            FreeMovement = enabled,
+            Placement = placement,
+            FollowOffsetDip = !enabled && _lastGameRect is { } game
+                ? WindowGeometry.CaptureFollowOffset(game, placement, User32.GetWindowDpiScale(new WindowInteropHelper(this).Handle))
+                : null,
+        };
+        await SavePreferenceAsync(() => _settingsManager.SaveSidePanelPositionAsync(_positionSettings), FreeSidePanelMovementToggle);
+    }
+
+    private async void OnResetSidePanelPosition(object sender, RoutedEventArgs e)
+    {
+        if (_lastGameRect is not { } game)
+        {
+            ShowToast("未找到明日方舟窗口，暂时无法重置侧边栏位置");
+            return;
+        }
+        _userHeightDip = CaptureSidePanelPlacement().HeightDip;
+        _positionSettings = _positionSettings with { FreeMovement = false, FollowOffsetDip = null };
+        FreeSidePanelMovementToggle.IsChecked = false;
+        UpdatePosition(game, _wasFullscreen);
+        _positionSettings = _positionSettings with { Placement = CaptureSidePanelPlacement() };
+        await SavePreferenceAsync(() => _settingsManager.SaveSidePanelPositionAsync(_positionSettings), FreeSidePanelMovementToggle);
     }
 
     private async void OnUiThemeChanged(object sender, SelectionChangedEventArgs e)
@@ -683,7 +816,7 @@ public partial class SidePanelWindow : Window
     {
         var calc = LineupVm.Calculator;
         var editorVm = new LineupEditorViewModel(source, _allOperators, _allEquipment, calc);
-        var window = new LineupEditorWindow(editorVm) { Owner = this };
+        var window = new LineupEditorWindow(editorVm, _allStrategies) { Owner = this };
         if (window.ShowDialog() != true || window.Result is null) return;
 
         _ = LineupVm.AddOrUpdateAsync(window.Result).ContinueWith(_ =>

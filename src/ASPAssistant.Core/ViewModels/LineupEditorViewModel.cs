@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ASPAssistant.Core.Models;
@@ -20,6 +21,9 @@ public partial class LineupEditorViewModel : ObservableObject
     private readonly Dictionary<LineupPhase, List<LineupSlot>> _initialSlots;
     private readonly Dictionary<LineupPhase, ObservableCollection<LineupSlot>> _phaseSlots = [];
     private readonly LineupPhase _initialPhase;
+    private readonly List<LineupStrategySlot> _initialStrategies;
+
+    public ObservableCollection<LineupStrategySlot> StrategySlots { get; } = [];
 
     public LineupPhase CurrentPhase { get; private set; }
 
@@ -75,6 +79,11 @@ public partial class LineupEditorViewModel : ObservableObject
             _phaseSlots.Add(phase, slots);
         }
         _initialName = Name;
+        StrategySlots = new ObservableCollection<LineupStrategySlot>(
+            (source?.Strategies ?? []).Select(s => new LineupStrategySlot { StrategyId = s.StrategyId, Tags = [.. s.Tags] }));
+        while (StrategySlots.Count < MaxSlots)
+            StrategySlots.Add(new LineupStrategySlot());
+        _initialStrategies = StrategySlots.Select(s => new LineupStrategySlot { StrategyId = s.StrategyId, Tags = [.. s.Tags] }).ToList();
         _initialSlots = _phaseSlots.ToDictionary(pair => pair.Key, pair => pair.Value.Select(CloneSlot).ToList());
         _initialPhase = source is null ? LineupPhase.前期 : LineupPhase.后期;
         SelectPhase(_initialPhase);
@@ -103,6 +112,14 @@ public partial class LineupEditorViewModel : ObservableObject
             // 触发 ItemsControl 刷新（LineupSlot 是 POCO，集合变更通知更可靠）
             Slots[slotIndex] = CloneSlot(slot);
         }
+        Recalculate();
+    }
+
+    public void ClearSlotTransformation(int slotIndex)
+    {
+        var slot = CloneSlot(Slots[slotIndex]);
+        slot.TransformedCovenant = "";
+        Slots[slotIndex] = slot;
         Recalculate();
     }
 
@@ -149,6 +166,9 @@ public partial class LineupEditorViewModel : ObservableObject
     public void Reset()
     {
         Name = _initialName;
+        StrategySlots.Clear();
+        foreach (var slot in _initialStrategies)
+            StrategySlots.Add(new LineupStrategySlot { StrategyId = slot.StrategyId, Tags = [.. slot.Tags] });
         foreach (var (phase, slots) in _initialSlots)
             _phaseSlots[phase] = new ObservableCollection<LineupSlot>(slots.Select(CloneSlot));
         SelectPhase(_initialPhase);
@@ -160,6 +180,30 @@ public partial class LineupEditorViewModel : ObservableObject
         for (int i = 0; i < MaxSlots; i++)
             Slots.Add(new LineupSlot());
         Recalculate();
+    }
+
+    public void SetStrategy(int slotIndex, string strategyId)
+    {
+        StrategySlots[slotIndex] = new LineupStrategySlot
+        {
+            StrategyId = strategyId,
+            Tags = strategyId.Length == 0 ? [] : [.. StrategySlots[slotIndex].Tags],
+        };
+    }
+
+    public void ToggleStrategyTag(int slotIndex, StrategyTag tag)
+    {
+        var slot = StrategySlots[slotIndex];
+        if (slot.Tags.Contains(tag))
+            slot.Tags.Remove(tag);
+        else
+            slot.Tags.Add(tag);
+    }
+
+    public void ClearStrategies()
+    {
+        for (var i = 0; i < StrategySlots.Count; i++)
+            StrategySlots[i] = new LineupStrategySlot();
     }
 
     public void ToggleSlotTag(int slotIndex, LineupTag tag)
@@ -204,6 +248,8 @@ public partial class LineupEditorViewModel : ObservableObject
         EarlySlots = ExportPhase(LineupPhase.前期),
         MidSlots = ExportPhase(LineupPhase.中期),
         SupportSlots = ExportPhase(LineupPhase.挂件),
+        Strategies = [.. StrategySlots.Where(s => s.StrategyId.Length > 0)
+            .Select(s => new LineupStrategySlot { StrategyId = s.StrategyId, Tags = [.. s.Tags] })],
         UpdatedAt = DateTime.UtcNow,
     };
 

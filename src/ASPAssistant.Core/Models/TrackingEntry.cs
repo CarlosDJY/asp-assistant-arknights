@@ -15,4 +15,7 @@ public class TrackingEntry
 
     [JsonPropertyName("type")]
     public TrackingType Type { get; set; }
+
+    [JsonPropertyName("transformedCovenant")]
+    public string TransformedCovenant { get; set; } = "";
 }

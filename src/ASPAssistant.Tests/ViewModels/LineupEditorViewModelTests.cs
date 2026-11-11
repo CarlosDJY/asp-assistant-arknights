@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
 using System.Net.Http;
 using System.Text.Json;
 using ASPAssistant.Core.Data;
@@ -187,6 +188,7 @@ public class LineupEditorViewModelTests
         imported.EarlySlots.Should().BeEmpty();
         imported.MidSlots.Should().BeEmpty();
         imported.SupportSlots.Should().BeEmpty();
+        imported.Strategies.Should().BeEmpty();
         imported.Slots[0].Tags.Should().Equal(LineupTag.叠层, LineupTag.经济);
         ((int)LineupTag.阵容核心).Should().Be(4);
         Create(imported).ToLineup().Slots.Should().BeEquivalentTo(imported.Slots);
@@ -310,6 +312,79 @@ public class LineupEditorViewModelTests
         finally
         {
             Path.GetFullPath(directory).StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase).Should().BeTrue();
+            Directory.Delete(directory, true);
+        }
+    }
+
+    [Fact]
+    public void Strategies_EditClearResetAndExportWithoutChangingOperatorPhases()
+    {
+        var source = Source();
+        source.Strategies = [new() { StrategyId = "band_copy", Tags = [StrategyTag.阵容核心] }];
+        var vm = Create(source);
+        var stats = vm.ActiveStats.ToList();
+        vm.StrategySlots.Should().HaveCount(9);
+        vm.SetStrategy(0, "band_amiya");
+        vm.ToggleStrategyTag(0, StrategyTag.优选);
+        vm.SetStrategy(1, "band_upgrade");
+        vm.ToggleStrategyTag(1, StrategyTag.次选);
+        vm.ToggleStrategyTag(1, StrategyTag.次选);
+        vm.StrategySlots[1].Tags.Should().BeEmpty();
+        vm.ActiveStats.Should().BeEquivalentTo(stats);
+        vm.ToLineup().Slots.Should().BeEquivalentTo(source.Slots);
+        source.Strategies[0].StrategyId.Should().Be("band_copy");
+        source.Strategies[0].Tags.Should().Equal(StrategyTag.阵容核心);
+        var exported = vm.ToLineup();
+        exported.Strategies.Should().HaveCount(2);
+        exported.Strategies[0].Tags.Clear();
+        vm.StrategySlots[0].Tags.Should().Equal(StrategyTag.阵容核心, StrategyTag.优选);
+        vm.Clear();
+        vm.ToLineup().Strategies.Should().HaveCount(2);
+        vm.Reset();
+        vm.ToLineup().Strategies.Should().BeEquivalentTo(source.Strategies);
+        vm.ClearStrategies();
+        vm.ToLineup().Strategies.Should().BeEmpty();
+        vm.ToLineup().Slots.Should().BeEquivalentTo(source.Slots);
+        vm.Reset();
+        vm.SetStrategy(0, "");
+        vm.StrategySlots[0].Tags.Should().BeEmpty();
+        vm.Reset();
+        vm.ToLineup().Strategies.Should().BeEquivalentTo(source.Strategies);
+    }
+
+    [Fact]
+    public async Task Strategies_RoundTripStoreShareAndReopenWithoutEnteringTracking()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"lineup_strategies_{Guid.NewGuid():N}");
+        try
+        {
+            var vm = Create(Source());
+            vm.SetStrategy(0, "band_amiya");
+            vm.ToggleStrategyTag(0, StrategyTag.阵容核心);
+            vm.SetStrategy(1, "band_upgrade");
+            vm.ToggleStrategyTag(1, StrategyTag.优选);
+            vm.SetStrategy(2, "unknown-shared-strategy");
+            vm.ToggleStrategyTag(2, StrategyTag.次选);
+            var store = new LineupStore(directory);
+            await store.SaveAsync(vm.ToLineup());
+            var loaded = (await store.LoadAllAsync()).Single();
+            var handler = new ShareCaptureHandler();
+            var share = new LineupShareService(new HttpClient(handler));
+            await share.ExportAsync(loaded);
+            var imported = await share.ImportAsync(handler.Json);
+            var reopened = Create(imported);
+            reopened.ToLineup().Strategies.Should().BeEquivalentTo(loaded.Strategies);
+            reopened.Reset();
+            reopened.ToLineup().Strategies.Should().BeEquivalentTo(loaded.Strategies);
+            var tracking = new TrackingViewModel();
+            tracking.TrackLineup(imported);
+            tracking.TrackedOperators.Select(s => s.Name).Should().Equal("角峰");
+            tracking.TrackedEquipment.Select(s => s.Name).Should().BeEquivalentTo("维式重锤", "坚守盾牌");
+        }
+        finally
+        {
+            Path.GetFullPath(directory).StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase)
+                .Should().BeTrue();
             Directory.Delete(directory, true);
         }
     }

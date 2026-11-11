@@ -28,7 +28,7 @@ public class SettingsManagerTests : IDisposable
     {
         var entries = new List<TrackingEntry>
         {
-            new() { Name = "角峰", Type = TrackingType.Operator },
+            new() { Name = "角峰", Type = TrackingType.Operator, TransformedCovenant = "炎" },
             new() { Name = "不屈弹射器", Type = TrackingType.Equipment }
         };
 
@@ -38,6 +38,14 @@ public class SettingsManagerTests : IDisposable
         loaded.Should().HaveCount(2);
         loaded.Should().Contain(e => e.Name == "角峰" && e.Type == TrackingType.Operator);
         loaded.Should().Contain(e => e.Name == "不屈弹射器" && e.Type == TrackingType.Equipment);
+        loaded.Single(e => e.Name == "角峰").TransformedCovenant.Should().Be("炎");
+    }
+
+    [Fact]
+    public async Task OldTrackingEntriesDefaultToNoPlannedTransformation()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "tracking.json"), """[{"name":"角峰","type":0}]""");
+        (await _manager.LoadTrackingEntriesAsync()).Should().ContainSingle().Which.TransformedCovenant.Should().BeEmpty();
     }
 
     [Fact]
@@ -105,6 +113,57 @@ public class SettingsManagerTests : IDisposable
     {
         await _manager.SaveTrackMultipleLineupsAsync(enabled);
         (await new SettingsManager(_tempDir).LoadTrackMultipleLineupsAsync()).Should().Be(enabled);
+    }
+
+    [Fact]
+    public async Task SidePanelPosition_FirstStartUsesDefaultAttachment()
+    {
+        var settings = await new SettingsManager(Path.Combine(_tempDir, "first-start")).LoadSidePanelPositionAsync();
+        settings.FreeMovement.Should().BeFalse();
+        settings.Placement.Should().BeNull();
+        settings.FollowOffsetDip.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task SidePanelPosition_PreservesModePlacementAndFollowOffset(bool free)
+    {
+        var settings = new SidePanelPositionSettings
+        {
+            FreeMovement = free,
+            Placement = new SidePanelPlacement(-1280, 150, 310, 600),
+            FollowOffsetDip = new SidePanelOffset(-900.5, 80.25),
+        };
+        await _manager.SaveSidePanelPositionAsync(settings);
+        (await new SettingsManager(_tempDir).LoadSidePanelPositionAsync()).Should().Be(settings);
+        File.Exists(Path.Combine(_tempDir, "side-panel-position.json.tmp")).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SidePanelPosition_OverlappingSavesKeepLastCompleteState()
+    {
+        var saves = Enumerable.Range(0, 8).Select(i => _manager.SaveSidePanelPositionAsync(new SidePanelPositionSettings
+        {
+            FreeMovement = i % 2 == 1, FollowOffsetDip = new SidePanelOffset(i, i * 2),
+        })).ToArray();
+        await Task.WhenAll(saves);
+        var saved = await new SettingsManager(_tempDir).LoadSidePanelPositionAsync();
+        saved.FreeMovement.Should().BeTrue();
+        saved.FollowOffsetDip.Should().Be(new SidePanelOffset(7, 14));
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("invalid JSON")]
+    [InlineData("{\"Placement\":{\"Left\":0,\"Top\":0,\"WidthDip\":0,\"HeightDip\":600}}")]
+    [InlineData("{\"Placement\":{\"Left\":1e300,\"Top\":0,\"WidthDip\":310,\"HeightDip\":600}}")]
+    [InlineData("{\"Placement\":{\"Left\":0,\"Top\":0,\"WidthDip\":310,\"HeightDip\":-1}}")]
+    public async Task SidePanelPosition_RejectsMalformedOrInvalidCoordinates(string json)
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "side-panel-position.json"), json);
+        Func<Task> load = () => _manager.LoadSidePanelPositionAsync();
+        await load.Should().ThrowAsync<System.Text.Json.JsonException>();
     }
 
 }

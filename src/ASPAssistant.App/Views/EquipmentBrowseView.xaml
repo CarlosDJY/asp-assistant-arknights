@@ -8,6 +8,7 @@
              DataContextChanged="OnViewDataContextChanged">
     <UserControl.Resources>
         <converters:NullToStringConverter x:Key="NullToAll" />
+        <converters:TierToRomanConverter x:Key="TierToRoman" />
     </UserControl.Resources>
     <DockPanel>
         <TextBox DockPanel.Dock="Top" Margin="8"
@@ -41,7 +42,7 @@
                          SelectionChanged="OnTierFilterChanged">
                     <ListBox.ItemTemplate>
                         <DataTemplate>
-                            <TextBlock Text="{Binding Content, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource NullToAll}, ConverterParameter=全部}"
+                            <TextBlock Text="{Binding Content, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource TierToRoman}, ConverterParameter=全部}"
                                        FontSize="11" />
                         </DataTemplate>
                     </ListBox.ItemTemplate>

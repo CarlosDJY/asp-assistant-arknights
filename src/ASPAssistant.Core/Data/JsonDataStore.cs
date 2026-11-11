@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
 using System.Text.Json;
 using ASPAssistant.Core.Models;
 
@@ -26,6 +27,17 @@ public class JsonDataStore
         var json = await File.ReadAllTextAsync(path);
         var wrapper = JsonSerializer.Deserialize<OperatorDataFile>(json, JsonOptions);
         return wrapper?.Operators ?? [];
+    }
+
+    public async Task<List<Strategy>> LoadStrategiesAsync()
+    {
+        var json = await File.ReadAllTextAsync(Path.Combine(_dataDirectory, "strategies.json"));
+        var data = JsonSerializer.Deserialize<StrategyDataFile>(json, JsonOptions)
+            ?? throw new InvalidDataException("策略数据不能为空");
+        if (data.Strategies.Count == 0 || data.Strategies.Any(s => s.Id.Length == 0 || s.Name.Length == 0)
+            || data.Strategies.Select(s => s.Id).Distinct().Count() != data.Strategies.Count)
+            throw new InvalidDataException("策略数据包含空条目或重复 ID");
+        return data.Strategies;
     }
 
     public async Task<(List<Equipment> Equipment, List<string> ManualJobChangeEquipments)> LoadEquipmentAsync()
@@ -164,6 +176,11 @@ public class JsonDataStore
     private class OperatorDataFile
     {
         public List<Operator> Operators { get; set; } = [];
+    }
+
+    private class StrategyDataFile
+    {
+        public required List<Strategy> Strategies { get; set; }
     }
 
     private class EquipmentDataFile

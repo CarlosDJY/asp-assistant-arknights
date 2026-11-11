@@ -157,7 +157,7 @@ public sealed class LineupPlanner
             _allowedOrdered = allowed; _allowed = [.. allowed];
             _locked = locked; _lockedSet = [.. locked]; _maxResults = maxResults; _maxNodes = maxNodes; _ct = ct;
             _native = ops.Select(o => o.CoreCovenants.Concat(o.AdditionalCovenants).ToHashSet(StringComparer.Ordinal)).ToArray();
-            _harmony = ops.Select(o => o.CoreCovenants.Contains(CovenantCalculator.HarmonyCovenant)).ToArray();
+            _harmony = _native.Select(c => c.Contains(CovenantCalculator.HarmonyCovenant)).ToArray();
             _used = new bool[ops.Count];
             _rarity = request.Goals.ToDictionary(g => g.Name, g => _native.Count(n => n.Contains(g.Name)));
             _goalNames = request.Goals.Select(g => g.Name).ToHashSet(StringComparer.Ordinal);
@@ -202,13 +202,17 @@ public sealed class LineupPlanner
                     present.Add(c);
                 }
                 foreach (var c in op.AdditionalCovenants)
-                    if (counts.ContainsKey(c)) counts[c]++;
+                    if (c != CovenantCalculator.HarmonyCovenant && counts.ContainsKey(c)) counts[c]++;
                 if (_harmony[i])
                 {
                     harmony++;
                     if (counts.ContainsKey(CovenantCalculator.HarmonyCovenant)) counts[CovenantCalculator.HarmonyCovenant]++;
                 }
-                if (tr.TryGetValue(i, out var t) && counts.ContainsKey(t)) counts[t]++;
+                if (tr.TryGetValue(i, out var t))
+                {
+                    if (counts.ContainsKey(t)) counts[t]++;
+                    present.Add(t);
+                }
             }
             var bonus = new Dictionary<string, int>(StringComparer.Ordinal);
             if (harmony > 0)
@@ -222,8 +226,17 @@ public sealed class LineupPlanner
 
         private bool Done => _nodes > _maxNodes;
 
+        private int TransformDeficit(PlannerGoal goal, Dictionary<string, int> counts)
+        {
+            var deficit = Math.Max(0, goal.Count - counts[goal.Name]);
+            return goal.IsCore && counts[goal.Name] == 0 && deficit > 0
+                ? Math.Max(1, deficit - _picked.Count(i => _harmony[i]))
+                : deficit;
+        }
+
         private bool Contributes(int i, PlannerGoal g, Dictionary<string, int> counts)
-            => _native[i].Contains(g.Name) || (g.IsCore && _harmony[i] && counts[g.Name] > 0);
+            => _native[i].Contains(g.Name) || (g.IsCore && _harmony[i]
+                && (counts[g.Name] > 0 || _transforms > 0 && _allowed.Contains(g.Name)));
 
         private void Visit()
         {
@@ -239,7 +252,7 @@ public sealed class LineupPlanner
 
             // Once targets are reachable, keep branching until the whole lineup is
             // filled. This is what lets the score see the operators in the free slots.
-            var transformDeficit = missing.Sum(g => g.Count - counts[g.Name]);
+            var transformDeficit = missing.Sum(g => TransformDeficit(g, counts));
             if (slots <= 0)
             {
                 if (missing.All(g => _allowed.Contains(g.Name)) && transformDeficit <= trLeft)
@@ -280,7 +293,8 @@ public sealed class LineupPlanner
             var expanded = 0;
             foreach (var b in branches.OrderByDescending(b => b.Score).ThenBy(b => b.Index))
             {
-                if (Done || expanded++ >= MaxBranches) break;
+                if (Done) break;
+                if (expanded++ >= MaxBranches) { if (pivot is not null) _limited = true; break; }
                 _picked.Add(b.Index); _used[b.Index] = true;
                 Visit();
                 _picked.RemoveAt(_picked.Count - 1); _used[b.Index] = false;
@@ -307,7 +321,7 @@ public sealed class LineupPlanner
             var totalDeficit = 0;
             foreach (var g in missing)
             {
-                var deficit = g.Count - counts[g.Name];
+                var deficit = TransformDeficit(g, counts);
                 totalDeficit += deficit;
                 var reach = Math.Min(slots, unusedNative.GetValueOrDefault(g.Name));
                 if (_allowed.Contains(g.Name)) reach += trLeft;
@@ -339,7 +353,7 @@ public sealed class LineupPlanner
 
             foreach (var g in _request.Goals)
             {
-                var deficit = g.Count - nativeCounts[g.Name];
+                var deficit = TransformDeficit(g, nativeCounts);
                 for (var k = 0; k < deficit; k++)
                 {
                     if (tr.Count >= _transforms || !_allowed.Contains(g.Name)) return false;

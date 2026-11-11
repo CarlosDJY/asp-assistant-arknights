@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using ASPAssistant.App.Controls;
 using ASPAssistant.Core.Models;
+using ASPAssistant.Core.Services;
 using ASPAssistant.Core.ViewModels;
 
 namespace ASPAssistant.App.Views;
@@ -20,16 +21,16 @@ public partial class TrackingView : UserControl
     public IReadOnlyDictionary<string, Operator> OperatorDatabase
         => (IReadOnlyDictionary<string, Operator>)GetValue(OperatorDatabaseProperty);
 
-    private TrackingViewModel? _vm;
-    private INotifyCollectionChanged? _operators;
-    private INotifyCollectionChanged? _equipment;
-
     public static readonly DependencyProperty EquipmentDatabaseProperty = DependencyProperty.Register(
         nameof(EquipmentDatabase), typeof(IReadOnlyDictionary<string, Equipment>), typeof(TrackingView),
         new PropertyMetadata(new Dictionary<string, Equipment>()));
 
     public IReadOnlyDictionary<string, Equipment> EquipmentDatabase
         => (IReadOnlyDictionary<string, Equipment>)GetValue(EquipmentDatabaseProperty);
+    private TrackingViewModel? _vm;
+    private INotifyCollectionChanged? _operators;
+    private INotifyCollectionChanged? _equipment;
+    private CovenantCalculator? _calculator;
 
     public TrackingView()
     {
@@ -40,6 +41,12 @@ public partial class TrackingView : UserControl
     public void SetOperators(IReadOnlyList<Operator> operators)
     {
         SetValue(OperatorDatabaseProperty, operators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First()));
+        RefreshSummary();
+    }
+
+    public void SetCovenantCalculator(CovenantCalculator calculator)
+    {
+        _calculator = calculator;
         RefreshSummary();
     }
 
@@ -79,23 +86,22 @@ public partial class TrackingView : UserControl
         EmptyState.Visibility = empty ? Visibility.Visible : Visibility.Collapsed;
         ClearAllButton.Visibility = empty ? Visibility.Collapsed : Visibility.Visible;
 
-        var db = OperatorDatabase;
-        var tally = new Dictionary<string, (int Count, bool IsCore)>(StringComparer.Ordinal);
-        foreach (var entry in operators)
+        var lineup = new Lineup
         {
-            if (!db.TryGetValue(entry.Name, out var op)) continue;
-            foreach (var c in op.CoreCovenants)
-                tally[c] = (tally.GetValueOrDefault(c).Count + 1, true);
-            foreach (var c in op.AdditionalCovenants)
-                tally[c] = (tally.GetValueOrDefault(c).Count + 1, tally.GetValueOrDefault(c).IsCore);
-        }
-        TrackedCovenantChips.ItemsSource = tally
-            .OrderByDescending(x => x.Value.IsCore)
-            .ThenByDescending(x => x.Value.Count)
-            .Select(x => new TrackedCovenantChip(x.Key, x.Value.Count, x.Value.IsCore))
-            .ToList();
+            Slots = operators.Select(e => new LineupSlot
+            {
+                OperatorName = e.Name, TransformedCovenant = e.TransformedCovenant
+            }).ToList()
+        };
+        var tally = (_calculator?.Compute(lineup) ?? []).Where(s => s.Count > 0)
+            .OrderByDescending(s => s.BondType == "SEASON").ThenByDescending(s => s.Count)
+            .Select(s => new TrackedCovenantChip(s.Name, s.Count, s.BondType == "SEASON")).ToList();
+        TrackedCovenantChips.ItemsSource = tally;
         CovenantSection.Visibility = tally.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
     }
+
+    private void OnClearPlannedTransformation(object sender, RoutedEventArgs e)
+        => _vm!.ClearPlannedTransformation(((TrackingEntry)((Button)sender).DataContext).Name);
 
     public void SetEquipment(IReadOnlyList<Equipment> equipment)
         => SetValue(EquipmentDatabaseProperty, equipment.ToDictionary(e => e.Name));

@@ -14,16 +14,16 @@ public class WindowTrackerServiceTests
     [Fact]
     public void IsGameWindowChanged_WhenPreviousIsNull_ReturnsTrue()
     {
-        WindowTrackerService.IsGameWindowChanged(null, false, false, R(0, 0, 1920, 1080), false, false)
+        WindowTrackerService.IsGameWindowChanged(null, false, 96, R(0, 0, 1920, 1080), false, 96)
             .Should().BeTrue();
     }
 
-    // RECT 无变化，attachInside 无变化 → 稳定心跳
+    // RECT、DPI 和全屏状态不变 → 稳定心跳
     [Fact]
     public void IsGameWindowChanged_WhenRectAndAttachSame_ReturnsFalse()
     {
         var rect = R(100, 50, 1820, 1080);
-        WindowTrackerService.IsGameWindowChanged(rect, true, false, rect, true, false)
+        WindowTrackerService.IsGameWindowChanged(rect, false, 120, rect, false, 120)
             .Should().BeFalse();
     }
 
@@ -31,16 +31,16 @@ public class WindowTrackerServiceTests
     [Fact]
     public void IsGameWindowChanged_WhenRectChanged_ReturnsTrue()
     {
-        WindowTrackerService.IsGameWindowChanged(R(0, 0, 100, 100), false, false, R(10, 0, 110, 100), false, false)
+        WindowTrackerService.IsGameWindowChanged(R(0, 0, 100, 100), false, 96, R(10, 0, 110, 100), false, 96)
             .Should().BeTrue();
     }
 
-    // RECT 不变但 ShouldAttachInside 变化 → 也视为"变化"
+    // 用户调整缩放但游戏物理矩形不变时，也必须重新定位。
     [Fact]
-    public void IsGameWindowChanged_WhenOnlyAttachInsideChanged_ReturnsTrue()
+    public void IsGameWindowChanged_WhenOnlyDpiChanged_ReturnsTrue()
     {
         var rect = R(0, 0, 1920, 1080);
-        WindowTrackerService.IsGameWindowChanged(rect, false, false, rect, true, false)
+        WindowTrackerService.IsGameWindowChanged(rect, false, 120, rect, false, 168)
             .Should().BeTrue();
     }
 
@@ -48,7 +48,7 @@ public class WindowTrackerServiceTests
     public void IsGameWindowChanged_WhenOnlyFullscreenChanged_ReturnsTrue()
     {
         var rect = R(0, 0, 1920, 1080);
-        WindowTrackerService.IsGameWindowChanged(rect, true, false, rect, true, true)
+        WindowTrackerService.IsGameWindowChanged(rect, false, 96, rect, true, 96)
             .Should().BeTrue();
     }
 }

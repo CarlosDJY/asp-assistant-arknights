@@ -8,6 +8,24 @@ namespace ASPAssistant.Tests.ViewModels;
 public class TrackingViewModelTests
 {
     [Fact]
+    public void MergedLineupsUseLatestTransformationAndNotifySoChangesAreSaved()
+    {
+        var vm = new TrackingViewModel { TrackMultipleLineups = true };
+        var changes = 0;
+        vm.TrackedOperators.CollectionChanged += (_, _) => changes++;
+        vm.TrackLineup(new Lineup { Slots = [new() { OperatorName = "角峰", TransformedCovenant = "炎" }] });
+        vm.TrackLineup(new Lineup { Slots = [new() { OperatorName = "角峰", TransformedCovenant = "维多利亚" }] });
+        vm.TrackedOperators.Should().ContainSingle().Which.TransformedCovenant.Should().Be("维多利亚");
+        vm.TrackLineup(new Lineup { Slots = [new() { OperatorName = "角峰" }] });
+        vm.TrackedOperators.Single().TransformedCovenant.Should().BeEmpty();
+        changes.Should().Be(3);
+        vm.TrackLineup(new Lineup { Slots = [new() { OperatorName = "角峰", TransformedCovenant = "炎" }] });
+        vm.ClearPlannedTransformation("角峰");
+        changes.Should().Be(5);
+        vm.TrackedOperators.Single().TransformedCovenant.Should().BeEmpty();
+    }
+
+    [Fact]
     public void AddTracking_AddsEntry()
     {
         var vm = new TrackingViewModel();

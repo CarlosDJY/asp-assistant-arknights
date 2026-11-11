@@ -6,6 +6,21 @@ namespace ASPAssistant.Tests.Services;
 
 public class LineupPlannerTests
 {
+    [Fact]
+    public void Plan_ReportsBranchLimitWhenCandidatesAreSkipped()
+    {
+        var planner = new LineupPlanner(Enumerable.Range(0, 49).Select(i => Op($"干员{i}", ["炎"])), [Core("炎")]);
+        var variant = planner.Plan(new PlannerRequest
+        {
+            // One slot: every lineup is a single target holder, so only the 48-branch cap limits the search.
+            Goals = [new("炎", 1, 1, false, true)], PeopleOptions = [1], TransformOptions = [0]
+        }, CancellationToken.None, maxResultsPerVariant: 100).Variants.Single();
+
+        variant.Lineups.Should().HaveCount(48);
+        variant.SearchLimited.Should().BeTrue();
+        variant.Lineups.Should().OnlyContain(l => l.SearchLimited);
+    }
+
     private static CovenantInfo Core(string name) => new() { Name = name, BondType = "SEASON", ActivateCount = 3 };
     private static CovenantInfo Extra(string name, int count = 2) => new() { Name = name, BondType = "REGULAR", ActivateCount = count };
     private static Operator Op(string name, string[]? core = null, string[]? extra = null)

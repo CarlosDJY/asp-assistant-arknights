@@ -33,7 +33,17 @@ public partial class TrackingViewModel : ObservableObject
         foreach (var slot in lineup.Slots)
         {
             if (!string.IsNullOrEmpty(slot.OperatorName))
-                AddTracking(slot.OperatorName, TrackingType.Operator);
+            {
+                var existing = TrackedOperators.FirstOrDefault(e => e.Name == slot.OperatorName);
+                var entry = new TrackingEntry
+                {
+                    Name = slot.OperatorName, Type = TrackingType.Operator,
+                    TransformedCovenant = slot.TransformedCovenant
+                };
+                if (existing is null) TrackedOperators.Add(entry);
+                else if (existing.TransformedCovenant != slot.TransformedCovenant)
+                    TrackedOperators[TrackedOperators.IndexOf(existing)] = entry;
+            }
             foreach (var equipment in slot.Equipments)
                 if (!string.IsNullOrEmpty(equipment))
                     AddTracking(equipment, TrackingType.Equipment);
@@ -71,6 +81,12 @@ public partial class TrackingViewModel : ObservableObject
     {
         TrackedOperators.Clear();
         TrackedEquipment.Clear();
+    }
+
+    public void ClearPlannedTransformation(string name)
+    {
+        var entry = TrackedOperators.Single(e => e.Name == name);
+        TrackedOperators[TrackedOperators.IndexOf(entry)] = new TrackingEntry { Name = name, Type = TrackingType.Operator };
     }
 
     public bool IsTracked(string name)

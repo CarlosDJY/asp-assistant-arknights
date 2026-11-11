@@ -14,7 +14,11 @@ public sealed record BanCovenantReadResult(
     IReadOnlyList<CovenantBanState> Core,
     IReadOnlyList<CovenantBanState> Additional,
     IReadOnlyList<BanIconPosition> UnnamedCore,
-    IReadOnlyList<BanIconPosition> UnnamedAdditional)
+    IReadOnlyList<BanIconPosition> UnnamedAdditional,
+    int CoreSlots = 0,
+    int AdditionalSlots = 0,
+    bool SawCoreHeader = false,
+    bool SawAdditionalHeader = false)
 {
     public static readonly BanCovenantReadResult Empty = new([], [], [], []);
 }
@@ -63,9 +67,12 @@ public static class BanCovenantReader
             return BanCovenantReadResult.Empty;
         }
 
-        var coreTask = ReadSectionAsync(ocr, screenshot, imgWidth, imgHeight, coreRegion,
+        // 两块区域共用一个像素缓冲：少解一次 PNG，读操作只读所以可以并行。
+        using var pixels = BanScreenPixels.Load(screenshot);
+
+        var coreTask = ReadSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight, coreRegion,
             CoreHeaderText, coreCovenantNames, "Core", greenThreshold);
-        var additionalTask = ReadSectionAsync(ocr, screenshot, imgWidth, imgHeight, additionalRegion,
+        var additionalTask = ReadSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight, additionalRegion,
             AdditionalHeaderText, additionalCovenantNames, "Additional", greenThreshold);
 
         await Task.WhenAll(coreTask, additionalTask);
@@ -73,14 +80,16 @@ public static class BanCovenantReader
         var additional = await additionalTask;
 
         return new BanCovenantReadResult(
-            core.Covenants, additional.Covenants, core.Unnamed, additional.Unnamed);
+            core.Covenants, additional.Covenants, core.Unnamed, additional.Unnamed,
+            core.Slots, additional.Slots, core.SawHeader, additional.SawHeader);
     }
 
     private sealed record SectionRead(
-        IReadOnlyList<CovenantBanState> Covenants, IReadOnlyList<BanIconPosition> Unnamed);
+        IReadOnlyList<CovenantBanState> Covenants, IReadOnlyList<BanIconPosition> Unnamed,
+        int Slots = 0, bool SawHeader = false);
 
     private static async Task<SectionRead> ReadSectionAsync(
-        IOcrEngine ocr, byte[] screenshot, int imgWidth, int imgHeight,
+        IOcrEngine ocr, byte[] screenshot, BanScreenPixels? pixels, int imgWidth, int imgHeight,
         OcrRegionDefinition region, string headerText,
         IReadOnlyList<string> knownNames, string group, double greenThreshold)
     {
@@ -99,22 +108,160 @@ public static class BanCovenantReader
         AppLogger.Info("BanAnalyzer",
             $"{group} raw OCR ({ocrResults.Count}): [{string.Join(", ", ocrResults.Select(r => r.Text))}]");
 
-        if (!ocrResults.Any(r => r.Text.Contains(headerText)))
+        var sawHeader = ocrResults.Any(r => NormalizeHeader(r.Text).Contains(headerText));
+        if (!sawHeader)
         {
             AppLogger.Warn("BanAnalyzer",
                 $"{group}: header '{headerText}' missing from region {region.Name} (page may be scrolled)");
         }
 
+        var slots = pixels is null
+            ? BanIconGrid.Detect(screenshot, imgWidth, imgHeight, region.YPercent, region.YPercent + region.HeightPercent)
+            : BanIconGrid.Detect(pixels, region.YPercent, region.YPercent + region.HeightPercent);
+
         var candidates = MatchCandidates(ocrResults, knownNames, imgWidth);
+
+        // 整行 OCR 偶尔读不出名字（缩放过、被暗化、字体发糊），但图标位置是稳定的。
+        // 这时逐个槽位裁剪名字框，只做“候选名匹配”，比整行识别稳得多。
+        if (slots.Count > 0 && candidates.Count < slots.Count)
+        {
+            candidates = await FillNamesBySlotAsync(ocr, screenshot, imgWidth, imgHeight, slots, knownNames, candidates);
+            AppLogger.Info("BanAnalyzer", $"{group}: slot OCR recovered {candidates.Count}/{slots.Count} names");
+        }
+
+        if (slots.Count > 0)
+            return BindToSlots(candidates, slots, group, greenThreshold)
+                with { Slots = slots.Count, SawHeader = sawHeader };
+
         if (candidates.Count == 0)
-            return new SectionRead([], []);
+            return new SectionRead([], [], 0, sawHeader);
 
-        var slots = BanIconGrid.Detect(screenshot,
-            imgWidth, imgHeight, region.YPercent, region.YPercent + region.HeightPercent);
+        return MeasureFromNameBoxes(screenshot, imgWidth, imgHeight, candidates, group, greenThreshold, pixels)
+            with { SawHeader = sawHeader };
+    }
 
-        return slots.Count > 0
-            ? BindToSlots(candidates, slots, group, greenThreshold)
-            : MeasureFromNameBoxes(screenshot, imgWidth, imgHeight, candidates, group, greenThreshold);
+    /// <summary>
+    /// 槽位兜底（批量版）：把所有还没有名字的图标槽的名字框裁出来，
+    /// 竖着拼成一张图，只调用一次 OCR，再按纵向位置把结果分配回各自的槽。
+    ///
+    /// 之前是"每个槽调一次 OCR"（每槽约 110 ms，最坏 18 槽 ≈ 2 秒），
+    /// 现在同样像素只调一次（约 150 ms），CPU 明显下降、峰值内存只多一张小合成图。
+    /// </summary>
+    private static async Task<List<Candidate>> FillNamesBySlotAsync(
+        IOcrEngine ocr, byte[] screenshot, int imgWidth, int imgHeight,
+        IReadOnlyList<BanIconSlot> slots, IReadOnlyList<string> knownNames, List<Candidate> existing)
+    {
+        if (slots.Count == 0 || knownNames.Count == 0) return existing;
+
+        double pitch = slots.Count > 1
+            ? slots.Zip(slots.Skip(1), (a, b) => Math.Abs(b.CenterX - a.CenterX)).Where(d => d > 1).DefaultIfEmpty(0).Min()
+            : 0;
+        if (pitch <= 1) pitch = Math.Max(40, imgWidth * 0.06);
+
+        var pending = new List<(BanIconSlot Slot, int X, int Y, int W, int H)>();
+        foreach (var slot in slots)
+        {
+            if (existing.Any(c => Math.Abs(CenterX(c.Ocr) - slot.CenterX) < pitch * 0.35))
+                continue;
+
+            int iconHeight = Math.Max(24, slot.Bottom - slot.Top);
+            int boxWidth = (int)(pitch * 0.95);
+            int boxHeight = (int)(iconHeight * 0.45);
+            int boxX = (int)(slot.CenterX - boxWidth / 2.0);
+            int boxY = (int)(slot.Bottom + iconHeight * 0.02);
+            if (boxX < 0 || boxY < 0 || boxX + boxWidth > imgWidth || boxY + boxHeight > imgHeight)
+                continue;
+
+            pending.Add((slot, boxX, boxY, boxWidth, boxHeight));
+        }
+
+        if (pending.Count == 0) return existing;
+
+        var recovered = await RecognizeCompositeAsync(ocr, screenshot, pending, knownNames);
+        if (recovered.Count == 0) return existing;
+
+        return [.. existing, .. recovered];
+    }
+
+    /// <summary>把多个名字框拼成一张竖图，一次 OCR，再按纵向带回到各自的槽。</summary>
+    private static async Task<List<Candidate>> RecognizeCompositeAsync(
+        IOcrEngine ocr, byte[] screenshot,
+        List<(BanIconSlot Slot, int X, int Y, int W, int H)> boxes, IReadOnlyList<string> knownNames)
+    {
+        const int scale = 2;      // 名字在 1080p 上也只有 ~24 px 高，放大两倍给 OCR
+        const int gap = 10;       // 行间距，避免上下两个名字被合成同一行
+
+        System.Drawing.Bitmap? source;
+        try
+        {
+            using var stream = new MemoryStream(screenshot);
+            using var decoded = System.Drawing.Image.FromStream(stream);
+            source = new System.Drawing.Bitmap(decoded);
+        }
+        catch (Exception ex) when (ex is ArgumentException or OutOfMemoryException)
+        {
+            return [];
+        }
+
+        using (source)
+        {
+            int width = boxes.Max(b => b.W) * scale;
+            int totalHeight = boxes.Sum(b => b.H * scale + gap);
+            using var composite = new System.Drawing.Bitmap(width, totalHeight,
+                System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var graphics = System.Drawing.Graphics.FromImage(composite))
+            {
+                graphics.Clear(System.Drawing.Color.Black);
+                graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                graphics.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighQuality;
+                var offset = 0;
+                foreach (var box in boxes)
+                {
+                    graphics.DrawImage(source,
+                        new System.Drawing.Rectangle(0, offset, box.W * scale, box.H * scale),
+                        new System.Drawing.Rectangle(box.X, box.Y, box.W, box.H),
+                        System.Drawing.GraphicsUnit.Pixel);
+                    offset += box.H * scale + gap;
+                }
+            }
+
+            using var buffer = new MemoryStream();
+            composite.Save(buffer, System.Drawing.Imaging.ImageFormat.Png);
+            var texts = await ocr.RecognizeRegionAsync(buffer.ToArray(), 0, 0, width, totalHeight);
+
+            var recovered = new List<Candidate>();
+            foreach (var text in texts)
+            {
+                int centerY = text.Box.Y + text.Box.H / 2;
+                int offset = 0;
+                foreach (var box in boxes)
+                {
+                    int bandHeight = box.H * scale;
+                    if (centerY >= offset && centerY < offset + bandHeight)
+                    {
+                        var match = MatchLineInText(text.Text, knownNames);
+                        if (match is not null)
+                        {
+                            recovered.Add(new Candidate(
+                                new OcrTextResult(match, (box.X, box.Y, box.W, box.H)), match, int.MaxValue));
+                        }
+                        break;
+                    }
+                    offset += bandHeight + gap;
+                }
+            }
+
+            return recovered;
+        }
+    }
+
+    /// <summary>把一整行文本拆开（合成图里相邻名字可能被连成一行），逐个匹配候选名。</summary>
+    private static string? MatchLineInText(string text, IReadOnlyList<string> knownNames)
+    {
+        var best = MatchLine(new OcrTextResult(text, (0, 0, 0, 0)), knownNames)
+            .OrderByDescending(c => c.Score)
+            .FirstOrDefault();
+        return best?.Name;
     }
 
     /// <summary>
@@ -194,12 +341,14 @@ public static class BanCovenantReader
     /// </summary>
     private static SectionRead MeasureFromNameBoxes(
         byte[] screenshot, int imgWidth, int imgHeight,
-        List<Candidate> candidates, string group, double greenThreshold)
+        List<Candidate> candidates, string group, double greenThreshold, BanScreenPixels? pixels = null)
     {
         AppLogger.Warn("BanAnalyzer", $"{group}: icon grid not found, falling back to name boxes");
 
-        var fractions = BanIconBrightness.MeasureGreenFractions(
-            screenshot, imgWidth, imgHeight, candidates.Select(c => c.Ocr).ToList());
+        var names = candidates.Select(c => c.Ocr).ToList();
+        var fractions = pixels is null
+            ? BanIconBrightness.MeasureGreenFractions(screenshot, imgWidth, imgHeight, names)
+            : BanIconBrightness.MeasureGreenFractions(pixels, imgWidth, imgHeight, names);
 
         var states = new List<CovenantBanState>(candidates.Count);
         for (int i = 0; i < candidates.Count; i++)
@@ -291,6 +440,10 @@ public static class BanCovenantReader
         || (candidate.Score == current.Score && candidate.Ocr.Text.Length > current.Ocr.Text.Length);
 
     private static double CenterX(OcrTextResult ocr) => ocr.Box.X + ocr.Box.W / 2.0;
+
+    /// <summary>标题里的「盟」在低分辨率/抗锯齿下常被读成「明」。</summary>
+    private static string NormalizeHeader(string text) =>
+        text.Replace(" ", "").Replace("明", "盟").Replace("約", "约");
 
     private static double CenterY(OcrTextResult ocr) => ocr.Box.Y + ocr.Box.H / 2.0;
 

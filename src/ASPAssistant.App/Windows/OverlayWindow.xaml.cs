@@ -8,6 +8,7 @@ using System.Windows.Shapes;
 using ASPAssistant.Core;
 using ASPAssistant.Core.Interop;
 using ASPAssistant.Core.Models;
+using ASPAssistant.Core.Services;
 
 namespace ASPAssistant.App.Windows;
 
@@ -20,6 +21,8 @@ public partial class OverlayWindow : Window
     // Using Id (not Name) lets multiple cards with the same operator name each
     // have their own independent marker.
     private readonly Dictionary<string, FrameworkElement> _markerPool = [];
+    private IReadOnlyList<ShopItem> _shopItems = [];
+    private (double Width, double Height) _markerViewport;
 
     // Ban-screen avatar markers keyed by operator name.
     private readonly List<FrameworkElement> _banMarkerPool = [];
@@ -44,6 +47,16 @@ public partial class OverlayWindow : Window
     {
         InitializeComponent();
         Loaded += OnLoaded;
+        SizeChanged += (_, _) =>
+        {
+            UpdateShopItems(_shopItems);
+            foreach (var layer in new[] { _banInstructionLayer, _banInputBlockLayer, _banTimedMessageLayer })
+            {
+                if (layer is null) continue;
+                layer.Width = ActualWidth;
+                layer.Height = ActualHeight;
+            }
+        };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -56,10 +69,7 @@ public partial class OverlayWindow : Window
 
     public void UpdatePosition(RECT gameClientRect)
     {
-        Left = gameClientRect.Left;
-        Top = gameClientRect.Top;
-        Width = gameClientRect.Width;
-        Height = gameClientRect.Height;
+        User32.SetWindowBounds(new WindowInteropHelper(this).EnsureHandle(), gameClientRect);
     }
 
     /// <summary>
@@ -69,6 +79,9 @@ public partial class OverlayWindow : Window
     /// </summary>
     public void UpdateShopItems(IReadOnlyList<ShopItem> shopItems)
     {
+        _shopItems = shopItems;
+        var sameViewport = _markerViewport == (ActualWidth, ActualHeight);
+        _markerViewport = (ActualWidth, ActualHeight);
         var nowTracked = shopItems
             .Where(s => s.IsTracked)
             .ToDictionary(s => s.Id);
@@ -88,11 +101,11 @@ public partial class OverlayWindow : Window
         // Add new markers or reposition existing ones
         foreach (var item in nowTracked.Values)
         {
-            var (mx, my) = ComputeMarkerPosition(item);
+            var (mx, my) = WindowGeometry.ShopMarkerPosition(item.OcrRegion, ActualWidth, ActualHeight, MarkerSize);
 
             if (_markerPool.TryGetValue(item.Id, out var existing))
             {
-                if (Math.Abs(Canvas.GetLeft(existing) - mx) < 6 && Math.Abs(Canvas.GetTop(existing) - my) < 6) continue;
+                if (sameViewport && Math.Abs(Canvas.GetLeft(existing) - mx) < 6 && Math.Abs(Canvas.GetTop(existing) - my) < 6) continue;
                 Canvas.SetLeft(existing, mx);
                 Canvas.SetTop(existing, my);
                 AppLogger.Info("Overlay", $"Repositioned marker '{item.Id}' to ({mx:F1},{my:F1})");
@@ -212,23 +225,6 @@ public partial class OverlayWindow : Window
             OverlayCanvas.Children.Remove(el);
         };
         el.BeginAnimation(OpacityProperty, anim);
-    }
-
-    /// <summary>
-    /// Returns the canvas pixel position for a marker placed at the top-right
-    /// corner of the operator card. OcrRegion stores the card's normalised
-    /// bounding box [0,1] (X, Y, Width, Height).
-    /// </summary>
-    private (double X, double Y) ComputeMarkerPosition(ShopItem item)
-    {
-        // Anchor above the detected name, leaving the name and price readable.
-        var mx = (item.OcrRegion.X + item.OcrRegion.Width) * ActualWidth - MarkerSize;
-        var my = item.OcrRegion.Y * ActualHeight - MarkerSize - 2;
-
-        mx = Math.Max(0, Math.Min(mx, ActualWidth - MarkerSize));
-        my = Math.Max(0, Math.Min(my, ActualHeight - MarkerSize));
-
-        return (mx, my);
     }
 
     private static Grid CreateMarker()

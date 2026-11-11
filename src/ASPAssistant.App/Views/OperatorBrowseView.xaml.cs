@@ -214,7 +214,8 @@ public partial class OperatorBrowseView : UserControl
 
     private static void SelectOnlyFirst(ListBox list)
     {
-        list.SelectedItems.Clear();
+        if (list.SelectionMode != SelectionMode.Single)
+            list.SelectedItems.Clear();
         if (list.Items.Count > 0) list.SelectedIndex = 0;
     }
 

@@ -54,6 +54,12 @@ public partial class UpdateService
     /// <summary>最近一次失败的人类可读原因；成功时清空。</summary>
     public string? LastError { get; private set; }
 
+    /// <summary>已下载并暂存好的更新脚本；点了“立即重启”后才启动它。</summary>
+    public string? PendingScriptPath { get; private set; }
+
+    /// <summary>本次更新的暂存目录（唯一），便于失败时提示用户手动处理。</summary>
+    public string? PendingStagingDir { get; private set; }
+
     public string FeedUrl => ResolveFeedUrl(Environment.GetEnvironmentVariable(FeedOverrideVariable));
 
     /// <summary>返回生效的更新源地址：环境变量优先，其次 GitHub。</summary>
@@ -120,10 +126,11 @@ public partial class UpdateService
         CancellationToken ct = default)
     {
         LastError = null;
-        var tempDir = Path.Combine(Path.GetTempPath(), "ASPAssistant-Update");
-        if (Directory.Exists(tempDir))
-            Directory.Delete(tempDir, true);
-        Directory.CreateDirectory(tempDir);
+
+        // 每次尝试用独立目录：上一次的 update.ps1 可能仍被 PowerShell 占用，
+        // 复用固定目录会让 Directory.Delete 抛 IOException 而整条下载失败。
+        CleanupStaleUpdateDirs();
+        var tempDir = Directory.CreateTempSubdirectory("ASPAssistant-Update-").FullName;
 
         var zipPath = Path.Combine(tempDir, info.AssetName);
 
@@ -177,7 +184,7 @@ public partial class UpdateService
 
         var appDir = AppContext.BaseDirectory.TrimEnd('\\', '/');
         var parentDir = Path.GetDirectoryName(appDir) ?? appDir;
-        var stamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+        var stamp = $"{DateTime.Now:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}";
         var scriptPath = Path.Combine(tempDir, "update.ps1");
 
         var scriptContent = BuildUpdateScript(
@@ -190,16 +197,59 @@ public partial class UpdateService
             Path.Combine(tempDir, "update.log"));
 
         await File.WriteAllTextAsync(scriptPath, scriptContent, new UTF8Encoding(encoderShouldEmitUTF8Identifier: true), ct);
-        progress?.Report(1.0);
 
-        // Launch the update script as a detached background process
-        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        // 只记录脚本位置；真正的替换要等用户点“立即重启”后再启动，
+        // 否则脚本会在程序仍运行时白等并误报“无法重命名/已回滚”。
+        PendingScriptPath = scriptPath;
+        PendingStagingDir = Path.Combine(parentDir, $"ASPAssistant-Staging-{stamp}");
+        progress?.Report(1.0);
+    }
+
+    /// <summary>
+    /// 启动已暂存的更新脚本（应在应用即将退出时调用）。
+    /// 返回 false 表示没有可用的暂存脚本。
+    /// </summary>
+    public bool LaunchPendingUpdateScript()
+    {
+        if (string.IsNullOrWhiteSpace(PendingScriptPath) || !File.Exists(PendingScriptPath))
+            return false;
+
+        using var updater = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
         {
             FileName = "powershell.exe",
-            Arguments = $"-ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -File \"{scriptPath}\"",
+            Arguments = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -NonInteractive -File \"{PendingScriptPath}\"",
+            WorkingDirectory = Path.GetDirectoryName(PendingScriptPath)!,
             UseShellExecute = false,
             CreateNoWindow = true,
         });
+        if (updater is null) return false;
+        PendingScriptPath = null;
+        return true;
+    }
+
+    /// <summary>尽力清理以前遗留的更新临时目录；失败不影响本次更新。</summary>
+    private static void CleanupStaleUpdateDirs()
+    {
+        try
+        {
+            var root = Path.GetTempPath();
+            foreach (var dir in Directory.GetDirectories(root, "ASPAssistant-Update-*"))
+            {
+                try
+                {
+                    // 保留最近一天的任务，避免重试下载时删除仍待重启的更新。
+                    if (Directory.GetLastWriteTimeUtc(dir) >= DateTime.UtcNow.AddDays(-1)) continue;
+                    Directory.Delete(dir, true);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    // 上一次的 update.ps1 可能仍被 PowerShell 占用，留着即可。
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 
     private UpdateIntegrityException IntegrityFailure(string message)
@@ -218,6 +268,9 @@ public partial class UpdateService
         HttpRequestException http when http.StatusCode is not null
             => $"更新源返回 HTTP {(int)http.StatusCode}",
         HttpRequestException => "无法连接更新源（网络受限或代理拦截）",
+        IOException io when io.Message.Contains("being used by another process", StringComparison.OrdinalIgnoreCase)
+            => "文件正被其他程序占用（可能上次更新残留），请关闭杀毒/资源管理器预览后重试",
+        IOException => $"读写更新文件失败：{ex.Message}",
         _ => ex.Message
     };
 
@@ -296,24 +349,55 @@ public partial class UpdateService
         sb.AppendLine("    } catch { }");
         sb.AppendLine("}");
         sb.AppendLine();
+        sb.AppendLine("function Start-Version([string]$path, [string]$resultPath) {");
+        sb.AppendLine("    $start = New-Object System.Diagnostics.ProcessStartInfo");
+        sb.AppendLine("    $start.FileName = $path");
+        sb.AppendLine("    $start.WorkingDirectory = $appDir");
+        sb.AppendLine("    $start.UseShellExecute = $false");
+        sb.AppendLine("    $start.EnvironmentVariables.Remove('ASPA_UPDATE_STARTUP_RESULT')");
+        sb.AppendLine("    if ($resultPath) { $start.EnvironmentVariables['ASPA_UPDATE_STARTUP_RESULT'] = $resultPath }");
+        sb.AppendLine("    $process = [System.Diagnostics.Process]::Start($start)");
+        sb.AppendLine("    if ($null -eq $process) { throw '无法启动辅助程序' }");
+        sb.AppendLine("    return $process");
+        sb.AppendLine("}");
+        sb.AppendLine();
         sb.AppendLine("function Start-OldVersion {");
+        sb.AppendLine("    if (Get-Process -Id $appPid -ErrorAction SilentlyContinue) { return }");
         sb.AppendLine("    $oldExe = Join-Path -Path $appDir -ChildPath (Split-Path -Leaf $exePath)");
         sb.AppendLine("    if (Test-Path -LiteralPath $oldExe) {");
         sb.AppendLine("        Write-Log \"starting previous version: $oldExe\"");
-        sb.AppendLine("        Start-Process -FilePath $oldExe | Out-Null");
+        sb.AppendLine("        $oldProcess = Start-Version $oldExe ''");
+        sb.AppendLine("        $oldProcess.Dispose()");
         sb.AppendLine("    }");
         sb.AppendLine("}");
         sb.AppendLine();
         sb.AppendLine("Write-Log \"update started (pid=$appPid)\"");
         sb.AppendLine("$renamedOld = $false");
+        sb.AppendLine("$newProcess = $null");
         sb.AppendLine("try {");
-        sb.AppendLine("    $timeout = 30");
+        sb.AppendLine("    $appDir = [System.IO.Path]::GetFullPath($appDir).TrimEnd('\\')");
+        sb.AppendLine("    $stagingDir = [System.IO.Path]::GetFullPath($stagingDir).TrimEnd('\\')");
+        sb.AppendLine("    $backupDir = [System.IO.Path]::GetFullPath($backupDir).TrimEnd('\\')");
+        sb.AppendLine("    $parentDir = Split-Path -Parent $appDir");
+        sb.AppendLine("    if (-not $parentDir -or $appDir -eq $stagingDir -or $appDir -eq $backupDir -or $stagingDir -eq $backupDir -or");
+        sb.AppendLine("        (Split-Path -Parent $stagingDir) -ne $parentDir -or (Split-Path -Parent $backupDir) -ne $parentDir) {");
+        sb.AppendLine("        throw '更新目录路径不正确，已停止替换'");
+        sb.AppendLine("    }");
+        // 同时移动 PowerShell 位置和原生工作目录，释放继承的安装目录句柄。
+        sb.AppendLine("    [Environment]::CurrentDirectory = Split-Path -Parent $logPath");
+        sb.AppendLine("    Set-Location -LiteralPath ([Environment]::CurrentDirectory)");
+        // 等待旧进程退出：用户可能点了“立即重启”却还在看托盘，给足 5 分钟。
+        sb.AppendLine("    $timeout = 300");
         sb.AppendLine("    $elapsed = 0");
         sb.AppendLine("    while ((Get-Process -Id $appPid -ErrorAction SilentlyContinue) -and ($elapsed -lt $timeout)) {");
         sb.AppendLine("        Start-Sleep -Milliseconds 500");
         sb.AppendLine("        $elapsed += 0.5");
         sb.AppendLine("    }");
-        sb.AppendLine("    Start-Sleep -Milliseconds 500");
+        sb.AppendLine("    Write-Log \"waited $elapsed s for pid $appPid to exit\"");
+        sb.AppendLine("    if (Get-Process -Id $appPid -ErrorAction SilentlyContinue) {");
+        sb.AppendLine("        throw '辅助仍在运行，请完全退出辅助（含托盘图标）后重新检查更新。'");
+        sb.AppendLine("    }");
+        sb.AppendLine("    Start-Sleep -Milliseconds 800");
         sb.AppendLine();
         sb.AppendLine("    if (-not (Test-Path -LiteralPath (Join-Path $sourceDir 'ASPAssistant.App.exe'))) {");
         sb.AppendLine("        throw '更新包不完整：缺少 ASPAssistant.App.exe'");
@@ -324,9 +408,22 @@ public partial class UpdateService
         sb.AppendLine("    Copy-Item -LiteralPath $sourceDir -Destination $stagingDir -Recurse -Force");
         sb.AppendLine("    Write-Log \"staged new files to $stagingDir\"");
         sb.AppendLine();
-        sb.AppendLine("    Rename-Item -LiteralPath $appDir -NewName (Split-Path -Leaf $backupDir)");
-        sb.AppendLine("    $renamedOld = $true");
-        sb.AppendLine("    Write-Log \"renamed current install to $backupDir\"");
+        sb.AppendLine("    $renamedOld = $false");
+        sb.AppendLine("    for ($try = 1; $try -le 10; $try++) {");
+        sb.AppendLine("        try {");
+        sb.AppendLine("            Rename-Item -LiteralPath $appDir -NewName (Split-Path -Leaf $backupDir) -ErrorAction Stop");
+        sb.AppendLine("            $renamedOld = $true");
+        sb.AppendLine("            break");
+        sb.AppendLine("        } catch {");
+        sb.AppendLine("            Write-Log \"rename attempt $try failed: $($_.Exception.Message)\"");
+        sb.AppendLine("            Start-Sleep -Milliseconds 500");
+        sb.AppendLine("        }");
+        sb.AppendLine("    }");
+        sb.AppendLine("    Write-Log \"renamed current install to ${backupDir}: $renamedOld\"");
+        sb.AppendLine();
+        sb.AppendLine("    if (-not $renamedOld) {");
+        sb.AppendLine("        throw '安装目录仍被占用，未替换任何旧版文件。请完全退出辅助（含托盘图标），并关闭该目录的终端或预览后重试。'");
+        sb.AppendLine("    }");
         sb.AppendLine();
         sb.AppendLine("    try {");
         sb.AppendLine("        Rename-Item -LiteralPath $stagingDir -NewName (Split-Path -Leaf $appDir)");
@@ -341,10 +438,29 @@ public partial class UpdateService
         sb.AppendLine("    }");
         sb.AppendLine();
         sb.AppendLine("    Start-Sleep -Milliseconds 400");
-        sb.AppendLine("    Start-Process -FilePath $exePath | Out-Null");
-        sb.AppendLine("    Write-Log \"new version started\"");
+        sb.AppendLine("    $startupResult = Join-Path (Split-Path -Parent $logPath) ('startup-' + [Guid]::NewGuid().ToString('N') + '.status')");
+        sb.AppendLine("    $newProcess = Start-Version $exePath $startupResult");
+        sb.AppendLine("    $startupTimeout = 60");
+        sb.AppendLine("    $deadline = [DateTime]::UtcNow.AddSeconds($startupTimeout)");
+        sb.AppendLine("    while ($true) {");
+        sb.AppendLine("        if (Test-Path -LiteralPath $startupResult) {");
+        sb.AppendLine("            $status = Get-Content -LiteralPath $startupResult -Raw -Encoding UTF8");
+        sb.AppendLine("            if ($status -eq 'ready') {");
+        sb.AppendLine("                if ($newProcess.HasExited) { throw \"新版在确认就绪时已退出（代码 $($newProcess.ExitCode)）\" }");
+        sb.AppendLine("                break");
+        sb.AppendLine("            }");
+        sb.AppendLine("            if ($status.StartsWith(\"failed`n\")) {");
+        sb.AppendLine("                $newProcess.WaitForExit(5000) | Out-Null");
+        sb.AppendLine("                throw ('新版启动失败：' + $status.Substring(7))");
+        sb.AppendLine("            }");
+        sb.AppendLine("            throw '新版启动确认内容无效'");
+        sb.AppendLine("        }");
+        sb.AppendLine("        if ($newProcess.HasExited) { throw \"新版未确认就绪就已退出（代码 $($newProcess.ExitCode)）\" }");
+        sb.AppendLine("        if ([DateTime]::UtcNow -ge $deadline) { throw '等待新版启动就绪超时' }");
+        sb.AppendLine("        Start-Sleep -Milliseconds 200");
+        sb.AppendLine("    }");
+        sb.AppendLine("    Write-Log 'new version confirmed ready'");
         sb.AppendLine();
-        sb.AppendLine("    Start-Sleep -Seconds 2");
         sb.AppendLine("    try {");
         sb.AppendLine("        Remove-Item -LiteralPath $backupDir -Recurse -Force");
         sb.AppendLine("        Write-Log \"removed backup $backupDir\"");
@@ -353,18 +469,30 @@ public partial class UpdateService
         sb.AppendLine("    }");
         sb.AppendLine("} catch {");
         sb.AppendLine("    $message = $_.Exception.Message");
+        sb.AppendLine("    if ($renamedOld -and $null -ne $newProcess -and -not $newProcess.HasExited) {");
+        sb.AppendLine("        Show-Failure \"更新未确认完成：$message。新版进程仍在运行，未执行回滚；旧版备份保留在 $backupDir，请先检查辅助状态。\"");
+        sb.AppendLine("        exit 1");
+        sb.AppendLine("    }");
         sb.AppendLine("    if ($renamedOld) {");
         sb.AppendLine("        try {");
         sb.AppendLine("            if (Test-Path -LiteralPath $appDir) { Remove-Item -LiteralPath $appDir -Recurse -Force }");
         sb.AppendLine("            Rename-Item -LiteralPath $backupDir -NewName (Split-Path -Leaf $appDir)");
+        sb.AppendLine("            $renamedOld = $false");
         sb.AppendLine("            Write-Log 'rolled back to previous version'");
         sb.AppendLine("        } catch {");
         sb.AppendLine("            Write-Log \"ROLLBACK FAILED: $($_.Exception.Message)\"");
         sb.AppendLine("        }");
         sb.AppendLine("    }");
-        sb.AppendLine("    Start-OldVersion");
-        sb.AppendLine("    Show-Failure \"更新未完成，已回滚到旧版本：$message\"");
+        sb.AppendLine("    if ($renamedOld) {");
+        sb.AppendLine("        Show-Failure \"更新未完成且自动恢复失败：$message。请保留备份目录 $backupDir。\"");
+        sb.AppendLine("    } else {");
+        sb.AppendLine("        Start-OldVersion");
+        sb.AppendLine("        Show-Failure \"更新未完成，旧版本文件已保留：$message\"");
+        sb.AppendLine("    }");
         sb.AppendLine("    exit 1");
+        sb.AppendLine("}");
+        sb.AppendLine("finally {");
+        sb.AppendLine("    if ($null -ne $newProcess) { $newProcess.Dispose() }");
         sb.AppendLine("}");
         sb.AppendLine("exit 0");
         return sb.ToString();

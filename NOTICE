@@ -18,6 +18,12 @@ themes, tracking, equipment comparison, tests, documentation and release setup.
 Modification notices are kept in the source headers of each changed file.
 This derivative is not an official release from the upstream author.
 
+Lineup planning, covenant effect data and related UI/Ban integration were
+contributed by Jiayu Ding (CarlosDJY) in pull request #1:
+https://github.com/bingyunhe/asp-assistant-arknights/pull/1
+Original contribution commit: 2498a019db155903419f2109c8651d73ebb4da6d
+The original commit is retained; subsequent integration fixes have separate commits.
+
 MaaFramework and other third-party dependencies retain their own licenses.
 Game data, character names and artwork retain the rights and attribution of
 their respective owners; the software license does not relicense these assets.

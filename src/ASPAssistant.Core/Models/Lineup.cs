@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
 using System.Text.Json.Serialization;
 
 namespace ASPAssistant.Core.Models;
@@ -64,11 +65,30 @@ public class Lineup
     [JsonPropertyName("supportSlots")]
     public List<LineupSlot> SupportSlots { get; set; } = [];
 
+    [JsonPropertyName("strategies")]
+    public List<LineupStrategySlot> Strategies { get; set; } = [];
+
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     [JsonPropertyName("updatedAt")]
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
+}
+
+public enum StrategyTag
+{
+    阵容核心,
+    优选,
+    次选,
+}
+
+public class LineupStrategySlot
+{
+    [JsonPropertyName("strategyId")]
+    public string StrategyId { get; set; } = "";
+
+    [JsonPropertyName("tags")]
+    public List<StrategyTag> Tags { get; set; } = [];
 }
 
 /// <summary>

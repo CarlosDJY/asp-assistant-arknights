@@ -8,7 +8,7 @@ namespace ASPAssistant.Core.Services;
 /// 特殊规则（来自策划文档）：
 ///   1. 「变形同构体」装备：若一个 slot 同时装备了「变形同构体」与某个转职装备，
 ///      则该转职装备对应的核心盟约视为该 slot 额外获得（追加进核心盟约列表）。
-///   2. 「调和」盟约：拥有「调和」核心盟约的干员可视为属于任意核心盟约。
+///   2. 「调和」盟约：拥有「调和」的干员可视为属于任意核心盟约。
 ///      实现：把每个「调和」slot 对当前阵容内出现过的每个核心盟约都+1（不影响附加盟约）。
 /// </summary>
 public class CovenantCalculator
@@ -74,10 +74,18 @@ public class CovenantCalculator
                 }
 
                 foreach (var add in op.AdditionalCovenants)
-                    Add(counts, add, 1);
+                {
+                    if (add == HarmonyCovenant) slotCore.Add(add);
+                    else Add(counts, add, 1);
+                }
+
+                if (_coreCovenantSet.Contains(slot.TransformedCovenant))
+                    slotCore.Add(slot.TransformedCovenant);
+                else if (!string.IsNullOrEmpty(slot.TransformedCovenant)
+                    && !slotCore.Contains(slot.TransformedCovenant)
+                    && !op.AdditionalCovenants.Contains(slot.TransformedCovenant))
+                    Add(counts, slot.TransformedCovenant, 1);
             }
-            if (!string.IsNullOrEmpty(slot.TransformedCovenant))
-                Add(counts, slot.TransformedCovenant, 1);
             perSlotCoreCovenants.Add(slotCore);
         }
 

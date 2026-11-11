@@ -63,6 +63,16 @@ public static class BanIconGrid
             return [];
         }
 
+        return Detect(pixels, minYPercent, maxYPercent);
+    }
+
+    /// <summary>
+    /// 同一个分析里有核心/附加两块区域，复用一份已解码的像素可以省掉一次 PNG 解码
+    /// （1920×1080 约 100 ms）。<see cref="BanScreenPixels"/> 读操作是只读的，可并行共享。
+    /// </summary>
+    public static IReadOnlyList<BanIconSlot> Detect(
+        BanScreenPixels pixels, double minYPercent = 0, double maxYPercent = 1)
+    {
         int width = pixels.Width;
         int height = pixels.Height;
 

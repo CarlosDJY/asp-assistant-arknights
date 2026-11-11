@@ -117,6 +117,36 @@ public class InformationRecordingTests(EnemyRecognitionFixture fixture, ITestOut
         vm.RecognitionStatus.Should().Contain("保留上次录入结果");
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompleteCovenantsPublishWithoutEnemyAndCacheDoesNotPublishPartialEnemy(bool bossOnly)
+    {
+        var bytes = File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "TestData", "info-ingame-1920x1080.png"));
+        var ocr = new Mock<IOcrEngine>();
+        ocr.Setup(e => e.RecognizeRegionAsync(It.IsAny<byte[]>(), It.IsAny<int>(), It.IsAny<int>(),
+            It.IsAny<int>(), It.IsAny<int>())).Returns((byte[] png, int x, int y, int w, int h) =>
+                x > 1200
+                    ? Task.FromResult<IReadOnlyList<OcrTextResult>>(bossOnly
+                        ? [new("敌方领袖", (1540, 460, 160, 30)), new("盐风主教昆图斯", (1500, 510, 240, 30))]
+                        : [])
+                    : fixture.Engine.RecognizeRegionAsync(png, x, y, w, h));
+        var analyzer = await CreateAnalyzerAsync(bytes, ocr.Object);
+        var results = new List<BanScreenResult>();
+        var enemyEvents = 0;
+        var failures = 0;
+        analyzer.AnalysisCompleted += results.Add;
+        analyzer.EnemyDetected += _ => enemyEvents++;
+        analyzer.AnalysisFailed += _ => failures++;
+        await analyzer.RunAnalysisAsync();
+        await analyzer.RunAnalysisAsync();
+        results.Should().HaveCount(2);
+        results.Should().OnlyContain(r => r.CoreCovenants.Count == 10
+            && r.AdditionalCovenants.Count == 16 && r.EnemyFaction == null);
+        enemyEvents.Should().Be(0);
+        failures.Should().Be(0);
+    }
+
     private async Task<BanScreenAnalyzer> CreateAnalyzerAsync(byte[]? bytes, IOcrEngine ocr)
     {
         var store = new JsonDataStore(Path.Combine(AppContext.BaseDirectory, "data"));
@@ -139,9 +169,10 @@ public class InformationRecordingTests(EnemyRecognitionFixture fixture, ITestOut
             It.IsAny<int>(), It.IsAny<int>())).ReturnsAsync((byte[] _, int x, int y, int w, int h) =>
                 x > 1200 ? [new("敌方领袖", (1540, 460, 160, 30)),
                     new("盐风主教昆图斯", (1500, 510, 240, 30)), new("特训敌人·隐匿", (1500, 635, 240, 30))]
-                : y < 150 ? [new("核心盟约", (200, 180, 160, 30)), new("附加盟约", (200, 460, 160, 30))]
-                : y < 300 ? [new("炎", (160, 390, 25, 25))]
-                : [new("迅捷", (150, 673, 50, 25))]);
+                // 页面检测已折进盟约区 OCR：标题与名字会在同一次调用里返回。
+                : y < 300 ? [new("核心盟约", (200, 180, 160, 30)), new("附加盟约", (200, 470, 160, 30)),
+                    new("炎", (160, 390, 25, 25))]
+                : [new("附加盟约", (200, 470, 160, 30)), new("迅捷", (150, 673, 50, 25))]);
         var analyzer = await CreateAnalyzerAsync(png.ToArray(), ocr.Object);
         int commits = 0;
         string? failure = null;

@@ -7,6 +7,32 @@ namespace ASPAssistant.Tests.ViewModels;
 
 public class LineupPlannerViewModelTests
 {
+    [Fact]
+    public async Task LimitedSearchDoesNotClaimUnsolvedVariantsAreImpossible()
+    {
+        var operators = Enumerable.Range(0, 49).Select(i => new Operator
+        {
+            Name = $"干员{i}", CoreCovenants = ["炎"], AdditionalCovenants = ["独行"]
+        }).ToList();
+        CovenantInfo[] covenants =
+        [
+            new() { Name = "炎", BondType = "SEASON", ActivateCount = 3 },
+            new() { Name = "独行", BondType = "REGULAR", ActivateCount = 1 }
+        ];
+        var vm = new LineupPlannerViewModel(new LineupPlanner(operators, covenants), operators, new BanViewModel())
+        { DebounceMilliseconds = 0 };
+        Item(vm, "炎").ToggleLevel1Command.Execute(null);
+        Item(vm, "独行").ToggleLevel1Command.Execute(null);
+        vm.IsActive = true;
+        await vm.PendingSearch!;
+
+        vm.TotalResults.Should().Be(0);
+        vm.VariantCells.Should().Contain(c => c.IsLimited);
+        vm.StatusDetail.Should().Contain("搜索上限");
+        vm.ResultHint.Should().Contain("搜索受限").And.NotContain("无解");
+        vm.VariantCells.Should().OnlyContain(c => !c.ToolTip.Contains("无解"));
+    }
+
     private static Operator Op(string name, params string[] core) => new() { Name = name, CoreCovenants = [.. core], IconPath = $"icons/operators/{name}.png" };
 
     private static (LineupPlannerViewModel Vm, BanViewModel Bans) Create()

@@ -18,6 +18,7 @@ public partial class App : Application
     private SidePanelWindow? _sidePanel;
     private OverlayWindow? _overlay;
     private SettingsManager? _settingsManager;
+    private UpdateStartupNotification? _updateStartup;
     private readonly SemaphoreSlim _informationScanGate = new(1, 1);
     private List<ASPAssistant.Core.Models.ShopItem> _lastShopItems = [];
 
@@ -30,6 +31,11 @@ public partial class App : Application
             var ex = args.ExceptionObject as Exception;
             AppLogger.Error("App", "Fatal unhandled exception",
                 ex ?? new Exception(args.ExceptionObject?.ToString()));
+            if (_updateStartup?.IsPending == true)
+            {
+                _updateStartup.ReportFailure(ex?.Message ?? "程序启动失败");
+                return;
+            }
 
             var isDllMissing = ex is DllNotFoundException
                 || (ex?.InnerException is DllNotFoundException)
@@ -59,6 +65,13 @@ public partial class App : Application
         DispatcherUnhandledException += (_, args) =>
         {
             AppLogger.Error("App", "Unhandled UI exception", args.Exception);
+            if (_updateStartup?.IsPending == true)
+            {
+                _updateStartup.ReportFailure(args.Exception.Message);
+                args.Handled = true;
+                Shutdown(1);
+                return;
+            }
             MessageBox.Show(
                 $"启动时发生错误，请将以下信息反馈给开发者：\n\n{args.Exception}",
                 "ASPAssistant 错误",
@@ -75,11 +88,23 @@ public partial class App : Application
         ShutdownMode = ShutdownMode.OnExplicitShutdown;
         try
         {
-            await StartupAsync(e);
+            var startupResult = Environment.GetEnvironmentVariable(UpdateStartupNotification.ResultVariable);
+            Environment.SetEnvironmentVariable(UpdateStartupNotification.ResultVariable, null);
+            _updateStartup = new UpdateStartupNotification(startupResult);
+            if (await StartupAsync(e))
+                _updateStartup.ReportReady();
+            else
+                _updateStartup.ReportFailure("启动已取消");
         }
         catch (Exception ex)
         {
             AppLogger.Error("App", "Startup failed", ex);
+            if (_updateStartup?.IsPending == true)
+            {
+                _updateStartup.ReportFailure(ex.Message);
+                Shutdown(1);
+                return;
+            }
 
             // DllNotFoundException from MaaFramework almost always means the Visual C++
             // Redistributable (vcruntime140_1.dll) is not installed on the user's machine.
@@ -103,7 +128,7 @@ public partial class App : Application
         }
     }
 
-    private async Task StartupAsync(StartupEventArgs e)
+    private async Task<bool> StartupAsync(StartupEventArgs e)
     {
         // Paths
         var appDir = AppContext.BaseDirectory;
@@ -127,7 +152,7 @@ public partial class App : Application
             if (themeWindow.ShowDialog() != true)
             {
                 Shutdown();
-                return;
+                return false;
             }
             savedGameTheme = themeWindow.SelectedTheme;
             try
@@ -158,6 +183,7 @@ public partial class App : Application
         AppLogger.Info("App", $"Loaded {trackingEntries.Count} tracking entries");
 
         var (covenantInfos, jobChangeEquipmentToCovenant) = await dataStore.LoadCovenantsAsync();
+        var strategies = await dataStore.LoadStrategiesAsync();
         AppLogger.Info("App",
             $"Loaded {covenantInfos.Count} covenants, "
             + $"{jobChangeEquipmentToCovenant.Count} job-change equipment mappings");
@@ -259,10 +285,11 @@ public partial class App : Application
         _windowTracker = new WindowTrackerService();
 
         // Windows
+        var sidePanelPosition = await _settingsManager.LoadSidePanelPositionAsync();
         var sidePanel = _sidePanel = new SidePanelWindow(
             operatorVm, equipmentVm, trackingVm, gameStateVm, banVm, enemyVm,
             lineupVm, lineupShareService,
-            operators, equipment, _settingsManager, gameTheme,
+            operators, equipment, strategies, _settingsManager, gameTheme, sidePanelPosition,
             new LineupPlanner(operators, covenantInfos), covenantInfos);
         sidePanel.GameThemeChanged += theme => shopReader.Theme = theme;
         var overlay = _overlay = new OverlayWindow()
@@ -325,8 +352,7 @@ public partial class App : Application
         {
             Dispatcher.Invoke(() =>
             {
-                _sidePanel.UpdatePosition(rect, _windowTracker.ShouldAttachInside,
-                    _windowTracker.IsFullscreen, gameActuallyMoved: true);
+                _sidePanel.UpdatePosition(rect, _windowTracker.IsFullscreen);
 
                 var clientRect = Core.Interop.User32.GetClientRectScreen(
                     Core.Interop.User32.FindArknightsWindow());
@@ -343,8 +369,11 @@ public partial class App : Application
         {
             Dispatcher.Invoke(() =>
             {
-                _sidePanel.UpdatePosition(rect, _windowTracker.ShouldAttachInside,
-                    _windowTracker.IsFullscreen, gameActuallyMoved: false);
+                _sidePanel.UpdatePosition(rect, _windowTracker.IsFullscreen);
+                var clientRect = Core.Interop.User32.GetClientRectScreen(
+                    Core.Interop.User32.FindArknightsWindow());
+                if (clientRect.HasValue)
+                    _overlay.UpdatePosition(clientRect.Value);
             });
         };
 
@@ -352,6 +381,7 @@ public partial class App : Application
         {
             Dispatcher.Invoke(() =>
             {
+                _sidePanel.ClearGamePosition();
                 _overlay.Hide();
             });
         };
@@ -487,7 +517,9 @@ public partial class App : Application
                 banVm.SetCovenantBans(result.CoreCovenants.Concat(result.AdditionalCovenants).Where(c => c.IsBanned).Select(c => c.Name));
                 operatorVm.SetAvailableCovenants(result.CoreCovenants.Concat(result.AdditionalCovenants)
                     .Where(c => !c.IsBanned).Select(c => c.Name));
-                sidePanel.ShowToast("本局信息已录入");
+                if (result.EnemyFaction is null)
+                    enemyVm.RecognitionFailed("盟约已录入，本次敌人信息未完整读出，可在敌人页重试。");
+                sidePanel.ShowToast(result.EnemyFaction is null ? "盟约已录入，敌人信息可在敌人页重试" : "本局信息已录入");
             });
         };
 
@@ -552,6 +584,7 @@ public partial class App : Application
 
         // Start background update check
         _ = _sidePanel.StartUpdateCheckAsync();
+        return true;
     }
 
     private void RefreshOverlayTracking(TrackingViewModel trackingVm)
