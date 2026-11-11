@@ -441,8 +441,9 @@
                                 <Condition Property="IsSelected" Value="False" />
                                 <Condition Property="IsMouseOver" Value="True" />
                             </MultiTrigger.Conditions>
-                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource NeutralFaintBrush}" />
-                            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+                            <!-- Tab-bar colours: on 乌萨斯's dark bar the page text colour would vanish -->
+                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource TabHoverBackgroundBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TabHoverTextBrush}" />
                         </MultiTrigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

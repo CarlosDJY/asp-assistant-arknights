@@ -79,6 +79,8 @@
     <SolidColorBrush x:Key="TabActiveBrush" Color="#FF5B43C8" />
     <SolidColorBrush x:Key="TabActiveBarBrush" Color="#FF7B61E0" />
     <SolidColorBrush x:Key="TabActiveBackgroundBrush" Color="#127B61E0" />
+    <SolidColorBrush x:Key="TabHoverTextBrush" Color="#FF221C38" />
+    <SolidColorBrush x:Key="TabHoverBackgroundBrush" Color="#14221C38" />
     <Color x:Key="RowGradientStartColor">#FFFFFFFF</Color>
     <Color x:Key="RowGradientMiddleColor">#F0FFFFFF</Color>
     <Color x:Key="RowGradientEndColor">#40FFFFFF</Color>
