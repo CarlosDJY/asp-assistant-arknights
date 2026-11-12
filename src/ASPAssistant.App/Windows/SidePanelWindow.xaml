@@ -165,11 +165,30 @@
             <!-- Tab content + visible resize grip overlay -->
             <Grid>
                 <TabControl x:Name="MainTabs" Style="{StaticResource DarkTabControl}" SelectionChanged="OnMainTabChanged">
-                    <TabItem Header="干员" Tag="{StaticResource IconOperators}" HorizontalContentAlignment="Stretch">
-                        <views:OperatorBrowseView x:Name="OperatorView" />
-                    </TabItem>
-                    <TabItem Header="装备" Tag="{StaticResource IconEquipment}">
-                        <views:EquipmentBrowseView x:Name="EquipmentView" />
+                    <!-- 图鉴: operators and equipment behind one segment -->
+                    <TabItem x:Name="CodexTab" Header="图鉴" Tag="{StaticResource IconCodex}" HorizontalContentAlignment="Stretch">
+                        <DockPanel Background="{DynamicResource PanelBackgroundBrush}">
+                            <Border DockPanel.Dock="Top" Padding="10,10,10,0">
+                                <ListBox x:Name="CodexSegment" Style="{StaticResource SegmentedListBox}" HorizontalAlignment="Stretch"
+                                         SelectedIndex="0" SelectionChanged="OnCodexSegmentChanged">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource SegmentedItem}">
+                                            <Setter Property="MinHeight" Value="26" />
+                                            <Setter Property="FontSize" Value="12" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
+                                    <ListBoxItem Content="干员" />
+                                    <ListBoxItem Content="装备" />
+                                </ListBox>
+                            </Border>
+                            <Grid>
+                                <views:OperatorBrowseView x:Name="OperatorView" />
+                                <views:EquipmentBrowseView x:Name="EquipmentView" Visibility="Collapsed" />
+                            </Grid>
+                        </DockPanel>
                     </TabItem>
                     <TabItem Header="追踪" Tag="{StaticResource IconTracking}">
                         <views:TrackingView x:Name="TrackingView" />

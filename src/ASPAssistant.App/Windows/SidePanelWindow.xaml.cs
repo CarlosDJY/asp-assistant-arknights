@@ -965,6 +965,16 @@ public partial class SidePanelWindow : Window
         if (!planner) LineupView.ShowRecommendations();
     }
 
+    private void OnCodexSegmentChanged(object sender, SelectionChangedEventArgs e)
+    {
+        e.Handled = true;
+        if (OperatorView is null || EquipmentView is null) return;
+        bool equipment = CodexSegment.SelectedIndex == 1;
+        OperatorView.Visibility = equipment ? Visibility.Collapsed : Visibility.Visible;
+        EquipmentView.Visibility = equipment ? Visibility.Visible : Visibility.Collapsed;
+        if (IsLoaded) PageTransition.SlideIn(equipment ? EquipmentView : OperatorView, fromY: 8);
+    }
+
     private void OnLineupsSegmentChanged(object sender, SelectionChangedEventArgs e)
     {
         e.Handled = true;
