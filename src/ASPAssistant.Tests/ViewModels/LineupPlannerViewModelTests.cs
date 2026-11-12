@@ -354,4 +354,42 @@ public class LineupPlannerViewModelTests
         mech.Equipments.Should().StartWith(LineupEquipmentService.Shapeshifter);
         mech.Equipments.Should().HaveCount(item.Source.MechCovenants.Count + 1);
     }
+
+    [Fact]
+    public async Task Repair_LocksSurvivorsAndKeepsTheirGear()
+    {
+        var (vm, bans) = Create();
+        vm.IsActive = true;
+        var source = new Lineup
+        {
+            Id = "src", Name = "炎 速攻",
+            Slots = [.. new[] { "炎1", "炎2", "炎3", "炎4", "炎5", "炎6" }.Select(n => new LineupSlot { OperatorName = n })],
+            EarlySlots = [new LineupSlot { OperatorName = "维1" }],
+            TargetCovenants = [new TargetCovenant { Name = "炎", Tier = 2 }],
+        };
+        source.Slots[0].CandidateEquipments = [new CandidateEquipment { Name = "歌利亚头盔", IsPriority = true }];
+        bans.SetBans(["炎5", "炎6"]);
+        vm.BeginRepair(source, source.TargetCovenants, ["炎5", "炎6"]);
+        await vm.PendingSearch!;
+
+        vm.IsRepairing.Should().BeTrue();
+        vm.LockedOperators.Select(l => l.Name).Should().Equal("炎1", "炎2", "炎3", "炎4");
+        Item(vm, "炎").Level.Should().Be(2);
+        vm.RepairSummary.Should().StartWith("固定没被禁的 4 人，替补 2 人");
+        vm.VisibleLineups.Should().NotBeEmpty();
+        var first = vm.VisibleLineups[0];
+        first.RepairText.Should().StartWith("炎5、炎6 → ");
+        first.LineupName.Should().Be("炎 速攻（修补）");
+
+        Lineup? overwritten = null;
+        vm.OverwriteRequested += l => overwritten = l;
+        vm.OverwriteLineupCommand.Execute(first);
+        overwritten!.Id.Should().Be("src");
+        overwritten.EarlySlots.Single().OperatorName.Should().Be("维1");
+        overwritten.Slots.Single(s => s.OperatorName == "炎1").CandidateEquipments.Single().Name.Should().Be("歌利亚头盔");
+        overwritten.Slots.Should().NotContain(s => s.OperatorName == "炎5");
+
+        vm.EndRepairCommand.Execute(null);
+        vm.IsRepairing.Should().BeFalse();
+    }
 }

@@ -192,6 +192,9 @@ public sealed partial class PlannerLineupItem : ObservableObject
     public IReadOnlyList<PlannerOperatorItem> Operators { get; init; } = [];
     public IReadOnlyList<PlannerGoalPill> Goals { get; init; } = [];
     public string LineupName { get; init; } = "";
+    /// <summary>Repair mode: who replaces whom, e.g. 「塔露拉、冻河 → 伊桑、霜叶」.</summary>
+    public string RepairText { get; init; } = "";
+    public bool HasRepairText => RepairText.Length > 0;
     public PlannerStrategyPiece? StrategyPiece { get; init; }
     public bool HasStrategyPiece => StrategyPiece is not null;
 
@@ -432,6 +435,89 @@ public partial class LineupPlannerViewModel : ObservableObject
     public event Action<Lineup>? TrackRequested;
     /// <summary>Raised when the player tracks a whole 道中路线 (大成 + 过渡 operators).</summary>
     public event Action<PlannedRoute>? TrackRouteRequested;
+
+    /// <summary>Repair mode: replace the source lineup's late phase with this result (other phases are kept).</summary>
+    public event Action<Lineup>? OverwriteRequested;
+
+    // ── 修补：从「我的阵容」里被禁的阵容出发 ─────────────────────────────
+
+    /// <summary>The saved lineup being repaired; null for ordinary planning.</summary>
+    [ObservableProperty] private Lineup? _repairSource;
+    [ObservableProperty] private string _repairSummary = "";
+    private HashSet<string> _repairBanned = [];
+
+    public bool IsRepairing => RepairSource is not null;
+    partial void OnRepairSourceChanged(Lineup? value) => OnPropertyChanged(nameof(IsRepairing));
+
+    /// <summary>
+    /// Plans replacements for <paramref name="banned"/>: the lineup's targets become the goals and the late-game
+    /// operators still available are locked.
+    /// </summary>
+    public void BeginRepair(Lineup lineup, IReadOnlyList<TargetCovenant> targets, IReadOnlyCollection<string> banned)
+    {
+        foreach (var c in AllCovenants) c.Level = 0;
+        foreach (var t in targets)
+            if (AllCovenants.FirstOrDefault(c => c.Name == t.Name) is { IsBlocked: false } item)
+                item.Level = t.Tier >= 2 && item.CanPlanSecond ? 2 : 1;
+        LockedOperators.Clear();
+        var kept = lineup.Slots.Select(s => s.OperatorName)
+            .Where(n => n.Length > 0 && !banned.Contains(n) && _operatorByName.ContainsKey(n)).Distinct().ToList();
+        foreach (var name in kept.Take(LineupPlanner.MaxLockedOperators))
+            LockedOperators.Add(new PlannerLockedOperator(_operatorByName[name], RemoveLocked));
+        OnPropertyChanged(nameof(HasLocked));
+        _repairBanned = [.. banned];
+        RepairSource = lineup;
+        var goals = string.Join(" · ", AllCovenants.Where(c => c.IsSelected).Select(c => $"{c.Name} {(c.Level == 2 ? "Ⅱ" : "Ⅰ")}"));
+        RepairSummary = $"固定没被禁的 {kept.Count} 人，替补 {banned.Count} 人" + (goals.Length > 0 ? $"；目标盟约保持 {goals}" : "");
+        ShowResults = true;
+        GoalsChanged();
+    }
+
+    [RelayCommand]
+    private void EndRepair()
+    {
+        RepairSource = null;
+        RepairSummary = "";
+        _repairBanned = [];
+        RebuildVisibleLineups();
+    }
+
+    [RelayCommand]
+    private void OverwriteLineup(PlannerLineupItem? item)
+    {
+        if (item is not null && Repaired(item) is { } lineup) OverwriteRequested?.Invoke(lineup);
+    }
+
+    /// <summary>
+    /// The source lineup with its late phase replaced by <paramref name="item"/>: operators who stay keep their
+    /// equipment, candidates and tags; the other phases, strategies and targets are kept.
+    /// </summary>
+    private Lineup? Repaired(PlannerLineupItem item, bool asCopy = false)
+    {
+        if (RepairSource is not { } source) return null;
+        var result = item.ToLineup(_equipmentRules);
+        var slots = result.Slots.Select(r => source.Slots.FirstOrDefault(s => s.OperatorName == r.OperatorName) ?? r).ToList();
+        var copy = System.Text.Json.JsonSerializer.Deserialize<Lineup>(System.Text.Json.JsonSerializer.Serialize(source))!;
+        copy.Slots = System.Text.Json.JsonSerializer.Deserialize<List<LineupSlot>>(System.Text.Json.JsonSerializer.Serialize(slots))!;
+        if (asCopy)
+        {
+            copy.Id = Guid.NewGuid().ToString("N");
+            copy.Name = item.LineupName;
+            copy.CreatedAt = DateTime.UtcNow;
+        }
+        return copy;
+    }
+
+    private string RepairTextFor(PlannedLineup lineup)
+    {
+        if (RepairSource is not { } source) return "";
+        var before = source.Slots.Select(s => s.OperatorName).Where(n => n.Length > 0).ToHashSet(StringComparer.Ordinal);
+        var after = lineup.Operators.Select(o => o.Name).ToHashSet(StringComparer.Ordinal);
+        var removed = before.Where(n => !after.Contains(n)).ToList();
+        var added = lineup.Operators.Select(o => o.Name).Where(n => !before.Contains(n)).ToList();
+        if (removed.Count == 0 && added.Count == 0) return "";
+        return $"{(removed.Count > 0 ? string.Join("、", removed) : "空位")} → {(added.Count > 0 ? string.Join("、", added) : "空位")}";
+    }
     private PlannedRoute? _currentRoute;
     /// <summary>Supplies the currently tracked operator names for “从追踪导入”.</summary>
     public Func<IEnumerable<string>>? TrackedOperatorsProvider { get; set; }
@@ -627,7 +713,7 @@ public partial class LineupPlannerViewModel : ObservableObject
     [RelayCommand]
     private void SaveLineup(PlannerLineupItem? item)
     {
-        if (item is not null) SaveRequested?.Invoke(item.ToLineup(_equipmentRules));
+        if (item is not null) SaveRequested?.Invoke(Repaired(item, asCopy: true) ?? item.ToLineup(_equipmentRules));
     }
 
     [RelayCommand]
@@ -1106,7 +1192,8 @@ public partial class LineupPlannerViewModel : ObservableObject
             }.Where(n => n is not null)) is { Length: > 0 } note ? note : null,
             Operators = ops,
             Goals = goals,
-            LineupName = $"规划 {goalText} {lineup.People}人{lineup.Transforms}转",
+            LineupName = RepairSource is { } src ? $"{src.Name}（修补）" : $"规划 {goalText} {lineup.People}人{lineup.Transforms}转",
+            RepairText = RepairTextFor(lineup),
             StrategyPiece = StrategyPieceFor(lineup, transformsDone: true)
         };
     }
