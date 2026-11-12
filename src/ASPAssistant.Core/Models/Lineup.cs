@@ -67,6 +67,19 @@ public class CandidateEquipment
     public CandidateEquipment Clone() => new() { Name = Name, IsPriority = IsPriority };
 }
 
+/// <summary>阵容想凑的一个盟约档位。</summary>
+public class TargetCovenant
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    /// <summary>1 或 2。</summary>
+    [JsonPropertyName("tier")]
+    public int Tier { get; set; } = 1;
+
+    public TargetCovenant Clone() => new() { Name = Name, Tier = Tier };
+}
+
 public class Lineup
 {
     [JsonPropertyName("id")]
@@ -90,6 +103,12 @@ public class Lineup
 
     [JsonPropertyName("strategies")]
     public List<LineupStrategySlot> Strategies { get; set; } = [];
+
+    /// <summary>
+    /// 目标盟约（Ⅰ / Ⅱ 档）：筛选「我的阵容」和本局推荐用。为空时按后期配置推算（<see cref="Services.LineupTargets.Derive"/>）。
+    /// </summary>
+    [JsonPropertyName("targetCovenants")]
+    public List<TargetCovenant> TargetCovenants { get; set; } = [];
 
     [JsonPropertyName("createdAt")]
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
