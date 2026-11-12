@@ -38,6 +38,8 @@
             <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancelClick" Style="{StaticResource DialogCloseButton}" />
+                    <Button x:Name="MinimizeButton" DockPanel.Dock="Right" Content="─" Click="OnMinimize"
+                            ToolTip="最小化" Style="{StaticResource TitleBarButton}" />
                     <TextBlock Style="{StaticResource DialogTitleText}" Text="选择干员" />
                 </DockPanel>
             </Border>

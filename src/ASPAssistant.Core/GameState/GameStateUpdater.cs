@@ -6,8 +6,9 @@ public static class GameStateUpdater
 {
     public static void UpdateShopTracking(List<ShopItem> shopItems, List<TrackingEntry> tracked)
     {
-        var trackedNames = new HashSet<string>(tracked.Select(t => t.Name));
-        var finalNames = new HashSet<string>(tracked.Where(t => t.Role == TrackingRole.Final).Select(t => t.Name));
+        // Acquired entries stay in the list but are no longer looked for in the shop.
+        var trackedNames = new HashSet<string>(tracked.Where(t => !t.IsAcquired).Select(t => t.Name));
+        var finalNames = new HashSet<string>(tracked.Where(t => !t.IsAcquired && t.Role == TrackingRole.Final).Select(t => t.Name));
         foreach (var item in shopItems)
         {
             item.IsTracked = trackedNames.Contains(item.Name);

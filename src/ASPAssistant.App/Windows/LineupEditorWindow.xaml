@@ -167,6 +167,8 @@
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancelClick"
                             Style="{StaticResource DialogCloseButton}" />
+                    <Button x:Name="MinimizeButton" DockPanel.Dock="Right" Content="─" Click="OnMinimize"
+                            ToolTip="最小化" Style="{StaticResource TitleBarButton}" />
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="编辑阵容" Style="{StaticResource DialogTitleText}" />
                         <TextBlock x:Name="TitleMeta" FontSize="11" Margin="2,0,0,0" VerticalAlignment="Center"
@@ -175,6 +177,7 @@
                 </DockPanel>
             </Border>
 
+            <DockPanel x:Name="EditorContent">
             <!-- Footer: validation on the left, actions on the right -->
             <Border Style="{StaticResource DialogFooter}" DockPanel.Dock="Bottom">
                 <DockPanel>
@@ -256,6 +259,7 @@
                     </ScrollViewer>
                 </Border>
             </Grid>
+            </DockPanel>
         </DockPanel>
     </Border>
 </Window>

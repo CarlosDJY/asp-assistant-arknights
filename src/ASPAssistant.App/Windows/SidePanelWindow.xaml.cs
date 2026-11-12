@@ -189,6 +189,7 @@ public partial class SidePanelWindow : Window
         EquipmentView.TrackingRequested += (name, type) => trackingVm.AddTracking(name, type);
         EquipmentView.UntrackingRequested += name => trackingVm.RemoveTracking(name);
         TrackingView.RemoveTrackingRequested += name => trackingVm.RemoveTracking(name);
+        TrackingView.ToggleAcquiredRequested += name => trackingVm.ToggleAcquired(name);
         TrackingView.ClearAllTrackingRequested += () => trackingVm.ClearAllTracking();
 
         OperatorView.ClearBansRequested += () => banVm.ClearBans();
@@ -975,12 +976,13 @@ public partial class SidePanelWindow : Window
         PlannerView.DataContext = PlannerVm;
     }
 
-    private void OpenEditor(Lineup? source)
+    private async void OpenEditor(Lineup? source)
     {
         var calc = LineupVm.Calculator;
         var editorVm = new LineupEditorViewModel(source, _allOperators, _allEquipment, calc);
         var window = new LineupEditorWindow(editorVm, _allStrategies) { Owner = this };
-        if (window.ShowDialog() != true || window.Result is null) return;
+        await MinimizableDialog.ShowAsync(window, PanelContent);
+        if (window.Result is null) return;
 
         _ = LineupVm.AddOrUpdateAsync(window.Result).ContinueWith(_ =>
         {

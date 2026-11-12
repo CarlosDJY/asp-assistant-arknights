@@ -208,4 +208,33 @@ public class SettingsManagerTests : IDisposable
         await _manager.SaveTerminalLevelAsync(0, t0);
         (await _manager.LoadTerminalLevelAsync(t0)).Should().BeNull();
     }
+
+    [Fact]
+    public async Task AcquiredTrackingRowsRoundTripWithoutReactivatingEquipment()
+    {
+        await _manager.SaveTrackingEntriesAsync([
+            new() { Name = "角峰", Type = TrackingType.Operator, IsAcquired = true, Equipments = ["不屈弹射器"] },
+            new() { Name = "不屈弹射器", Type = TrackingType.Equipment, IsAcquired = true, IsManual = false }
+        ]);
+        var loaded = await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules);
+        var vm = new ASPAssistant.Core.ViewModels.TrackingViewModel();
+        vm.LoadEntries(loaded);
+        vm.AllEntries.Should().HaveCount(2).And.OnlyContain(e => e.IsAcquired);
+        vm.IsTracked("角峰").Should().BeFalse();
+        vm.IsTracked("不屈弹射器").Should().BeFalse();
+        vm.ToggleAcquired("角峰");
+        vm.ToggleAcquired("不屈弹射器");
+        await _manager.SaveTrackingEntriesAsync(vm.AllEntries.ToList());
+        var resumed = await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules);
+        resumed.Should().HaveCount(2).And.OnlyContain(e => !e.IsAcquired);
+    }
+
+    [Fact]
+    public async Task TrackingJsonWithoutAcquiredFlagRemainsActive()
+    {
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "tracking.json"),
+            """[{"name":"角峰","type":0,"equipments":[]}]""");
+        var loaded = await _manager.LoadTrackingEntriesAsync(EquipmentTestData.Rules);
+        loaded.Should().ContainSingle().Which.IsAcquired.Should().BeFalse();
+    }
 }

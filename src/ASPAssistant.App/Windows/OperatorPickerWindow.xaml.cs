@@ -45,7 +45,7 @@ public partial class OperatorPickerWindow : Window
         var op = (Operator)item.Content;
         if (op.RequiredStrategyId.Length > 0 && !_strategies.Contains(op.RequiredStrategyId)) return;
         Result = op.Name;
-        DialogResult = true;
+        Close();
     }
 
     private void OnOperatorKeyDown(object sender, KeyEventArgs e)
@@ -54,9 +54,12 @@ public partial class OperatorPickerWindow : Window
             return;
         if (op.RequiredStrategyId.Length > 0 && !_strategies.Contains(op.RequiredStrategyId)) return;
         Result = op.Name;
-        DialogResult = true;
+        Close();
         e.Handled = true;
     }
+
+    private void OnMinimize(object sender, RoutedEventArgs e)
+        => WindowState = WindowState.Minimized;
 
     private void OnTitleBarDrag(object sender, MouseButtonEventArgs e)
     {
@@ -67,10 +70,10 @@ public partial class OperatorPickerWindow : Window
     private void OnClearClick(object sender, RoutedEventArgs e)
     {
         Result = "";
-        DialogResult = true;
+        Close();
     }
 
-    private void OnCancelClick(object sender, RoutedEventArgs e) => DialogResult = false;
+    private void OnCancelClick(object sender, RoutedEventArgs e) => Close();
 
     private sealed class StrategyAvailabilityConverter : IValueConverter
     {

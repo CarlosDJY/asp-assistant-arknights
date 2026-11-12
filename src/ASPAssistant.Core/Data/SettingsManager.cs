@@ -288,7 +288,7 @@ public class SettingsManager
         }
         if (changed)
         {
-            foreach (var name in entries.Where(e => e.Type == TrackingType.Operator).SelectMany(e => e.Equipments).Distinct().ToList())
+            foreach (var name in entries.Where(e => e.Type == TrackingType.Operator && !e.IsAcquired).SelectMany(e => e.Equipments).Distinct().ToList())
                 if (!entries.Any(e => e.Type == TrackingType.Equipment && e.Name == name))
                     entries.Add(new TrackingEntry { Name = name, Type = TrackingType.Equipment, IsManual = false });
             File.Copy(path, path + $".pre-equipment-{Guid.NewGuid():N}.bak");

@@ -33,6 +33,10 @@ public class TrackingEntry
     [JsonPropertyName("isElite")]
     public bool IsElite { get; set; }
 
+    [JsonPropertyName("isAcquired")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsAcquired { get; set; }
+
     [JsonPropertyName("isManual")]
     public bool IsManual { get; set; } = true;
 

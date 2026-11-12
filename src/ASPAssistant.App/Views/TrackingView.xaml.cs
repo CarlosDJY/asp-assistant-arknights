@@ -13,6 +13,7 @@ namespace ASPAssistant.App.Views;
 public partial class TrackingView : UserControl
 {
     public event Action<string>? RemoveTrackingRequested;
+    public event Action<string>? ToggleAcquiredRequested;
     public event Action? ClearAllTrackingRequested;
     public static readonly DependencyProperty OperatorDatabaseProperty = DependencyProperty.Register(
         nameof(OperatorDatabase), typeof(IReadOnlyDictionary<string, Operator>), typeof(TrackingView),
@@ -94,7 +95,7 @@ public partial class TrackingView : UserControl
 
         var lineup = new Lineup
         {
-            Slots = operators.Where(e => e.Role == TrackingRole.Final).Select(e => new LineupSlot
+            Slots = operators.Where(e => e.Role == TrackingRole.Final && !e.IsAcquired).Select(e => new LineupSlot
             {
                 OperatorName = e.Name, Equipments = e.Equipments, IsElite = e.IsElite
             }).ToList()
@@ -168,6 +169,22 @@ public partial class TrackingView : UserControl
             RemoveTrackingRequested?.Invoke(equipment.Name);
     }
 
+    /// <summary>Right-click 标记已获取 / 继续追踪 on a tracked operator cell.</summary>
+    private void OnCellToggleAcquired(object sender, RoutedEventArgs e)
+    {
+        if (MenuContext(sender) is TrackedCell cell) ToggleAcquiredRequested?.Invoke(cell.Name);
+    }
+
+    /// <summary>Same toggle for tracked equipment and names missing from the data.</summary>
+    private void OnToggleAcquired(object sender, RoutedEventArgs e)
+    {
+        if (MenuContext(sender) is TrackingEntry entry) ToggleAcquiredRequested?.Invoke(entry.Name);
+    }
+
+    /// <summary>A menu item's data, falling back to the element the menu belongs to.</summary>
+    private static object? MenuContext(object sender) => sender is FrameworkElement { DataContext: { } data } ? data
+        : (sender as FrameworkElement)?.Parent is ContextMenu { PlacementTarget: FrameworkElement target } ? target.DataContext : null;
+
     private void OnRemoveTracking(object sender, RoutedEventArgs e)
     {
         if ((sender as FrameworkElement)?.DataContext is TrackingEntry entry) RemoveTrackingRequested?.Invoke(entry.Name);
@@ -187,6 +204,8 @@ public enum TrackedCellKind { Final, Transition, Past }
 public sealed record TrackedCell(string Name, TrackedCellKind Kind, string Sub, Operator? Operator,
     IReadOnlyList<EquipmentTransformation> Transformations, string LegacyCovenant)
 {
+    /// <summary>Marked 已获取: kept on the list, no longer starred in the shop.</summary>
+    public bool IsAcquired { get; init; }
     public string Initial => Name.Length > 0 ? Name[..1] : "";
     public string IconPath => Operator?.IconPath ?? "";
     public bool HasDetails => Operator is not null;
@@ -213,6 +232,7 @@ public sealed record TrackedCell(string Name, TrackedCellKind Kind, string Sub, 
             sub = cell.HasTransform ? $"转职 {cell.TransformedCovenant}" + (text.Length > 0 ? $" · {text}" : "")
                 : text.Length > 0 ? text : op is null ? "无数据" : "";
         }
-        return cell with { Sub = sub };
+        if (entry.IsAcquired) sub = sub.Length > 0 ? $"已获取 · {sub}" : "已获取";
+        return cell with { Sub = sub, IsAcquired = entry.IsAcquired };
     }
 }

@@ -49,6 +49,28 @@ public partial class OperatorCard : UserControl
         }
     }
 
+    public static readonly RoutedEvent AcquiredEvent = EventManager.RegisterRoutedEvent(
+        "Acquired", RoutingStrategy.Bubble, typeof(RoutedEventHandler), typeof(OperatorCard));
+
+    public event RoutedEventHandler Acquired
+    {
+        add => AddHandler(AcquiredEvent, value);
+        remove => RemoveHandler(AcquiredEvent, value);
+    }
+
+    public static readonly DependencyProperty IsAcquiredProperty = DependencyProperty.Register(
+        nameof(IsAcquired), typeof(bool), typeof(OperatorCard),
+        new PropertyMetadata(false, (d, _) => ((OperatorCard)d).UpdateTrackButton()));
+
+    public bool IsAcquired
+    {
+        get => (bool)GetValue(IsAcquiredProperty);
+        set => SetValue(IsAcquiredProperty, value);
+    }
+
+    private void OnAcquiredClick(object sender, RoutedEventArgs e)
+        => RaiseEvent(new RoutedEventArgs(AcquiredEvent, this));
+
     public OperatorCard()
     {
         InitializeComponent();
@@ -72,7 +94,7 @@ public partial class OperatorCard : UserControl
         // Inherit IsTrackedCheck from parent view if not explicitly set
         if (IsTrackedCheck == null)
             IsTrackedCheck = FindAncestor<OperatorBrowseView>()?.IsTrackedCheck;
-        IsTracked = IsTrackingList || (IsTrackedCheck != null && IsTrackedCheck(op.Name));
+        IsTracked = IsTrackingList ? !IsAcquired : IsTrackedCheck != null && IsTrackedCheck(op.Name);
 
         // Inherit IsBannedCheck from parent view if not explicitly set
         if (IsBannedCheck == null)
@@ -134,6 +156,8 @@ public partial class OperatorCard : UserControl
 
     private void UpdateTrackButton()
     {
+        if (IsTrackingList) IsTracked = !IsAcquired;
+        AcquiredButton.Tag = IsAcquired ? "acquired" : "";
         var tracked = IsTracked && !IsTrackingList;
         TrackButton.Tag = TryFindResource(IsTrackingList ? "IconClose" : "IconStar");
         TrackButton.ToolTip = IsTrackingList || IsTracked ? "取消追踪" : "追踪干员";

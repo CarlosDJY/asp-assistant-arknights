@@ -21,6 +21,22 @@
             <Border Height="53" Padding="9,0,3,0" Margin="0,0,5,5" CornerRadius="{DynamicResource RowCornerRadius}" BorderThickness="1"
                     Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource LineBrush}"
                     ToolTip="当前数据中没有该追踪项的详情">
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Click="OnToggleAcquired">
+                            <MenuItem.Style>
+                                <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                    <Setter Property="Header" Value="标记已获取" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAcquired}" Value="True">
+                                            <Setter Property="Header" Value="继续追踪" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </MenuItem.Style>
+                        </MenuItem>
+                    </ContextMenu>
+                </Border.ContextMenu>
                 <DockPanel>
                     <Button DockPanel.Dock="Right" Width="22" Height="22" Padding="0" Tag="{StaticResource IconClose}"
                             Style="{StaticResource TitleBarButton}" Click="OnRemoveTracking" ToolTip="取消追踪" />
@@ -28,6 +44,11 @@
                                FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
                 </DockPanel>
             </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsAcquired}" Value="True">
+                    <Setter Property="Opacity" Value="0.55" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
         </DataTemplate>
 
         <!-- Group marker dot -->
@@ -55,6 +76,18 @@
                 </Border.ToolTip>
                 <Border.ContextMenu>
                     <ContextMenu>
+                        <MenuItem Click="OnCellToggleAcquired">
+                            <MenuItem.Style>
+                                <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                    <Setter Property="Header" Value="标记已获取" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsAcquired}" Value="True">
+                                            <Setter Property="Header" Value="继续追踪" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </MenuItem.Style>
+                        </MenuItem>
                         <MenuItem Header="取消追踪" Click="OnCellRemove" />
                         <MenuItem Header="{Binding TransformedCovenant}" HeaderStringFormat="取消转职（{0}）" Click="OnCellClearTransform"
                                   Visibility="{Binding HasTransform, Converter={StaticResource DetailsBoolToVis}}" />
@@ -90,6 +123,12 @@
                 <DataTrigger Binding="{Binding Kind}" Value="Past">
                     <Setter TargetName="ring" Property="Ring" Value="{DynamicResource BorderBrush}" />
                     <Setter TargetName="cell" Property="Opacity" Value="0.5" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding IsAcquired}" Value="True">
+                    <Setter TargetName="ring" Property="Ring" Value="{DynamicResource SuccessBrush}" />
+                    <Setter TargetName="sub" Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
+                    <Setter TargetName="cell" Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}" />
+                    <Setter TargetName="cell" Property="Opacity" Value="0.7" />
                 </DataTrigger>
                 <Trigger SourceName="cell" Property="IsMouseOver" Value="True">
                     <Setter TargetName="remove" Property="Visibility" Value="Visible" />
@@ -252,7 +291,33 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <ContentControl Focusable="False">
+                                <ContentControl Focusable="False" Tag="{Binding}">
+                                    <ContentControl.Style>
+                                        <Style TargetType="ContentControl">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsAcquired}" Value="True">
+                                                    <Setter Property="Opacity" Value="0.55" />
+                                                    <Setter Property="ToolTip" Value="已获取 · 右键继续追踪" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ContentControl.Style>
+                                    <ContentControl.ContextMenu>
+                                        <ContextMenu>
+                                            <MenuItem Click="OnToggleAcquired">
+                                                <MenuItem.Style>
+                                                    <Style TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}">
+                                                        <Setter Property="Header" Value="标记已获取" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding IsAcquired}" Value="True">
+                                                                <Setter Property="Header" Value="继续追踪" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </MenuItem.Style>
+                                            </MenuItem>
+                                        </ContextMenu>
+                                    </ContentControl.ContextMenu>
                                     <ContentControl.Content>
                                         <MultiBinding Converter="{StaticResource TrackedEquipment}" Mode="OneWay">
                                             <Binding />

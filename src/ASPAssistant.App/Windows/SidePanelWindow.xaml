@@ -67,6 +67,7 @@
                 </DockPanel>
             </Border>
 
+            <DockPanel x:Name="PanelContent">
             <!-- Update notification banner (hidden until a new version is found) -->
             <Border x:Name="UpdateBanner" DockPanel.Dock="Top"
                     Background="{DynamicResource SuccessTintBrush}"
@@ -408,6 +409,7 @@
                     </Border>
                 </Grid>
             </Grid>
+            </DockPanel>
         </DockPanel>
     </Border>
 </Window>
