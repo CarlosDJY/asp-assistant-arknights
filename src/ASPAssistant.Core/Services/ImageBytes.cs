@@ -54,6 +54,15 @@ public static class ImageBytes
         return output.ToArray();
     }
 
+    /// <summary>BMP copy of a frame (ADB captures arrive as PNG); BMP input is returned as is.</summary>
+    public static byte[] ToBmp(byte[] image)
+    {
+        if (image.Length >= 2 && image[0] == (byte)'B' && image[1] == (byte)'M') return image;
+        using var input = new MemoryStream(image);
+        using var bitmap = new Bitmap(input);
+        return Encode(bitmap);
+    }
+
     /// <summary>File extension matching the encoded bytes (for saved debug artifacts).</summary>
     public static string Extension(byte[] image) => image.Length > 1 && image[0] == (byte)'B' && image[1] == (byte)'M' ? ".bmp" : ".png";
 }

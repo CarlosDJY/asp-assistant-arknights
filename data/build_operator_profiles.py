@@ -26,7 +26,7 @@ from pathlib import Path
 
 GAMEDATA_URL = "https://raw.githubusercontent.com/Kengxxiao/ArknightsGameData/master/zh_CN/gamedata/excel/{}.json"
 SEASON = ("act3autochess", "V3_1")
-TABLES = ["activity_table", "character_table", "skill_table", "uniequip_table"]
+TABLES = ["activity_table", "character_table", "skill_table", "uniequip_table", "range_table"]
 
 PROFESSION = {"PIONEER": "先锋", "WARRIOR": "近卫", "SNIPER": "狙击", "SUPPORT": "辅助",
               "CASTER": "术师", "SPECIAL": "特种", "MEDIC": "医疗", "TANK": "重装"}
@@ -148,6 +148,25 @@ def parse_stack(text: str, kind: str, own: list[str], covenant_names: set[str]) 
             "amount": amount, "cap": cap, "perRound": round(per, 2), "temporary": "临时层数" in text and "转化" not in text}
 
 
+def phase_index(status: dict) -> int:
+    return {"PHASE_0": 0, "PHASE_1": 1, "PHASE_2": 2}[status["evolvePhase"]]
+
+
+def attack_range(char: dict, phase: int, index: int | None, level: int, skills: dict, used: set[str]) -> dict:
+    """平时的攻击范围，以及技能期间替换的范围（没有则为 null）。范围 id 记入 used，最后统一导出格子。"""
+    base = char["phases"][min(phase, len(char["phases"]) - 1)].get("rangeId")
+    skill_range = None
+    if index is not None and 0 <= index < len(char.get("skills", [])):
+        sid = char["skills"][index].get("skillId")
+        levels = skills.get(sid, {}).get("levels", []) if sid else []
+        if levels:
+            skill_range = levels[min(level, len(levels)) - 1].get("rangeId")
+    if skill_range == base:
+        skill_range = None
+    used.update(r for r in (base, skill_range) if r)
+    return {"base": base, "skill": skill_range}
+
+
 def stack_info(traits: list[dict], own: list[str], covenant_names: set[str]) -> tuple[dict | None, list[str]]:
     stack, consumes = None, []
     for trait in traits:
@@ -179,6 +198,7 @@ def main() -> None:
     covenant_names = {c["name"] for c in json.loads((DATA_DIR / "covenants.json").read_text(encoding="utf-8-sig"))["covenants"]}
 
     profiles: dict[str, dict] = {}
+    used_ranges: set[str] = set()
     for chess_id, entry in shop.items():
         chess = chess_dict.get(chess_id)
         if not chess or not chess.get("upgradeChessId") or entry.get("isHidden") or "diy" in chess_id:
@@ -188,7 +208,8 @@ def main() -> None:
             continue
         name = char["name"]
         elite = chess_dict.get(chess["upgradeChessId"]) or chess
-        phase = {"PHASE_0": 0, "PHASE_1": 1, "PHASE_2": 2}[elite["status"]["evolvePhase"]]
+        phase = phase_index(elite["status"])
+        normal_phase = phase_index(chess["status"])
         block = char["phases"][min(phase, len(char["phases"]) - 1)]["attributesKeyFrames"][-1]["data"]["blockCnt"]
         profession = PROFESSION.get(char["profession"], char["profession"])
         sub = subprof.get(char["subProfessionId"], char["subProfessionId"])
@@ -209,6 +230,8 @@ def main() -> None:
             "blockCount": block,
             "normalSkill": skill_of(char, entry.get("defaultSkillIndex"), chess["status"]["skillLevel"], skills),
             "eliteSkill": skill_of(char, entry.get("defaultSkillIndex"), elite["status"]["skillLevel"], skills),
+            "normalRange": attack_range(char, normal_phase, entry.get("defaultSkillIndex"), chess["status"]["skillLevel"], skills, used_ranges),
+            "eliteRange": attack_range(char, phase, entry.get("defaultSkillIndex"), elite["status"]["skillLevel"], skills, used_ranges),
             "roles": roles,
             "stack": stack,
             "consumes": consumes,
@@ -221,9 +244,12 @@ def main() -> None:
         print(f"警告：{len(missing)} 名干员没有匹配到游戏数据：{missing}", file=sys.stderr)
     out = {
         "_modificationNotice": "Generated for ASP Assistant Arknights; see NOTICE.",
-        "_notice": "由 build_operator_profiles.py 从 ArknightsGameData 生成；角色标签供规划器使用，可在脚本 OVERRIDES 中手工修正。",
+        "_notice": "由 build_operator_profiles.py 从 ArknightsGameData 生成；角色标签供规划器使用，可在脚本 OVERRIDES 中手工修正；攻击范围见 ranges（不含天赋和模组带来的范围变化）。",
         "season": "/".join(SEASON),
         "operators": dict(sorted(profiles.items())),
+        # 攻击范围格子：[前方格数, 横向格数]，按朝右摆放；朝其他方向时整体旋转
+        "ranges": {rid: sorted([g["col"], g["row"]] for g in tables["range_table"][rid]["grids"])
+                   for rid in sorted(used_ranges) if rid in tables["range_table"]},
     }
     (DATA_DIR / "operator_profiles.json").write_text(json.dumps(out, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"已写入 {len(profiles)} 名干员", file=sys.stderr)

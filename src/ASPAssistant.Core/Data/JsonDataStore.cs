@@ -47,6 +47,18 @@ public class JsonDataStore
         if (wrapper?.Operators is not { Count: > 0 } profiles)
             return;
 
+        var ranges = wrapper.Ranges.ToDictionary(p => p.Key,
+            p => new AttackRange(p.Key, p.Value.Where(c => c.Length == 2).Select(c => (c[0], c[1]))));
+        foreach (var profile in profiles.Values)
+        {
+            foreach (var r in new[] { profile.NormalRange, profile.EliteRange })
+            {
+                if (r is null) continue;
+                r.BaseRange = r.Base is { } b && ranges.TryGetValue(b, out var br) ? br : null;
+                r.SkillRange = r.Skill is { } k && ranges.TryGetValue(k, out var sr) ? sr : null;
+            }
+        }
+
         foreach (var op in operators)
         {
             if (!profiles.TryGetValue(op.Name, out var profile)) continue;
@@ -59,6 +71,7 @@ public class JsonDataStore
     private class OperatorProfileDataFile
     {
         public Dictionary<string, OperatorProfile> Operators { get; set; } = [];
+        public Dictionary<string, int[][]> Ranges { get; set; } = [];
     }
 
     public async Task<List<Strategy>> LoadStrategiesAsync()

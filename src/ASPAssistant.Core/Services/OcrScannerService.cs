@@ -40,6 +40,14 @@ public class OcrScannerService : IDisposable
 
     /// <summary>Optional: reads the terminal level every <see cref="TerminalReadInterval"/> while the shop is visible.</summary>
     public TerminalLevelReader? TerminalReader { get; init; }
+
+    /// <summary>Recognises the preparation board (map + camera) for the deployment overlay; optional.</summary>
+    public BoardRecognizer? BoardRecognizer { get; init; }
+    private readonly BoardMatchStabilizer _board = new();
+
+    /// <summary>The recognised board changed (null: no board on screen).</summary>
+    public event Action<BoardMatch?>? BoardChanged;
+    public BoardMatch? CurrentBoard => _board.Current;
     public Func<GameShopTheme>? ThemeProvider { get; init; }
     public TimeSpan TerminalReadInterval { get; init; } = TimeSpan.FromSeconds(4);
     private readonly TerminalLevelTracker _terminalTracker = new();
@@ -168,9 +176,12 @@ public class OcrScannerService : IDisposable
             if (_pauseBanScreenDetection || _banScreenActive)
             {
                 PublishShopItems([]);
+                ObserveBoard(null);
                 return;
             }
 
+            // MuMu / ADB frames are PNG; the board reader samples raw BMP pixels.
+            ObserveBoard(BoardRecognizer is { } board ? board.Recognize(ImageBytes.ToBmp(screenshot)) : null);
             var rawItems = await _shopReader.ReadAsync(screenshot, imgWidth, imgHeight, _shopNames);
             if (!ReferenceEquals(connection, _getConnection?.Invoke())) return;
             PublishShopItems(rawItems);
@@ -202,6 +213,15 @@ public class OcrScannerService : IDisposable
             _gameState.TerminalLevel = _terminalTracker.Level ?? 0;
             TerminalLevelChanged?.Invoke(_terminalTracker.Level!.Value);
         }
+    }
+
+    private void ObserveBoard(BoardMatch? match)
+    {
+        if (BoardRecognizer is null || !_board.Observe(match)) return;
+        var current = _board.Current;
+        AppLogger.Info("Board", current is null ? "Board lost"
+            : $"Board {current.Map.Id} ({current.Camera}) score={current.Score:F1} margin={current.Margin:F1}");
+        BoardChanged?.Invoke(current);
     }
 
     private void PublishShopItems(IReadOnlyList<ShopItem> items)
