@@ -19,16 +19,22 @@
 
 ## 截图
 
-以下为测试数据生成的界面截图，不含个人游戏记录。
+以下截图不含账号信息；三套界面主题（卫戍协议终端、乌萨斯齐心团、“全能的”可露希尔）均有展示。
+
+| 干员筛选 | 装备筛选 | 追踪 · 购买清单 |
+| :---: | :---: | :---: |
+| ![干员页，终端主题](docs/images/operators.png) | ![装备页按等阶和功能筛选](docs/images/equipment.png) | ![追踪页：大成与过渡干员、目标盟约](docs/images/tracking.png) |
+
+| 追踪 · 站位规划 | 我的阵容 | 阵容规划 · 目标 | 阵容规划 · 结果 |
+| :---: | :---: | :---: | :---: |
+| ![站位页：识别地图后给出格子和朝向](docs/images/deploy.png) | ![阵容列表，乌萨斯主题](docs/images/lineups.png) | ![选择盟约目标与本局策略，可露希尔主题](docs/images/planner-targets.png) | ![按人数和转职次数列出候选阵容](docs/images/planner-results.png) |
 
 <div align="center">
-  <img src="docs/images/operators-dark.png" width="300" alt="深色主题干员筛选"/>
-  <img src="docs/images/operators-light.png" width="300" alt="浅色主题干员筛选"/>
+  <img src="docs/images/lineup-editor.png" width="820" alt="阵容编辑器：分阶段编辑干员、装备、转职与策略"/>
+  <p>阵容编辑器：按前期 / 中期 / 后期编辑干员、装备与转职，右侧实时统计盟约</p>
+  <img src="docs/images/operator-details.png" width="300" alt="干员悬停详情"/>
+  <p>干员悬停详情：同时显示普通与精锐</p>
 </div>
-
-| 干员悬停详情 | 装备数值对比 | 多队伍追踪 |
-| :---: | :---: | :---: |
-| ![普通与精锐详情](docs/images/operator-details.png) | ![装备界面](docs/images/equipment-light.png) | ![追踪界面](docs/images/tracking-light.png) |
 
 ## 功能简介
 
