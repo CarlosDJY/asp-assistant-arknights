@@ -864,7 +864,8 @@
     <DockPanel>
         <!-- Step switch + run info -->
         <StackPanel DockPanel.Dock="Top" Margin="10,10,10,8">
-            <Border Background="{DynamicResource TitleBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+            <!-- Not the title-bar colour: it is near-black in the Ursus / Closure day themes, where the text is dark -->
+            <Border Background="{DynamicResource SectionBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
                     BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}" Padding="3">
                 <UniformGrid Columns="2">
                     <Button x:Name="GoalTabButton" Margin="0,0,2,0"
@@ -986,7 +987,7 @@
         </StackPanel>
 
         <!-- Footer -->
-        <Border DockPanel.Dock="Bottom" Background="{DynamicResource TitleBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+        <Border DockPanel.Dock="Bottom" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
                 BorderThickness="0,1,0,0" Padding="10,8,10,9">
             <DockPanel>
                 <Button DockPanel.Dock="Right" Style="{StaticResource PlannerPrimaryButton}" Height="30" Padding="14,0" FontSize="12"
