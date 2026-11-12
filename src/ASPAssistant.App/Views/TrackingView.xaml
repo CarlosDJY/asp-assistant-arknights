@@ -1,4 +1,4 @@
-<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
+﻿<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
 <UserControl x:Class="ASPAssistant.App.Views.TrackingView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -102,7 +102,24 @@
         </ItemsPanelTemplate>
     </UserControl.Resources>
 
-    <Grid>
+    <DockPanel>
+        <!-- 购买清单 / 站位 -->
+        <ListBox x:Name="TrackingPageList" DockPanel.Dock="Top" Margin="10,10,10,0" Style="{StaticResource SegmentedListBox}"
+                 SelectionChanged="OnTrackingPageChanged" SelectedIndex="0">
+            <ListBox.ItemsPanel>
+                <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+            </ListBox.ItemsPanel>
+            <ListBox.ItemContainerStyle>
+                <Style TargetType="ListBoxItem" BasedOn="{StaticResource SegmentedItem}">
+                    <Setter Property="MinHeight" Value="26" />
+                    <Setter Property="FontSize" Value="12" />
+                </Style>
+            </ListBox.ItemContainerStyle>
+            <ListBoxItem Content="购买清单" />
+            <ListBoxItem Content="站位" />
+        </ListBox>
+        <views:DeployView x:Name="DeployPage" Visibility="Collapsed" />
+    <Grid x:Name="ShoppingPage">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel Margin="10,10,5,8">
                 <!-- Terminal level card -->
@@ -254,4 +271,5 @@
         <controls:EmptyState x:Name="EmptyState" Visibility="Collapsed" Icon="{StaticResource IconTracking}" Title="还没有追踪目标"
                              Hint="在干员、装备页点 ☆，或在阵容、规划页点“追踪”，商店刷出目标时就会提示。" />
     </Grid>
+    </DockPanel>
 </UserControl>

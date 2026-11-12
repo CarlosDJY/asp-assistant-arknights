@@ -770,6 +770,29 @@ public partial class SidePanelWindow : Window
         await SavePreferenceAsync(() => _settingsManager.SaveGameShopThemeAsync(GameTheme), GameThemeSelector);
     }
 
+    /// <summary>Raised when the user turns the in-game board overlay on or off.</summary>
+    public event Action<bool>? BoardOverlayToggled;
+
+    public void InitBoardOverlay(bool enabled)
+    {
+        BoardOverlayToggle.IsChecked = enabled;
+        BoardOverlayToggle.Checked += OnBoardOverlayChanged;
+        BoardOverlayToggle.Unchecked += OnBoardOverlayChanged;
+    }
+
+    /// <summary>Shows what the board recognizer currently sees under the overlay toggle.</summary>
+    public void SetBoardStatus(string? mapName, bool shopOpen) =>
+        BoardStatusText.Text = mapName is null
+            ? "站位页开启“游戏内显示”时，同时标出地面 / 特殊地面 / 高台和敌人路线"
+            : $"当前地图：{mapName} · 商店{(shopOpen ? "展开" : "收起")}";
+
+    private async void OnBoardOverlayChanged(object sender, RoutedEventArgs e)
+    {
+        bool enabled = BoardOverlayToggle.IsChecked == true;
+        BoardOverlayToggled?.Invoke(enabled);
+        await SavePreferenceAsync(() => _settingsManager.SaveShowBoardOverlayAsync(enabled), BoardOverlayToggle);
+    }
+
     private async void OnMultipleLineupsChanged(object sender, RoutedEventArgs e)
     {
         TrackingVm.TrackMultipleLineups = MultiLineupTrackingToggle.IsChecked == true;

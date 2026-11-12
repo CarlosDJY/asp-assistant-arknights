@@ -1,4 +1,4 @@
-<!-- Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE. -->
+﻿<!-- Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE. -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -23,6 +23,8 @@
     <Resource Include="..\..\data\icons\aspa_logo.png" Link="Resources\aspa_logo.png" />
     <!-- Number fonts of the redesign themes (SIL Open Font License, see Resources/Fonts/OFL-*.txt) -->
     <Resource Include="Resources\Fonts\*.ttf" />
+    <!-- Map thumbnails for the placement page's map picker (cropped in-game screenshots) -->
+    <Resource Include="Resources\MapThumbs\*.jpg" />
     <Content Include="Resources\Fonts\OFL-*.txt" Link="licenses\fonts\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

@@ -188,6 +188,35 @@ public class SettingsManager
             JsonSerializer.Serialize(enabled));
     }
 
+    /// <summary>Draw deployable cells and enemy routes over the game board (on by default).</summary>
+    public async Task<bool> LoadShowBoardOverlayAsync()
+    {
+        var path = Path.Combine(_settingsDir, "board-overlay.json");
+        if (!File.Exists(path)) return true;
+        try { return JsonSerializer.Deserialize<bool>(await File.ReadAllTextAsync(path)); }
+        catch (JsonException) { return true; }
+    }
+
+    public async Task SaveShowBoardOverlayAsync(bool enabled)
+    {
+        Directory.CreateDirectory(_settingsDir);
+        await File.WriteAllTextAsync(Path.Combine(_settingsDir, "board-overlay.json"), JsonSerializer.Serialize(enabled));
+    }
+
+    public async Task<DeployPoolState> LoadDeployPoolAsync()
+    {
+        var path = Path.Combine(_settingsDir, "deploy-pool.json");
+        if (!File.Exists(path)) return new DeployPoolState();
+        try { return JsonSerializer.Deserialize<DeployPoolState>(await File.ReadAllTextAsync(path), JsonOptions) ?? new(); }
+        catch (JsonException) { return new DeployPoolState(); }
+    }
+
+    public async Task SaveDeployPoolAsync(DeployPoolState state)
+    {
+        Directory.CreateDirectory(_settingsDir);
+        await File.WriteAllTextAsync(Path.Combine(_settingsDir, "deploy-pool.json"), JsonSerializer.Serialize(state, JsonOptions));
+    }
+
     public async Task<SidePanelPositionSettings> LoadSidePanelPositionAsync()
     {
         string json;

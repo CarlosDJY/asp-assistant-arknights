@@ -12,6 +12,25 @@ namespace ASPAssistant.App;
 
 public partial class App : Application
 {
+    /// <summary>
+    /// UI text font for every window, tooltip and menu: Noto Sans SC (bundled, subset to GB2312 plus the app's own
+    /// text, SIL OFL), falling back to the system fonts for anything outside the subset. Number fonts stay per theme.
+    /// </summary>
+    static App()
+    {
+        var ui = new System.Windows.Media.FontFamily(
+            "pack://application:,,,/ASPAssistant.App;component/Resources/Fonts/#Noto Sans SC, Microsoft YaHei UI, Segoe UI");
+        foreach (var type in new[] { typeof(Window), typeof(System.Windows.Controls.ToolTip), typeof(System.Windows.Controls.ContextMenu) })
+        {
+            try
+            {
+                System.Windows.Documents.TextElement.FontFamilyProperty.OverrideMetadata(type,
+                    new FrameworkPropertyMetadata(ui, FrameworkPropertyMetadataOptions.Inherits));
+            }
+            catch (ArgumentException) { /* this type already overrides it; keep the system font there */ }
+        }
+    }
+
     private WindowTrackerService? _windowTracker;
     private OcrScannerService? _ocrScanner;
     private BanScreenAnalyzer? _banScreenAnalyzer;
@@ -267,6 +286,7 @@ public partial class App : Application
             $"Covenant names: core={coreCovenantNames.Count} additional={additionalCovenantNames.Count}");
 
         var enemyRecognizer = new EnemyRecognizer(ocrEngine, garrisonMode.OcrStrategy, bossDataService);
+        var boardData = await Core.Data.GarrisonBoardStore.LoadAsync(dataDir);
         _ocrScanner = new OcrScannerService(
             captureService.CaptureScreen, garrisonMode.OcrStrategy, shopReader, ocrEngine, gameState, shopNames,
             intervalMs: 500,
@@ -274,6 +294,7 @@ public partial class App : Application
         {
             TerminalReader = new TerminalLevelReader(ocrEngine),
             ThemeProvider = () => shopReader.Theme,
+            BoardRecognizer = boardData is null ? null : new BoardRecognizer(boardData),
         };
 
         _windowTracker = new WindowTrackerService(
@@ -451,6 +472,37 @@ public partial class App : Application
             });
         };
 
+
+        // Board recognition → deployment overlay + status under the settings toggle.
+        var showBoard = await _settingsManager.LoadShowBoardOverlayAsync();
+        sidePanel.InitBoardOverlay(showBoard);
+        // 追踪 · 站位: placement planning for the recognised map; its plan is drawn on the same board overlay.
+        var deployState = await _settingsManager.LoadDeployPoolAsync();
+        var deploy = sidePanel.TrackingView.DeployPage;
+        deploy.Initialize(operators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First()), covenantInfos,
+            boardData, trackingVm, _settingsManager, deployState, deployState.ShowInGame);
+        void ApplyBoard(BoardMatch? match)
+        {
+            sidePanel.SetBoardStatus(match?.Map.Name, match?.Camera == Core.Models.BoardCamera.Expanded);
+            deploy.SetRecognizedBoard(match);
+            // 站位页的“游戏内显示”是总开关；设置里的“游戏内显示部署格”只管要不要同时画格子和路线。
+            bool draw = deploy.ShowInGame;
+            overlay.UpdateBoard(draw ? match?.Map : null,
+                draw && match is not null ? boardData?.Cameras[match.Camera] : null, showCells: false);   // no grid, only the plan
+        }
+        deploy.PlanChanged += plan => overlay.UpdatePlacements(plan);
+        deploy.ShowInGameChanged += enabled =>
+        {
+            deployState.ShowInGame = enabled;
+            _ = _settingsManager.SaveDeployPoolAsync(deployState);
+            ApplyBoard(_ocrScanner.CurrentBoard);
+        };
+        _ocrScanner.BoardChanged += match => Dispatcher.Invoke(() => ApplyBoard(match));
+        sidePanel.BoardOverlayToggled += enabled =>
+        {
+            showBoard = enabled;
+            ApplyBoard(_ocrScanner.CurrentBoard);
+        };
 
         // Enemy recognition result → update enemy tab (include boss + enemy-type data).
         void UpdateEnemyPage(Core.Models.EnemyResult result)

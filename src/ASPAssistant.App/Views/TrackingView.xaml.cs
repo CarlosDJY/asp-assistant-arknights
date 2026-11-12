@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+﻿// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
@@ -147,6 +147,16 @@ public partial class TrackingView : UserControl
         if (_vm is null || (sender as FrameworkElement)?.DataContext is not TrackedCell cell) return;
         foreach (var t in cell.Transformations) _vm.ClearPlannedTransformation(cell.Name, t.EquipmentName, EquipmentRules);
         if (cell.LegacyCovenant.Length > 0) _vm.ClearPlannedTransformation(cell.Name, "", EquipmentRules);
+    }
+
+    /// <summary>购买清单 / 站位 segment.</summary>
+    private void OnTrackingPageChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (DeployPage is null || ShoppingPage is null) return;
+        bool deploy = TrackingPageList.SelectedIndex == 1;
+        DeployPage.Visibility = deploy ? Visibility.Visible : Visibility.Collapsed;
+        ShoppingPage.Visibility = deploy ? Visibility.Collapsed : Visibility.Visible;
+        if (IsLoaded) ASPAssistant.App.Windows.PageTransition.SlideIn(deploy ? DeployPage : ShoppingPage, fromX: deploy ? 14 : -14);
     }
 
     public void SetEquipment(IReadOnlyList<Equipment> equipment)

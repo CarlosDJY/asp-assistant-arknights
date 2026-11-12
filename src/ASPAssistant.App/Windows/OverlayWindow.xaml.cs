@@ -51,6 +51,7 @@ public partial class OverlayWindow : Window
         SizeChanged += (_, _) =>
         {
             UpdateShopItems(_shopItems);
+            DrawBoard();
             foreach (var layer in new[] { _banInstructionLayer, _banInputBlockLayer, _banTimedMessageLayer })
             {
                 if (layer is null) continue;
@@ -66,6 +67,183 @@ public partial class OverlayWindow : Window
         var exStyle = User32.GetWindowLong(hwnd, User32.GWL_EXSTYLE);
         User32.SetWindowLong(hwnd, User32.GWL_EXSTYLE,
             exStyle | User32.WS_EX_TRANSPARENT | User32.WS_EX_TOOLWINDOW | User32.WS_EX_NOACTIVATE);
+    }
+
+    // ── Deployment board ─────────────────────────────────────────────────────
+
+    private readonly Canvas _boardLayer = new() { IsHitTestVisible = false };
+    private (GarrisonMap Map, BoardProjection Projection)? _board;
+
+    private static readonly SolidColorBrush GroundBrush = Freeze(new SolidColorBrush(Color.FromArgb(0xD0, 0x2E, 0xCC, 0x71)));
+    private static readonly SolidColorBrush SpecialBrush = Freeze(new SolidColorBrush(Color.FromArgb(0xD0, 0x2E, 0xD1, 0xB4)));
+    private static readonly SolidColorBrush HighBrush = Freeze(new SolidColorBrush(Color.FromArgb(0xE0, 0x4C, 0x8D, 0xFF)));
+    private static readonly SolidColorBrush RouteBrush = Freeze(new SolidColorBrush(Color.FromArgb(0xC8, 0xFF, 0x5A, 0x3C)));
+
+    /// <summary>
+    /// Shows the recognised board's deployable cells (outline colour = ground / special / high ground) and the
+    /// enemy routes; null hides it. Only outlines, a corner glyph and route lines through cell centres are drawn,
+    /// so the colour samples BoardRecognizer reads from the captured screen stay untouched.
+    /// </summary>
+    public void UpdateBoard(GarrisonMap? map, BoardProjection? projection, bool showCells = true)
+    {
+        _board = map is null || projection is null ? null : (map, projection);
+        _showCells = showCells;
+        DrawBoard();
+    }
+
+    private bool _showCells = true;
+    private PlacementPlan? _placements;
+
+    /// <summary>
+    /// Planned positions to draw on the recognised board (null hides them). Drawn only when the plan is for the
+    /// map on screen. Labels sit across the cell centre and the facing mark on the edge, clear of the sample points.
+    /// </summary>
+    public void UpdatePlacements(PlacementPlan? plan)
+    {
+        _placements = plan;
+        DrawBoard();
+    }
+
+    private static readonly SolidColorBrush LabelBackground = Freeze(new SolidColorBrush(Color.FromArgb(0xD9, 0x0A, 0x0C, 0x10)));
+    private static readonly SolidColorBrush PlaceDamageBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xFF, 0x5A, 0x5A)));
+    private static readonly SolidColorBrush PlaceTankBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x4C, 0x8D, 0xFF)));
+    private static readonly SolidColorBrush PlaceSupportBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x2E, 0xCC, 0x71)));
+    private static readonly SolidColorBrush PlaceStackerBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xC7, 0x7D, 0xFF)));
+
+    private void DrawPlacements(GarrisonMap map, Func<double, double, Point> at, double w)
+    {
+        if (_placements is not { } plan || plan.Map.Id != map.Id) return;
+        foreach (var p in plan.Placed)
+        {
+            var brush = p.Role switch
+            {
+                PlacementRole.Damage => PlaceDamageBrush,
+                PlacementRole.Tank => PlaceTankBrush,
+                PlacementRole.Support => PlaceSupportBrush,
+                _ => PlaceStackerBrush,
+            };
+            const double inset = 0.08;
+            int c = p.Cell.Col, r = p.Cell.Row;
+            // Cell frame in the role colour (no fill, so the board colours the recognizer samples stay visible).
+            _boardLayer.Children.Add(new Polygon
+            {
+                Points = [at(c + inset, r + inset), at(c + 1 - inset, r + inset), at(c + 1 - inset, r + 1 - inset), at(c + inset, r + 1 - inset)],
+                Stroke = brush,
+                StrokeThickness = 3,
+                IsHitTestVisible = false,
+            });
+            // Facing: a triangle pointing out of the edge the operator faces.
+            var (fx, fy) = PlacementCells.Vector(p.Facing);
+            var tip = at(c + 0.5 + fx * 0.46, r + 0.5 + fy * 0.46);
+            var b1 = at(c + 0.5 + fx * 0.3 - fy * 0.13, r + 0.5 + fy * 0.3 - fx * 0.13);
+            var b2 = at(c + 0.5 + fx * 0.3 + fy * 0.13, r + 0.5 + fy * 0.3 + fx * 0.13);
+            _boardLayer.Children.Add(new Polygon { Points = [tip, b1, b2], Fill = brush, Stroke = Brushes.Black, StrokeThickness = 1, IsHitTestVisible = false });
+            // Name tag near the top of the cell: dark plate with a role-colour border.
+            var tag = new Border
+            {
+                Background = LabelBackground,
+                BorderBrush = brush,
+                BorderThickness = new Thickness(1.5),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6, 1, 6, 1),
+                IsHitTestVisible = false,
+                Child = new TextBlock
+                {
+                    Text = p.Name,
+                    Foreground = Brushes.White,
+                    FontSize = Math.Clamp(w / 92, 10, 16),
+                    FontWeight = FontWeights.Bold,
+                },
+            };
+            tag.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            var anchor = at(c + 0.5, r + 0.16);
+            Canvas.SetLeft(tag, anchor.X - tag.DesiredSize.Width / 2);
+            Canvas.SetTop(tag, anchor.Y - tag.DesiredSize.Height / 2);
+            _boardLayer.Children.Add(tag);
+        }
+    }
+
+    private void DrawBoard()
+    {
+        if (!OverlayCanvas.Children.Contains(_boardLayer))
+            OverlayCanvas.Children.Insert(0, _boardLayer);
+        _boardLayer.Children.Clear();
+        if (_board is not { } board || ActualWidth <= 0 || ActualHeight <= 0) return;
+        var (map, projection) = board;
+        double w = ActualWidth, h = ActualHeight;
+        Point At(double col, double row)
+        {
+            var (x, y) = projection.Project(col, row);
+            return new Point(x * w, y * h);
+        }
+
+        foreach (var (cell, type) in _showCells ? map.AllCells() : Enumerable.Empty<(BoardCell Cell, BoardCellType Type)>())
+        {
+            var brush = type switch
+            {
+                BoardCellType.Ground => GroundBrush,
+                BoardCellType.Special => SpecialBrush,
+                BoardCellType.High => HighBrush,
+                _ => null,
+            };
+            if (brush is null) continue;
+            const double inset = 0.06;
+            var outline = new Polygon
+            {
+                Points = [At(cell.Col + inset, cell.Row + inset), At(cell.Col + 1 - inset, cell.Row + inset),
+                          At(cell.Col + 1 - inset, cell.Row + 1 - inset), At(cell.Col + inset, cell.Row + 1 - inset)],
+                Stroke = brush,
+                StrokeThickness = type == BoardCellType.High ? 2.2 : 1.6,
+                StrokeDashArray = type == BoardCellType.Special ? [3, 2] : null,
+                IsHitTestVisible = false,
+            };
+            _boardLayer.Children.Add(outline);
+            var glyph = new TextBlock
+            {
+                Text = type switch { BoardCellType.High => "高", BoardCellType.Special => "特", _ => "地" },
+                Foreground = brush,
+                FontSize = Math.Clamp(w / 110, 9, 15),
+                FontWeight = FontWeights.Bold,
+                IsHitTestVisible = false,
+                Effect = new System.Windows.Media.Effects.DropShadowEffect { Color = Colors.Black, BlurRadius = 3, ShadowDepth = 0, Opacity = 0.9 },
+            };
+            var p = At(cell.Col + 0.12, cell.Row + 0.1);
+            Canvas.SetLeft(glyph, p.X);
+            Canvas.SetTop(glyph, p.Y);
+            _boardLayer.Children.Add(glyph);
+        }
+
+        foreach (var route in _showCells ? map.Routes : Array.Empty<IReadOnlyList<BoardCell>>())
+        {
+            if (route.Count < 2) continue;
+            var line = new Polyline
+            {
+                Points = [.. route.Select(c => At(c.Col + 0.5, c.Row + 0.5))],
+                Stroke = RouteBrush,
+                StrokeThickness = 2.4,
+                StrokeDashArray = [4, 2],
+                StrokeLineJoin = PenLineJoin.Round,
+                IsHitTestVisible = false,
+            };
+            _boardLayer.Children.Add(line);
+            // Arrow head at the defense point.
+            var end = At(route[^1].Col + 0.5, route[^1].Row + 0.5);
+            var prev = At(route[^2].Col + 0.5, route[^2].Row + 0.5);
+            var dir = end - prev;
+            if (dir.Length > 0)
+            {
+                dir.Normalize();
+                var normal = new Vector(-dir.Y, dir.X);
+                double size = Math.Clamp(w / 140, 6, 12);
+                _boardLayer.Children.Add(new Polygon
+                {
+                    Points = [end, end - dir * size * 1.6 + normal * size, end - dir * size * 1.6 - normal * size],
+                    Fill = RouteBrush,
+                    IsHitTestVisible = false,
+                });
+            }
+        }
+        DrawPlacements(map, At, w);
     }
 
     public void UpdatePosition(RECT gameClientRect)
