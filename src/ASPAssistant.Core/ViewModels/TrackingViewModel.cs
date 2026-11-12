@@ -101,6 +101,7 @@ public partial class TrackingViewModel : ObservableObject
     private static TrackingEntry Copy(TrackingEntry e, bool expired) => new()
     {
         Name = e.Name, Type = e.Type, TransformedCovenant = e.TransformedCovenant, Equipments = [.. e.Equipments],
+        CandidateEquipments = [.. e.CandidateEquipments.Select(c => c.Clone())], EquipmentKind = e.EquipmentKind,
         IsElite = e.IsElite, IsManual = e.IsManual, Role = e.Role, Stages = e.Stages, ExpiresAt = e.ExpiresAt, IsExpired = expired,
         IsAcquired = e.IsAcquired
     };
@@ -119,11 +120,13 @@ public partial class TrackingViewModel : ObservableObject
                 var entry = new TrackingEntry
                 {
                     Name = slot.OperatorName, Type = TrackingType.Operator,
-                    TransformedCovenant = slot.TransformedCovenant, Equipments = [.. slot.Equipments], IsElite = slot.IsElite
+                    TransformedCovenant = slot.TransformedCovenant, Equipments = [.. slot.Equipments], IsElite = slot.IsElite,
+                    CandidateEquipments = [.. slot.CandidateEquipments.Where(c => !slot.Equipments.Contains(c.Name)).Select(c => c.Clone())]
                 };
                 if (existing is null) TrackedOperators.Add(entry);
                 else if (existing.IsAcquired || existing.TransformedCovenant != slot.TransformedCovenant || existing.IsElite != slot.IsElite
-                    || !existing.Equipments.SequenceEqual(slot.Equipments) || existing.Role != TrackingRole.Final)
+                    || !existing.Equipments.SequenceEqual(slot.Equipments) || existing.Role != TrackingRole.Final
+                    || !SameCandidates(existing.CandidateEquipments, entry.CandidateEquipments))
                     TrackedOperators[TrackedOperators.IndexOf(existing)] = entry;
             }
         }
@@ -256,13 +259,24 @@ public partial class TrackingViewModel : ObservableObject
 
     private void RemoveEquipmentRequirement(string name)
     {
-        foreach (var entry in TrackedOperators.Where(e => e.Equipments.Contains(name)).ToList())
+        foreach (var entry in TrackedOperators.Where(e => e.Equipments.Contains(name) || e.CandidateEquipments.Any(c => c.Name == name)).ToList())
         {
             var without = Copy(entry, entry.IsExpired);
             without.Equipments = entry.Equipments.Where(e => e != name).ToList();
+            without.CandidateEquipments.RemoveAll(c => c.Name == name);
             TrackedOperators[TrackedOperators.IndexOf(entry)] = without;
         }
     }
+
+    private static bool SameCandidates(IReadOnlyList<CandidateEquipment> a, IReadOnlyList<CandidateEquipment> b)
+        => a.Count == b.Count && a.Zip(b).All(p => p.First.Name == p.Second.Name && p.First.IsPriority == p.Second.IsPriority);
+
+    /// <summary>Operators who want <paramref name="equipment"/>, and how (for the tracking list's subtitle).</summary>
+    public IReadOnlyList<(string Operator, TrackedEquipmentKind Kind)> EquipmentWanters(string equipment)
+        => [.. TrackedOperators.Where(e => !e.IsAcquired).SelectMany(e => e.Equipments.Contains(equipment)
+                ? [(e.Name, TrackedEquipmentKind.Planned)]
+                : e.CandidateEquipments.Where(c => c.Name == equipment)
+                    .Select(c => (e.Name, c.IsPriority ? TrackedEquipmentKind.Priority : TrackedEquipmentKind.Candidate)))];
 
     public void ClearAllTracking()
     {
@@ -286,14 +300,37 @@ public partial class TrackingViewModel : ObservableObject
         RefreshEquipmentRequirements();
     }
 
+    /// <summary>
+    /// Equipment entries follow the tracked operators: slot equipment is 装备, candidates are 优先 / 候选, and the
+    /// strongest reason wins when several operators want the same piece. Manual and acquired entries are left alone.
+    /// </summary>
     private void RefreshEquipmentRequirements()
     {
-        var required = TrackedOperators.Where(e => !e.IsAcquired).SelectMany(e => e.Equipments).ToHashSet();
-        foreach (var entry in TrackedEquipment.Where(e => !e.IsManual && !e.IsAcquired && !required.Contains(e.Name)).ToList())
+        var required = new Dictionary<string, TrackedEquipmentKind>(StringComparer.Ordinal);
+        void Want(string name, TrackedEquipmentKind kind)
+        {
+            if (!required.TryGetValue(name, out var had) || kind < had) required[name] = kind;
+        }
+        foreach (var op in TrackedOperators.Where(e => !e.IsAcquired))
+        {
+            foreach (var name in op.Equipments) Want(name, TrackedEquipmentKind.Planned);
+            foreach (var c in op.CandidateEquipments)
+                Want(c.Name, c.IsPriority ? TrackedEquipmentKind.Priority : TrackedEquipmentKind.Candidate);
+        }
+        foreach (var entry in TrackedEquipment.Where(e => !e.IsManual && !e.IsAcquired && !required.ContainsKey(e.Name)).ToList())
             TrackedEquipment.Remove(entry);
-        foreach (var name in required)
-            if (!TrackedEquipment.Any(e => e.Name == name))
-                TrackedEquipment.Add(new TrackingEntry { Name = name, Type = TrackingType.Equipment, IsManual = false });
+        foreach (var (name, kind) in required)
+        {
+            var existing = TrackedEquipment.FirstOrDefault(e => e.Name == name);
+            if (existing is null)
+                TrackedEquipment.Add(new TrackingEntry { Name = name, Type = TrackingType.Equipment, IsManual = false, EquipmentKind = kind });
+            else if (!existing.IsManual && existing.EquipmentKind != kind)
+            {
+                var updated = Copy(existing, existing.IsExpired);
+                updated.EquipmentKind = kind;
+                TrackedEquipment[TrackedEquipment.IndexOf(existing)] = updated;
+            }
+        }
     }
 
     public bool IsTracked(string name)

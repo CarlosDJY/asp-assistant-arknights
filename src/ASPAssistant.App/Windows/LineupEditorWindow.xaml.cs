@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -210,6 +210,7 @@ public partial class LineupEditorWindow : Window
         row.Children.Add(tr);
         stack.Children.Add(row);
         if (!string.IsNullOrEmpty(slot.TransformedCovenant)) stack.Children.Add(LegacyButton(slotIndex, slot));
+        stack.Children.Add(CandidateRow(slotIndex, slot, labelWidth: 0));
 
         var tags = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
         foreach (var tag in Enum.GetValues<LineupTag>().Where(t => t != LineupTag.阵容核心))
@@ -392,9 +393,73 @@ public partial class LineupEditorWindow : Window
         for (var t = 0; t < LineupEquipmentService.VisibleTransformationSlots(slot); t++)
             trTiles.Children.Add(TransformTile(slotIndex, slot, t, transformations));
         stack.Children.Add(TileRow($"转职 {transformations.Count}/{capacity - 1}", trTiles, top: 6));
+        stack.Children.Add(CandidateRow(slotIndex, slot, labelWidth: 64));
         dock.Children.Add(stack);
         card.Child = dock;
         return card;
+    }
+
+    /// <summary>
+    /// 候选 row: unlimited candidate equipment (dashed = 候选, gold ★ = 优先). Click a chip or ＋ to open the picker;
+    /// right-click a chip for 设为优先 / 移到装备格 / 移除.
+    /// </summary>
+    private UIElement CandidateRow(int slotIndex, LineupSlot slot, double labelWidth)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 7, 0, 0) };
+        var label = new TextBlock { Text = "候选", FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 4, 8, 0),
+            VerticalAlignment = VerticalAlignment.Top, ToolTip = "候选装备：有了也行，不参与转职和盟约计算；追踪阵容时一起追踪" };
+        if (labelWidth > 0) label.Width = labelWidth;
+        label.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        DockPanel.SetDock(label, Dock.Left);
+        row.Children.Add(label);
+        var chips = new WrapPanel();
+        foreach (var candidate in slot.CandidateEquipments)
+        {
+            var name = candidate.Name;
+            var icon = new Controls.Avatar { Width = 14, Height = 14, Text = name, Margin = new Thickness(0, 0, 4, 0),
+                Source = _vm.AllEquipment.FirstOrDefault(e => e.Name == name)?.IconPath };
+            var content = new StackPanel { Orientation = Orientation.Horizontal };
+            if (candidate.IsPriority) content.Children.Add(new TextBlock { Text = "★", Margin = new Thickness(0, 0, 3, 0), VerticalAlignment = VerticalAlignment.Center });
+            content.Children.Add(icon);
+            content.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center });
+            var chip = new Button
+            {
+                Content = content, Style = (Style)FindResource("CandidateChip"), Tag = candidate.IsPriority ? "pri" : null,
+                ToolTip = candidate.IsPriority ? $"优先：{name}（右键更多）" : $"候选：{name}（右键更多）"
+            };
+            chip.Click += (_, _) => PickCandidates(slotIndex);
+            var menu = new ContextMenu();
+            var priority = new MenuItem { Header = candidate.IsPriority ? "取消优先" : "设为优先" };
+            priority.Click += (_, _) => { _vm.ToggleCandidatePriority(slotIndex, name); RefreshEditor(); };
+            var move = new MenuItem { Header = "移到装备格", IsEnabled = slot.Equipments.Count < LineupEquipmentService.Capacity(slot) };
+            move.Click += (_, _) => { _vm.MoveCandidateToSlot(slotIndex, name); RefreshEditor(); };
+            var remove = new MenuItem { Header = "移除" };
+            remove.Click += (_, _) => { _vm.RemoveCandidate(slotIndex, name); RefreshEditor(); };
+            menu.Items.Add(priority);
+            menu.Items.Add(move);
+            menu.Items.Add(remove);
+            chip.ContextMenu = menu;
+            chips.Children.Add(chip);
+        }
+        var add = new Button
+        {
+            Content = slot.CandidateEquipments.Count == 0 ? "＋ 添加候选装备" : "＋ 候选", Style = (Style)FindResource("CandidateChip"),
+            Tag = "add", ToolTip = "选择候选装备，可以一次选多件"
+        };
+        add.Click += (_, _) => PickCandidates(slotIndex);
+        chips.Children.Add(add);
+        row.Children.Add(chips);
+        return row;
+    }
+
+    private void PickCandidates(int slotIndex)
+    {
+        var slot = _vm.Slots[slotIndex];
+        if (string.IsNullOrEmpty(slot.OperatorName)) return;
+        var dlg = new SimplePickerDialog(_vm.AllEquipment, slot.OperatorName, slot.CandidateEquipments, slot.Equipments) { Owner = this };
+        if (dlg.ShowDialog() != true || dlg.Candidates is null) return;
+        _vm.SetSlotCandidates(slotIndex, dlg.Candidates);
+        RefreshEditor();
     }
 
     private DockPanel TileRow(string label, UIElement tiles, double top)

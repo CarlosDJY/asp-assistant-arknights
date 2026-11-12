@@ -1,4 +1,4 @@
-<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
+<!-- Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE. -->
 <Window x:Class="ASPAssistant.App.Windows.LineupEditorWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -152,6 +152,38 @@
                                 <Setter TargetName="bg" Property="BorderBrush" Value="Transparent" />
                                 <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
                                 <Setter Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Candidate equipment chip: Tag="pri" for 优先, otherwise 候选; Tag="add" for the ＋ chip -->
+        <Style x:Key="CandidateChip" TargetType="Button" BasedOn="{StaticResource ClickableButtonBase}">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,0,4,4" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <Rectangle x:Name="frame" RadiusX="{DynamicResource RowRadiusValue}" RadiusY="{DynamicResource RowRadiusValue}"
+                                       StrokeThickness="1" StrokeDashArray="3 2" Stroke="{DynamicResource BorderBrush}" Fill="Transparent" />
+                            <ContentPresenter Margin="5,3,7,3" VerticalAlignment="Center" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource AccentBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="pri">
+                                <Setter TargetName="frame" Property="Fill" Value="{DynamicResource EliteTintBrush}" />
+                                <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource EliteBrush}" />
+                                <Setter TargetName="frame" Property="StrokeDashArray" Value="{x:Null}" />
+                                <Setter Property="Foreground" Value="{DynamicResource EliteBrush}" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="add">
+                                <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>

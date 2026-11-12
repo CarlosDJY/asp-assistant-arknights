@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ASPAssistant.Core.Models;
@@ -247,6 +247,7 @@ public partial class LineupEditorViewModel : ObservableObject
             if (slot.Equipments.Count >= LineupEquipmentService.Capacity(slot))
                 throw new InvalidOperationException("装备位已满，请选择需要替换的装备");
             slot.Equipments.Add(equipName);
+            slot.CandidateEquipments.RemoveAll(c => c.Name == equipName);
         }
         slot.CoreEquipments.RemoveAll(name => !slot.Equipments.Contains(name));
         Slots[slotIndex] = slot;
@@ -269,8 +270,43 @@ public partial class LineupEditorViewModel : ObservableObject
         slot.CoreEquipments.RemoveAll(name => !slot.Equipments.Contains(name) || name == equipmentName);
         if (equipmentName.Length > 0 && isCore)
             slot.CoreEquipments.Add(equipmentName);
+        slot.CandidateEquipments.RemoveAll(c => slot.Equipments.Contains(c.Name));
         Slots[slotIndex] = slot;
         Recalculate();
+    }
+
+    /// <summary>Replaces the candidates (picker result). Pieces already in the equipment slots are dropped.</summary>
+    public void SetSlotCandidates(int slotIndex, IEnumerable<CandidateEquipment> candidates)
+    {
+        var slot = CloneSlot(Slots[slotIndex]);
+        if (string.IsNullOrEmpty(slot.OperatorName)) return;
+        slot.CandidateEquipments = [.. candidates.Where(c => c.Name.Length > 0 && !slot.Equipments.Contains(c.Name))
+            .DistinctBy(c => c.Name).Select(c => c.Clone())];
+        Slots[slotIndex] = slot;
+    }
+
+    public void ToggleCandidatePriority(int slotIndex, string name)
+    {
+        var slot = CloneSlot(Slots[slotIndex]);
+        if (slot.CandidateEquipments.FirstOrDefault(c => c.Name == name) is not { } candidate) return;
+        candidate.IsPriority = !candidate.IsPriority;
+        Slots[slotIndex] = slot;
+    }
+
+    public void RemoveCandidate(int slotIndex, string name)
+    {
+        var slot = CloneSlot(Slots[slotIndex]);
+        if (slot.CandidateEquipments.RemoveAll(c => c.Name == name) == 0) return;
+        Slots[slotIndex] = slot;
+    }
+
+    /// <summary>Moves a candidate into the first free equipment slot; throws when the slots are full.</summary>
+    public void MoveCandidateToSlot(int slotIndex, string name)
+    {
+        var slot = Slots[slotIndex];
+        if (slot.Equipments.Count >= LineupEquipmentService.Capacity(slot))
+            throw new InvalidOperationException("装备位已满，请先移除一件装备");
+        SetSlotEquipment(slotIndex, slot.Equipments.Count, name, isCore: false);
     }
 
     public void Reset()
@@ -383,6 +419,7 @@ public partial class LineupEditorViewModel : ObservableObject
         IsElite = s.IsElite,
         Equipments   = [.. s.Equipments],
         CoreEquipments = [.. s.CoreEquipments],
+        CandidateEquipments = [.. s.CandidateEquipments.Select(c => c.Clone())],
         Tags         = [.. s.Tags],
     };
 }

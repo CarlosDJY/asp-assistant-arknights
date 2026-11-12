@@ -12,6 +12,7 @@
         <converters:LocalPathToImageConverter x:Key="PathToImage" />
 
         <converters:TrackedTransformationsConverter x:Key="TrackedTransformations" />
+        <converters:EquipmentWantersConverter x:Key="EquipmentWanters" />
         <DataTemplate DataType="{x:Type models:Equipment}">
             <controls:EquipmentCell IsTrackingList="True" TrackingToggled="OnTrackedEquipmentToggled" />
         </DataTemplate>
@@ -317,6 +318,7 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
+                                <Grid>
                                 <ContentControl Focusable="False" Tag="{Binding}">
                                     <ContentControl.Style>
                                         <Style TargetType="ContentControl">
@@ -351,6 +353,36 @@
                                         </MultiBinding>
                                     </ContentControl.Content>
                                 </ContentControl>
+                                <!-- 候选 / 优先 from the lineup's candidate equipment; 装备格 equipment has no badge -->
+                                <Border x:Name="kindBadge" Width="34" Margin="8,0,0,8" HorizontalAlignment="Left" VerticalAlignment="Bottom"
+                                        BorderThickness="1" CornerRadius="{DynamicResource DotCornerRadius}" Visibility="Collapsed"
+                                        Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                                    <Border.ToolTip>
+                                        <MultiBinding Converter="{StaticResource EquipmentWanters}">
+                                            <Binding />
+                                            <Binding Path="DataContext" RelativeSource="{RelativeSource AncestorType=UserControl}" />
+                                        </MultiBinding>
+                                    </Border.ToolTip>
+                                    <TextBlock x:Name="kindText" FontSize="9" FontWeight="Bold" HorizontalAlignment="Center"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </Border>
+                                </Grid>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding EquipmentKind}" Value="Priority">
+                                        <Setter TargetName="kindBadge" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="kindBadge" Property="Background" Value="{DynamicResource EliteTintBrush}" />
+                                        <Setter TargetName="kindBadge" Property="BorderBrush" Value="{DynamicResource EliteBrush}" />
+                                        <Setter TargetName="kindText" Property="Text" Value="★ 优先" />
+                                        <Setter TargetName="kindText" Property="Foreground" Value="{DynamicResource EliteBrush}" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding EquipmentKind}" Value="Candidate">
+                                        <Setter TargetName="kindBadge" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="kindText" Property="Text" Value="候选" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsManual}" Value="True">
+                                        <Setter TargetName="kindBadge" Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>

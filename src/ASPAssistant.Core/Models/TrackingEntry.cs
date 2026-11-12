@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Text.Json.Serialization;
 
 namespace ASPAssistant.Core.Models;
@@ -6,6 +7,17 @@ public enum TrackingType
 {
     Operator,
     Equipment
+}
+
+/// <summary>
+/// Why a tracked equipment is wanted: in an operator's equipment slots (装备), a priority candidate (优先) or a
+/// plain candidate (候选). When several operators want it, the strongest reason wins.
+/// </summary>
+public enum TrackedEquipmentKind
+{
+    Planned,
+    Priority,
+    Candidate,
 }
 
 /// <summary>大成 = part of the final lineup (green); 过渡 = only used on the way (orange).</summary>
@@ -29,6 +41,15 @@ public class TrackingEntry
 
     [JsonPropertyName("equipments")]
     public List<string> Equipments { get; set; } = [];
+
+    /// <summary>Operators only: candidate equipment from the lineup; tracked as equipment entries.</summary>
+    [JsonPropertyName("candidateEquipments")]
+    public List<CandidateEquipment> CandidateEquipments { get; set; } = [];
+
+    /// <summary>Equipment only, derived from the tracked operators (manual entries stay <see cref="TrackedEquipmentKind.Planned"/>).</summary>
+    [JsonPropertyName("equipmentKind")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public TrackedEquipmentKind EquipmentKind { get; set; }
 
     [JsonPropertyName("isElite")]
     public bool IsElite { get; set; }

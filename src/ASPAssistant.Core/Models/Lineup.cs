@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Text.Json.Serialization;
 
 namespace ASPAssistant.Core.Models;
@@ -43,9 +43,28 @@ public class LineupSlot
     [JsonPropertyName("coreEquipments")]
     public List<string> CoreEquipments { get; set; } = [];
 
+    /// <summary>
+    /// 候选装备：数量不限，不参与转职和盟约计算；追踪阵容时一起追踪。不含已在 <see cref="Equipments"/> 里的装备。
+    /// </summary>
+    [JsonPropertyName("candidateEquipments")]
+    public List<CandidateEquipment> CandidateEquipments { get; set; } = [];
+
     /// <summary>标签列表，最多 2 个。</summary>
     [JsonPropertyName("tags")]
     public List<LineupTag> Tags { get; set; } = [];
+}
+
+/// <summary>一件候选装备；优先 = 先拿的那件。</summary>
+public class CandidateEquipment
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    [JsonPropertyName("isPriority")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool IsPriority { get; set; }
+
+    public CandidateEquipment Clone() => new() { Name = Name, IsPriority = IsPriority };
 }
 
 public class Lineup
