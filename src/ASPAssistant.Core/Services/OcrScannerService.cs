@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
+﻿// Modified for ASP Assistant Regulation on 2026-11-13; see NOTICE.
 using System.Threading.Channels;
 using System.Timers;
 using ASPAssistant.Core.GameModes;
@@ -40,6 +40,16 @@ public class OcrScannerService : IDisposable
 
     /// <summary>Optional: reads the terminal level every <see cref="TerminalReadInterval"/> while the shop is visible.</summary>
     public TerminalLevelReader? TerminalReader { get; init; }
+
+    /// <summary>Round, funds, upgrade price and mode from the shop HUD; null leaves them unread.</summary>
+    public ShopEconomyReader? EconomyReader { get; init; }
+
+    /// <summary>Raised on the scan thread when the confirmed shop HUD values change (null after a reset).</summary>
+    public event Action<ShopEconomy?>? EconomyChanged;
+
+    private readonly ShopEconomyTracker _economy = new();
+    private DateTime _nextEconomyRead;
+    private static readonly TimeSpan EconomyReadInterval = TimeSpan.FromSeconds(2);
 
     /// <summary>Recognises the preparation board (map + camera) for the deployment overlay; optional.</summary>
     public BoardRecognizer? BoardRecognizer { get; init; }
@@ -186,6 +196,7 @@ public class OcrScannerService : IDisposable
             if (!ReferenceEquals(connection, _getConnection?.Invoke())) return;
             PublishShopItems(rawItems);
             await ReadTerminalLevelAsync(screenshot, imgWidth, imgHeight);
+            if (rawItems.Count > 0) await ReadEconomyAsync(screenshot, imgWidth, imgHeight);
         }
         catch (Exception ex)
         {
@@ -213,6 +224,24 @@ public class OcrScannerService : IDisposable
             _gameState.TerminalLevel = _terminalTracker.Level ?? 0;
             TerminalLevelChanged?.Invoke(_terminalTracker.Level!.Value);
         }
+    }
+
+    /// <summary>Only while shop cards are visible: the HUD reads cost several OCR calls.</summary>
+    private async Task ReadEconomyAsync(byte[] screenshot, int width, int height)
+    {
+        if (EconomyReader is null || DateTime.UtcNow < _nextEconomyRead) return;
+        _nextEconomyRead = DateTime.UtcNow + EconomyReadInterval;
+        var read = await EconomyReader.ReadAsync(screenshot, width, height);
+        if (!_economy.Observe(read)) return;
+        AppLogger.Info("Economy", $"{_economy.Current}");
+        EconomyChanged?.Invoke(_economy.Current);
+    }
+
+    /// <summary>New game (opening information recorded): forget the last game's HUD values.</summary>
+    public void ResetEconomy()
+    {
+        _economy.Reset();
+        EconomyChanged?.Invoke(null);
     }
 
     private void ObserveBoard(BoardMatch? match)

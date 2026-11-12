@@ -28,6 +28,11 @@ Bundled fonts Oswald, Silkscreen, Barlow Semi Condensed and Noto Sans SC (subset
 to GB2312 plus the app's own text) are licensed under
 the SIL Open Font License 1.1 (src/ASPAssistant.App/Resources/Fonts/OFL-*.txt).
 
+The shop HUD reader (ShopEconomyReader) follows the reading regions of the
+EconomyReader in StrongholdAssistant (https://github.com/LBEILC/StrongholdAssistant,
+Apache License 2.0). Four full-frame shop test images (shop-*-ui100-2000x1125.png,
+shop-closure-round1-1600x1024.png) come from that project's test data.
+
 MaaFramework and other third-party dependencies retain their own licenses.
 Game data, character names and artwork retain the rights and attribution of
 their respective owners; the software license does not relicense these assets.

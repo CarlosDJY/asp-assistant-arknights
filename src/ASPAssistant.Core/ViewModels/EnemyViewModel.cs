@@ -80,6 +80,20 @@ public partial class EnemyViewModel : ObservableObject
     [ObservableProperty]
     private bool _bossHasHiddenForm;
 
+    /// <summary>Mode name read from the shop HUD (规程等级 N / …模拟); highlights that HP cell.</summary>
+    [ObservableProperty]
+    private string? _currentMode;
+
+    partial void OnCurrentModeChanged(string? value) => MarkCurrentMode();
+
+    private void MarkCurrentMode()
+    {
+        foreach (var list in new[] { BossHpSingle, BossHpMulti })
+            for (int i = 0; i < list.Count; i++)
+                if (list[i].IsCurrent != (list[i].Name == CurrentMode))
+                    list[i] = list[i] with { IsCurrent = list[i].Name == CurrentMode };
+    }
+
     // ── Enemy type detail cards (populated from EnemyTypeDataService) ──────────
 
     /// <summary>
@@ -158,6 +172,7 @@ public partial class EnemyViewModel : ObservableObject
         foreach (var level in bossInfo?.Hp ?? [])
             (level.Group == "multi" ? BossHpMulti : BossHpSingle).Add(BossHpCell.From(level));
         BossHasHiddenForm = bossInfo?.Hp.Any(l => l.HiddenHp is not null) == true;
+        MarkCurrentMode();
         AvatarPath = string.IsNullOrWhiteSpace(bossInfo?.IconPath)
             ? null
             : bossInfo!.IconPath.Trim();
@@ -215,7 +230,7 @@ public partial class EnemyViewModel : ObservableObject
 }
 
 /// <summary>One cell of the boss HP table.</summary>
-public sealed record BossHpCell(string Label, string Name, string Hp, string? HiddenHp)
+public sealed record BossHpCell(string Label, string Name, string Hp, string? HiddenHp, bool IsCurrent = false)
 {
     public static BossHpCell From(BossHpLevel level) => new(ShortLabel(level.Name), level.Name,
         FormatHp(level.Hp), level.HiddenHp is { } hidden ? FormatHp(hidden) : null);

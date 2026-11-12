@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-13; see NOTICE.
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ASPAssistant.Core.Models;
@@ -47,6 +47,10 @@ public partial class TrackingViewModel : ObservableObject
     private int? _manualTerminalLevel;
 
     /// <summary>Effective level; 0 = unknown (nothing expires).</summary>
+    /// <summary>Round, funds and upgrade price read from the shop HUD; null until a shop has been seen this game.</summary>
+    [ObservableProperty]
+    private ShopEconomy? _economy;
+
     public int TerminalLevel => ManualTerminalLevel ?? DetectedTerminalLevel ?? 0;
 
     public string TerminalLevelText => TerminalLevel == 0 ? "终端等级：未识别"

@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+﻿// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
@@ -67,7 +67,8 @@ public partial class TrackingView : UserControl
     {
         if (e.PropertyName is nameof(TrackingViewModel.TrackedOperators) or nameof(TrackingViewModel.TrackedEquipment))
             HookCollections();
-        else if (e.PropertyName is nameof(TrackingViewModel.TerminalLevel) or nameof(TrackingViewModel.TerminalLevelText))
+        else if (e.PropertyName is nameof(TrackingViewModel.TerminalLevel) or nameof(TrackingViewModel.TerminalLevelText)
+                 or nameof(TrackingViewModel.Economy))
             RefreshSummary();
     }
 
@@ -128,6 +129,14 @@ public partial class TrackingView : UserControl
         LevelDetail.Text = pastStages.Count > 0 && level > 0 ? $"{source} · {string.Join("、", pastStages)}已过" : source;
         LevelDetail.ToolTip = _vm?.TerminalLevelText;
         PastHint.Text = level > 0 ? $"终端 {level} 级起不再标出" : "不再标出";
+
+        // Shop HUD
+        var economy = _vm?.Economy;
+        EconomyRow.Visibility = economy is { HasAny: true } || economy?.Mode is not null ? Visibility.Visible : Visibility.Collapsed;
+        EconomyRound.Text = economy?.Round?.ToString() ?? "–";
+        EconomyMoney.Text = economy?.Money?.ToString() ?? "–";
+        EconomyCost.Text = economy is { UpgradeMaxed: true } ? "满级" : economy?.UpgradeCost?.ToString() ?? "–";
+        EconomyMode.Text = economy?.Mode ?? "";
     }
 
     private static void Fill(FrameworkElement section, ItemsControl list, TextBlock count, IReadOnlyList<TrackedCell> cells)

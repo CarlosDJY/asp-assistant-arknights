@@ -50,6 +50,9 @@ public class BossHpTests
         vm.BossHpSingle.Should().ContainSingle().Which.Should().Be(new BossHpCell("1", "规程等级1", "28.4 万", "49.2 万"));
         vm.BossHpMulti.Should().ContainSingle().Which.Label.Should().Be("标准");
         vm.BossHasHiddenForm.Should().BeTrue();
+        vm.CurrentMode = "规程等级1";
+        vm.BossHpSingle.Single().IsCurrent.Should().BeTrue();
+        vm.BossHpMulti.Single().IsCurrent.Should().BeFalse();
         vm.Clear();
         vm.BossHpSingle.Should().BeEmpty();
         vm.BossHasHiddenForm.Should().BeFalse();

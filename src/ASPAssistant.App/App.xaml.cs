@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-13; see NOTICE.
 using System.IO;
 using System.Windows;
 using ASPAssistant.App.Windows;
@@ -293,6 +293,7 @@ public partial class App : Application
             getConnection: () => captureService.Connection)
         {
             TerminalReader = new TerminalLevelReader(ocrEngine),
+            EconomyReader = new ShopEconomyReader(ocrEngine),
             ThemeProvider = () => shopReader.Theme,
             BoardRecognizer = boardData is null ? null : new BoardRecognizer(boardData),
         };
@@ -628,10 +629,16 @@ public partial class App : Application
         {
             // The opening info screen starts a new run: the previous run's terminal level no longer applies.
             _ocrScanner.ResetTerminalLevel();
+            _ocrScanner.ResetEconomy();
             Dispatcher.Invoke(() => { trackingVm.ResetTerminalLevel(); _sidePanel.PlannerVm.CurrentTerminalLevel = 0; });
             await _settingsManager!.SaveTerminalLevelAsync(0);
             await RecordInformationAsync();
         };
+        _ocrScanner.EconomyChanged += economy => Dispatcher.Invoke(() =>
+        {
+            trackingVm.Economy = economy;
+            if (economy?.Mode is { } mode) enemyVm.CurrentMode = mode;
+        });
         _ocrScanner.TerminalLevelChanged += level =>
         {
             Dispatcher.Invoke(() =>

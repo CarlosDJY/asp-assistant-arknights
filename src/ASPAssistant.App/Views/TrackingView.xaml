@@ -1,4 +1,4 @@
-﻿<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
+﻿<!-- Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE. -->
 <UserControl x:Class="ASPAssistant.App.Views.TrackingView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -192,6 +192,32 @@
                                            Foreground="{DynamicResource TextSecondaryBrush}" />
                             </StackPanel>
                         </DockPanel>
+                        <!-- Shop HUD: round, funds, upgrade price (read while the shop is open) -->
+                        <Border x:Name="EconomyRow" Visibility="Collapsed" Margin="0,10,0,0" Padding="10,6"
+                                CornerRadius="{DynamicResource RowCornerRadius}" Background="{DynamicResource SectionBackgroundBrush}"
+                                ToolTip="打开商店时自动读取左上角回合、右下角资金和升级卡上方的升级价；读不清时保留上次的数">
+                            <DockPanel>
+                                <TextBlock x:Name="EconomyMode" DockPanel.Dock="Right" FontSize="10" VerticalAlignment="Bottom" Margin="0,0,0,3"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                                <UniformGrid Columns="3">
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Text="回合" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBlock x:Name="EconomyRound" Text="–" FontFamily="{DynamicResource NumberFontFamily}" FontSize="16" FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </StackPanel>
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Text="资金" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBlock x:Name="EconomyMoney" Text="–" FontFamily="{DynamicResource NumberFontFamily}" FontSize="16" FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </StackPanel>
+                                <StackPanel Margin="0,0,6,0">
+                                    <TextBlock Text="升级价" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBlock x:Name="EconomyCost" Text="–" FontFamily="{DynamicResource NumberFontFamily}" FontSize="16" FontWeight="Bold"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                </StackPanel>
+                                </UniformGrid>
+                            </DockPanel>
+                        </Border>
                         <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,8,0,0">
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" x:Name="ClearAllButton" Content="全部清除" Tag="danger"
