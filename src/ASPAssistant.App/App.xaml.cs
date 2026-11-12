@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
 using System.IO;
 using System.Windows;
 using ASPAssistant.App.Windows;
@@ -19,6 +19,8 @@ public partial class App : Application
     private OverlayWindow? _overlay;
     private SettingsManager? _settingsManager;
     private UpdateStartupNotification? _updateStartup;
+    private ScreenCaptureService? _captureService;
+    private System.Windows.Threading.DispatcherTimer? _connectionStatusTimer;
     private readonly SemaphoreSlim _informationScanGate = new(1, 1);
     private List<ASPAssistant.Core.Models.ShopItem> _lastShopItems = [];
 
@@ -135,7 +137,7 @@ public partial class App : Application
         // Paths
         var appDir = AppContext.BaseDirectory;
         var dataDir = Path.Combine(appDir, "data");
-        var settingsDir = Path.Combine(
+        var settingsDir = Environment.GetEnvironmentVariable("ASPASSISTANT_SETTINGS_DIR") ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "ASPAssistant");
 
@@ -238,7 +240,8 @@ public partial class App : Application
         var garrisonMode = new GarrisonProtocolMode();
 
         // Services
-        var captureService = new ScreenCaptureService();
+        var captureService = _captureService = new ScreenCaptureService(
+            new GameConnectionService(await _settingsManager.LoadGameConnectionAsync()));
         var ocrEngine = new MaaOcrEngine(dataDir);
         // The shop reader matches the whole catalogue; highlighting against tracking happens afterwards,
         // so switching the tracked lineup updates markers without waiting for a new scan.
@@ -266,13 +269,16 @@ public partial class App : Application
         var enemyRecognizer = new EnemyRecognizer(ocrEngine, garrisonMode.OcrStrategy, bossDataService);
         _ocrScanner = new OcrScannerService(
             captureService.CaptureScreen, garrisonMode.OcrStrategy, shopReader, ocrEngine, gameState, shopNames,
-            intervalMs: 500)
+            intervalMs: 500,
+            getConnection: () => captureService.Connection)
         {
             TerminalReader = new TerminalLevelReader(ocrEngine),
             ThemeProvider = () => shopReader.Theme,
         };
 
-        _windowTracker = new WindowTrackerService();
+        _windowTracker = new WindowTrackerService(
+            findWindow: () => captureService.Connection.FindGameWindow(),
+            getViewport: window => captureService.Connection.GetViewport(window));
 
         // Windows
         var sidePanelPosition = await _settingsManager.LoadSidePanelPositionAsync();
@@ -284,6 +290,7 @@ public partial class App : Application
         sidePanel.GameThemeChanged += theme => shopReader.Theme = theme;
         var overlay = _overlay = new OverlayWindow()
         {
+            FindGameWindow = () => captureService.Connection.FindGameWindow(),
 #if DEBUG
             ShowDebugCardBorders = false,
 #endif
@@ -291,9 +298,11 @@ public partial class App : Application
 
         async Task<byte[]?> CaptureInformationScreenAsync()
         {
+            if (captureService.Connection.IsAdb)
+                return await Task.Run(captureService.CaptureScreen);
             var visibility = await Dispatcher.InvokeAsync(() =>
             {
-                var game = Core.Interop.User32.FindArknightsWindow();
+                var game = captureService.Connection.FindGameWindow();
                 var foreground = Core.Interop.User32.GetForegroundWindow();
                 if (game == IntPtr.Zero || foreground != game
                     && foreground != new System.Windows.Interop.WindowInteropHelper(sidePanel).Handle)
@@ -337,6 +346,49 @@ public partial class App : Application
             enemyRecognizer, operators,
             coreCovenantNames, additionalCovenantNames);
 
+        sidePanel.GameConnectionRequested += () =>
+        {
+            if (!_informationScanGate.Wait(0))
+            {
+                sidePanel.ShowToast("本局信息识别完成后可切换连接");
+                return;
+            }
+            try
+            {
+                var dialog = new GameConnectionWindow(captureService, _settingsManager) { Owner = sidePanel };
+                if (dialog.ShowDialog() == true)
+                {
+                    _lastShopItems = [];
+                    overlay.UpdateShopItems([]);
+                    sidePanel.UpdateGameConnectionStatus(captureService.Connection.Status);
+                }
+            }
+            finally { _informationScanGate.Release(); }
+        };
+        _connectionStatusTimer = new System.Windows.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromSeconds(1),
+        };
+        _connectionStatusTimer.Tick += (_, _) => sidePanel.UpdateGameConnectionStatus(captureService.Connection.Status);
+        _connectionStatusTimer.Start();
+
+        void UpdateOverlayPosition(bool refreshShopItems)
+        {
+            var foreground = Core.Interop.User32.GetForegroundWindow();
+            var panelHandle = new System.Windows.Interop.WindowInteropHelper(sidePanel).Handle;
+            var viewport = _windowTracker.CurrentViewport;
+            if (viewport is null || _windowTracker.IsGameMinimized
+                || foreground != _windowTracker.CurrentGameWindowHandle && foreground != panelHandle)
+            {
+                overlay.Hide();
+                return;
+            }
+            overlay.UpdatePosition(viewport.Value);
+            if (refreshShopItems)
+                overlay.UpdateShopItems(_lastShopItems);
+            overlay.Show();
+        }
+
         // Wire window tracker → window positioning
         _windowTracker.GameWindowMoved += rect =>
         {
@@ -344,14 +396,7 @@ public partial class App : Application
             {
                 _sidePanel.UpdatePosition(rect, _windowTracker.IsFullscreen);
 
-                var clientRect = Core.Interop.User32.GetClientRectScreen(
-                    Core.Interop.User32.FindArknightsWindow());
-                if (clientRect.HasValue)
-                {
-                    _overlay.UpdatePosition(clientRect.Value);
-                    _overlay.UpdateShopItems(_lastShopItems);
-                    _overlay.Show();
-                }
+                UpdateOverlayPosition(refreshShopItems: true);
             });
         };
 
@@ -360,10 +405,7 @@ public partial class App : Application
             Dispatcher.Invoke(() =>
             {
                 _sidePanel.UpdatePosition(rect, _windowTracker.IsFullscreen);
-                var clientRect = Core.Interop.User32.GetClientRectScreen(
-                    Core.Interop.User32.FindArknightsWindow());
-                if (clientRect.HasValue)
-                    _overlay.UpdatePosition(clientRect.Value);
+                UpdateOverlayPosition(refreshShopItems: false);
             });
         };
 
@@ -613,6 +655,8 @@ public partial class App : Application
         AppLogger.Info("App", "Shutting down");
         _ocrScanner?.Dispose();
         _windowTracker?.Dispose();
+        _connectionStatusTimer?.Stop();
+        _captureService?.Connection.Dispose();
         base.OnExit(e);
         // BanScreenAnalyzer and BanIndicatorDetector hold no unmanaged resources
         // of their own beyond what MaaTasker cleans up; no explicit Dispose needed.

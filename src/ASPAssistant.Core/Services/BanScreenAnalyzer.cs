@@ -146,7 +146,7 @@ public sealed class BanScreenAnalyzer
 
             // 标题判定已经包含在上面那次 OCR 里（省掉一次独立的检测调用）；
             // 只有标题缺失时才用检测器区分“不是信息页”和“信息页被滚动”。
-            if (!read.SawCoreHeader || !read.SawAdditionalHeader)
+            if (!read.SawAdditionalHeader)
             {
                 var looksLikeInfo = await _informationDetector.IsInformationScreenAsync(shot, imgWidth, imgHeight);
                 AnalysisFailed?.Invoke(looksLikeInfo
@@ -164,9 +164,14 @@ public sealed class BanScreenAnalyzer
                 ? read.Additional.Count == read.AdditionalSlots
                 : read.Additional.Count >= 4;
             var unnamed = read.UnnamedCore.Count + read.UnnamedAdditional.Count;
-            if (!hasCore || !hasAdditional || unnamed > 0)
+            if (!hasCore || !hasAdditional || unnamed > 0 || read.HasIncompleteRows
+                || read.Core.Select(c => c.Name).Distinct().Count() != read.Core.Count
+                || read.Additional.Select(c => c.Name).Distinct().Count() != read.Additional.Count)
             {
-                AnalysisFailed?.Invoke($"本次信息未完整读出（核心 {read.Core.Count}、附加 {read.Additional.Count}、未命名 {unnamed}），未替换现有结果；请保持页面完整可见后重试。");
+                var clipped = read.HasIncompleteRows || read.UnnamedAdditional.Any(p => p.Y / imgHeight > .88);
+                AnalysisFailed?.Invoke(clipped
+                    ? $"面板存在未完整进入画面的盟约行（核心 {read.Core.Count}、附加 {read.Additional.Count}），未替换现有结果；请滚动到末行名称完整可见后重新扫描。"
+                    : $"本次信息未完整读出（核心 {read.Core.Count}、附加 {read.Additional.Count}、未命名 {unnamed}），未替换现有结果；请保持页面完整可见后重试。");
                 return;
             }
             var hasEnemy = enemy is not null && enemy.BossName.Length > 0 && enemy.EnemyTypes.Count > 0;

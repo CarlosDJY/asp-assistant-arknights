@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+﻿// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Interop;
@@ -42,6 +42,7 @@ public partial class OverlayWindow : Window
     /// runtime to aid alignment debugging without restarting the app.
     /// </summary>
     public bool ShowDebugCardBorders { get; set; } = false;
+    public Func<IntPtr> FindGameWindow { get; init; } = User32.FindArknightsWindow;
 
     public OverlayWindow()
     {
@@ -426,7 +427,7 @@ public partial class OverlayWindow : Window
         HideBanInstructionOverlay();
 
         // Forward the scroll to the game window so the player's first scroll is not swallowed.
-        var gameHwnd = User32.FindArknightsWindow();
+        var gameHwnd = FindGameWindow();
         if (gameHwnd != IntPtr.Zero)
         {
             User32.GetCursorPos(out var cursorPos);

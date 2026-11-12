@@ -6,12 +6,11 @@ namespace ASPAssistant.Core.Services;
 public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strategy)
 {
     /// <summary>
-    /// 标题带的位置（比例）。标准模拟与险境两种页面实测都在这个范围：
-    /// 核心盟约标题 y≈0.185，附加盟约标题 y≈0.45。只扫这两条窄带比扫整块面板
-    /// （1190×410）快约 3–6 倍，识别结论相同。
+    /// 标题带的位置（比例）。核心标题通常在 y≈0.185；附加标题在单人
+    /// 两行核心布局中可低至 y≈0.65，因此保留核心窄带并扩大附加标题带。
     /// </summary>
     private static readonly (double X, double Y, double W, double H) CoreHeaderBand = (0.02, 0.13, 0.70, 0.13);
-    private static readonly (double X, double Y, double W, double H) AdditionalHeaderBand = (0.02, 0.38, 0.70, 0.14);
+    private static readonly (double X, double Y, double W, double H) AdditionalHeaderBand = (0.02, 0.36, 0.70, 0.34);
 
     /// <summary>兜底：整块面板一次扫（两条窄带都没命中时才会用到）。</summary>
     private static readonly (double X, double Y, double W, double H) WholePanel = (0.05, 0.13, 0.62, 0.38);

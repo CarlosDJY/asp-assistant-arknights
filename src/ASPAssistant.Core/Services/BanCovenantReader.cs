@@ -18,7 +18,8 @@ public sealed record BanCovenantReadResult(
     int CoreSlots = 0,
     int AdditionalSlots = 0,
     bool SawCoreHeader = false,
-    bool SawAdditionalHeader = false)
+    bool SawAdditionalHeader = false,
+    bool HasIncompleteRows = false)
 {
     public static readonly BanCovenantReadResult Empty = new([], [], [], []);
 }
@@ -39,6 +40,7 @@ public static class BanCovenantReader
     public const string AdditionalRegionName = "BanAdditionalSection";
     public const string CoreHeaderText = "核心盟约";
     public const string AdditionalHeaderText = "附加盟约";
+    public const string BanListHeaderText = "本局禁用干员";
 
     private sealed record Candidate(OcrTextResult Ocr, string Name, int Score);
 
@@ -70,23 +72,49 @@ public static class BanCovenantReader
         // 两块区域共用一个像素缓冲：少解一次 PNG，读操作只读所以可以并行。
         using var pixels = BanScreenPixels.Load(screenshot);
 
+        // Scan the whole covenant panel once: solo layouts can put the additional title
+        // below both core rows, and a scrolled screenshot can hide the core title.
+        var panel = await ocr.RecognizeRegionAsync(screenshot, 0, (int)(imgHeight * .13),
+            (int)(imgWidth * .70), imgHeight - (int)(imgHeight * .13));
+        var coreHeader = panel.Where(t => NormalizeHeader(t.Text).Contains(CoreHeaderText))
+            .OrderBy(t => t.Box.Y).FirstOrDefault();
+        var additionalHeader = panel.Where(t => NormalizeHeader(t.Text).Contains(AdditionalHeaderText))
+            .OrderBy(t => t.Box.Y).FirstOrDefault();
+        if (additionalHeader is not null
+            && (coreHeader is null || additionalHeader.Box.Y > coreHeader.Box.Y))
+        {
+            var banHeader = panel.Where(t => t.Box.Y > additionalHeader.Box.Y
+                && NormalizeHeader(t.Text).Contains(BanListHeaderText)).OrderBy(t => t.Box.Y).FirstOrDefault();
+            var coreTop = coreHeader is null ? .13 : (coreHeader.Box.Y + coreHeader.Box.H) / (double)imgHeight;
+            var core = await AnalyzeSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight,
+                coreTop, additionalHeader.Box.Y / (double)imgHeight, panel,
+                coreCovenantNames, "Core", greenThreshold);
+            var additional = await AnalyzeSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight,
+                (additionalHeader.Box.Y + additionalHeader.Box.H) / (double)imgHeight,
+                banHeader is null ? 1 : banHeader.Box.Y / (double)imgHeight, panel,
+                additionalCovenantNames, "Additional", greenThreshold);
+            return new BanCovenantReadResult(core.Covenants, additional.Covenants, core.Unnamed, additional.Unnamed,
+                core.Slots, additional.Slots, coreHeader is not null, true,
+                core.HasIncompleteRows || additional.HasIncompleteRows);
+        }
+
+        // A title may be unreadable in the broad OCR pass; retry the existing narrow regions.
         var coreTask = ReadSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight, coreRegion,
             CoreHeaderText, coreCovenantNames, "Core", greenThreshold);
         var additionalTask = ReadSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight, additionalRegion,
             AdditionalHeaderText, additionalCovenantNames, "Additional", greenThreshold);
-
         await Task.WhenAll(coreTask, additionalTask);
-        var core = await coreTask;
-        var additional = await additionalTask;
-
-        return new BanCovenantReadResult(
-            core.Covenants, additional.Covenants, core.Unnamed, additional.Unnamed,
-            core.Slots, additional.Slots, core.SawHeader, additional.SawHeader);
+        var fixedCore = await coreTask;
+        var fixedAdditional = await additionalTask;
+        return new BanCovenantReadResult(fixedCore.Covenants, fixedAdditional.Covenants,
+            fixedCore.Unnamed, fixedAdditional.Unnamed, fixedCore.Slots, fixedAdditional.Slots,
+            fixedCore.SawHeader, fixedAdditional.SawHeader,
+            fixedCore.HasIncompleteRows || fixedAdditional.HasIncompleteRows);
     }
 
     private sealed record SectionRead(
         IReadOnlyList<CovenantBanState> Covenants, IReadOnlyList<BanIconPosition> Unnamed,
-        int Slots = 0, bool SawHeader = false);
+        int Slots = 0, bool SawHeader = false, bool HasIncompleteRows = false);
 
     private static async Task<SectionRead> ReadSectionAsync(
         IOcrEngine ocr, byte[] screenshot, BanScreenPixels? pixels, int imgWidth, int imgHeight,
@@ -97,54 +125,44 @@ public static class BanCovenantReader
         int ry = (int)(region.YPercent * imgHeight);
         int rw = (int)(region.WidthPercent * imgWidth);
         int rh = (int)(region.HeightPercent * imgHeight);
+        var texts = await ocr.RecognizeRegionAsync(screenshot, rx, ry, rw, rh);
+        var header = texts.FirstOrDefault(t => NormalizeHeader(t.Text).Contains(headerText));
+        var top = header is null ? region.YPercent : (header.Box.Y + header.Box.H) / (double)imgHeight;
+        var nextHeader = texts.FirstOrDefault(t => t.Box.X < imgWidth * .30 && t.Box.Y > top * imgHeight
+            && NormalizeHeader(t.Text).Contains(BanListHeaderText));
+        var bottom = nextHeader is null ? region.YPercent + region.HeightPercent : nextHeader.Box.Y / (double)imgHeight;
+        return await AnalyzeSectionAsync(ocr, screenshot, pixels, imgWidth, imgHeight,
+            top, bottom, texts, knownNames, group, greenThreshold) with { SawHeader = header is not null };
+    }
 
-        if (rw <= 0 || rh <= 0)
-        {
-            AppLogger.Warn("BanAnalyzer", $"{group}: region has zero size");
-            return new SectionRead([], []);
-        }
-
-        var ocrResults = await ocr.RecognizeRegionAsync(screenshot, rx, ry, rw, rh);
-        AppLogger.Info("BanAnalyzer",
-            $"{group} raw OCR ({ocrResults.Count}): [{string.Join(", ", ocrResults.Select(r => r.Text))}]");
-
-        var header = ocrResults.FirstOrDefault(r => NormalizeHeader(r.Text).Contains(headerText));
-        var sawHeader = header is not null;
-        if (!sawHeader)
-        {
-            AppLogger.Warn("BanAnalyzer",
-                $"{group}: header '{headerText}' missing from region {region.Name} (page may be scrolled)");
-        }
-
-        double gridTop = header is null ? region.YPercent : (header.Box.Y + header.Box.H) / (double)imgHeight;
-        var nextHeader = ocrResults.FirstOrDefault(r => r.Box.X < imgWidth * .30
-            && r.Box.Y > gridTop * imgHeight && r.Text.Replace(" ", "").Contains("本局禁用"));
-        double gridBottom = nextHeader is null
-            ? region.YPercent + region.HeightPercent : nextHeader.Box.Y / (double)imgHeight;
+    private static async Task<SectionRead> AnalyzeSectionAsync(
+        IOcrEngine ocr, byte[] screenshot, BanScreenPixels? pixels, int imgWidth, int imgHeight,
+        double gridTop, double gridBottom, IReadOnlyList<OcrTextResult> texts,
+        IReadOnlyList<string> knownNames, string group, double greenThreshold)
+    {
         var slots = pixels is null
             ? BanIconGrid.Detect(screenshot, imgWidth, imgHeight, gridTop, gridBottom)
             : BanIconGrid.Detect(pixels, gridTop, gridBottom);
+        var candidates = MatchCandidates(texts.Where(t => CenterY(t) >= gridTop * imgHeight
+            && CenterY(t) < gridBottom * imgHeight).ToList(), knownNames, imgWidth);
+        if (slots.Count == 0)
+            return candidates.Count == 0 ? new SectionRead([], [])
+                : MeasureFromNameBoxes(screenshot, imgWidth, imgHeight, candidates, group, greenThreshold, pixels);
 
-        var candidates = MatchCandidates(ocrResults.Where(r => CenterY(r) >= gridTop * imgHeight
-            && CenterY(r) < gridBottom * imgHeight).ToList(), knownNames, imgWidth);
-
-        // 整行 OCR 偶尔读不出名字（缩放过、被暗化、字体发糊），但图标位置是稳定的。
-        // 这时逐个槽位裁剪名字框，只做“候选名匹配”，比整行识别稳得多。
-        if (slots.Count > 0 && candidates.Count < slots.Count)
-        {
+        if (candidates.Count < slots.Count)
             candidates = await FillNamesBySlotAsync(ocr, screenshot, imgWidth, imgHeight, slots, knownNames, candidates);
-            AppLogger.Info("BanAnalyzer", $"{group}: slot OCR recovered {candidates.Count}/{slots.Count} names");
-        }
 
-        if (slots.Count > 0)
-            return BindToSlots(candidates, slots, group, greenThreshold)
-                with { Slots = slots.Count, SawHeader = sawHeader };
-
-        if (candidates.Count == 0)
-            return new SectionRead([], [], 0, sawHeader);
-
-        return MeasureFromNameBoxes(screenshot, imgWidth, imgHeight, candidates, group, greenThreshold, pixels)
-            with { SawHeader = sawHeader };
+        var rows = slots.GroupBy(s => s.Row).Select(g => (Top: g.Min(s => s.Top), Bottom: g.Max(s => s.Bottom)))
+            .OrderBy(r => r.Top).ToList();
+        var heights = rows.Select(r => r.Bottom - r.Top).Order().ToList();
+        var rowHeight = heights[heights.Count / 2];
+        // A whole masked/missed row still leaves its vertical space before the next
+        // title or screen edge. Derive that evidence from icon height, not season totals.
+        var incomplete = rows[0].Top - gridTop * imgHeight > rowHeight * 1.8
+            || gridBottom * imgHeight - rows[^1].Bottom > rowHeight * 1.8
+            || rows.Zip(rows.Skip(1), (a, b) => b.Top - a.Bottom).Any(gap => gap > rowHeight * 1.8);
+        return BindToSlots(candidates, slots, group, greenThreshold)
+            with { Slots = slots.Count, HasIncompleteRows = incomplete };
     }
 
     /// <summary>

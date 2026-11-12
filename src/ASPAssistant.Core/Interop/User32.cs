@@ -1,6 +1,7 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+﻿// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using System.Text;
 
 namespace ASPAssistant.Core.Interop;
 
@@ -18,6 +19,42 @@ public struct RECT
 
 public static class User32
 {
+    private delegate bool EnumWindowProc(IntPtr hwnd, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumChildWindows(IntPtr parent, EnumWindowProc callback, IntPtr lParam);
+
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+    private static extern int GetWindowText(IntPtr hwnd, StringBuilder text, int count);
+
+    [DllImport("user32.dll")]
+    public static extern uint GetWindowThreadProcessId(IntPtr hwnd, out uint processId);
+
+    [DllImport("user32.dll")]
+    public static extern bool IsWindowVisible(IntPtr hwnd);
+
+    [DllImport("user32.dll")]
+    public static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+
+    public static string GetWindowTitle(IntPtr hwnd)
+    {
+        var text = new StringBuilder(512);
+        GetWindowText(hwnd, text, text.Capacity);
+        return text.ToString();
+    }
+
+    public static IntPtr FindChildWindow(IntPtr parent, string title)
+    {
+        var found = IntPtr.Zero;
+        EnumChildWindows(parent, (hwnd, _) =>
+        {
+            if (GetWindowTitle(hwnd) != title) return true;
+            found = hwnd;
+            return false;
+        }, IntPtr.Zero);
+        return found;
+    }
+
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern IntPtr FindWindow(string? lpClassName, string lpWindowName);
 

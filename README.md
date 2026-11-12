@@ -34,7 +34,7 @@
 
 ASP Assistant · Arknights 是运行于《明日方舟》游戏窗口旁的侧边辅助工具，提供干员、装备查询，追踪列表、阵容管理与 Ban 位录入。
 
-当前版本为 **v1.6.0**，统一转职与实际装备配置，支持四阶段阵容追踪、分享链接缓存和切换追踪立即高亮，改进游戏 UI 90%／100% 下的识别，并修复侧边栏自由移动开关。旧版用户可从本仓库 Releases 更新。
+当前版本为 **v1.7.0**，初步支持 MuMu / ADB 连接、模拟器商店追踪与本局信息录入，支持单人模式两种开局信息页布局及高难 10/16 盟约识别。旧版用户可从本仓库 Releases 更新。
 
 ### 阵容规划
 
@@ -120,19 +120,33 @@ ASP Assistant · Arknights 是运行于《明日方舟》游戏窗口旁的侧�
 | 操作系统 | Windows 10 / 11，x64 |
 | .NET 运行时 | 源码构建的非独立版本需要 [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0) |
 | 原生依赖 | 图像识别需要 Microsoft Visual C++ 2015–2022 x64 Runtime；发布流程会打包所需运行库 DLL |
-| 游戏客户端 | 明日方舟 PC 版 |
+| 游戏客户端 | 明日方舟 PC 版，或 MuMu 中的 Android 12 / Android 15 版 |
 | 游戏画面 | 原有识别布局以 16:9 为基础，实际识别仍受赛季界面和分辨率影响 |
+
+### MuMu / ADB 连接
+
+1. 在 MuMu 中打开明日方舟，将模拟器画面设置为横屏 16∶9，支持 1920×1080 和 1280×720（240 DPI，平板模式）。
+2. 打开辅助侧栏的设置，点击“游戏连接…”，选择“MuMu / ADB”。
+3. 点击“发现设备”并选择目标实例，也可以手动填写模拟器的 `adb.exe` 路径和连接地址。
+4. 选择与该设备对应的 MuMu 游戏窗口，点击“测试并应用”。多开时需核对实例与窗口。
+5. 选择当前游戏的商店主题并添加追踪目标。绿色标记会随 MuMu 内部游戏画面移动和缩放。
+
+ADB 模式使用 MaaFramework 读取游戏截图，游戏被其他窗口遮挡时仍可识别。覆盖层在游戏或辅助侧栏处于前台时显示，最小化时隐藏。截图失败时清除旧结果并每 5 秒重试。关闭后重新打开的模拟器窗口可在“游戏连接…”中重新选择。连接设置保存在本机用户数据目录，原有安装默认继续使用 PC 截图。
+
+当前实测范围为 MuMu 12 的 1920×1080 终端主题商店，已读出四格商品并验证坐标。ADB 模式拒绝竖屏与非 16∶9 画面。其他商店等级、主题和模拟器版本仍需更多实机验证。
+
+开发验证可通过 `ASPASSISTANT_SETTINGS_DIR` 环境变量指定独立设置目录，使用 `dotnet ASPAssistant.App.dll` 启动已构建的托管入口。
 
 ## 获取与构建
 
 无需编译的 Windows x64 独立运行包可在 [Releases](https://github.com/bingyunhe/asp-assistant-arknights/releases/latest) 获取。
 
-1. 下载 `ASPAssistant-v1.6.0-win-x64.zip`，不要选择 `Source code` 源码压缩包。
+1. 下载 `ASPAssistant-v1.7.0-win-x64.zip`，不要选择 `Source code` 源码压缩包。
 2. 右键“全部解压”到独立目录，保留全部文件和 `data`、`runtimes` 文件夹。
 3. 双击 `ASPAssistant.App.exe` 启动。无需另外安装 .NET；包内带有识别模型和所需运行库。
 4. 更新时先退出旧程序，再解压新版。个人追踪与阵容设置存放于本机用户数据目录。
 
-发布页同时提供 `SHA256SUMS.txt`，可用 `Get-FileHash .\ASPAssistant-v1.6.0-win-x64.zip -Algorithm SHA256` 核对下载完整性；`PACKAGE-MANIFEST.txt` 记录 CI 解包检查后的版本、资源数量及 ZIP 哈希。详细说明见 [本版发行说明](RELEASE_NOTES.md)。
+发布页同时提供 `SHA256SUMS.txt`，可用 `Get-FileHash .\ASPAssistant-v1.7.0-win-x64.zip -Algorithm SHA256` 核对下载完整性；`PACKAGE-MANIFEST.txt` 记录 CI 解包检查后的版本、资源数量及 ZIP 哈希。详细说明见 [本版发行说明](RELEASE_NOTES.md)。
 
 如果需要从源码构建：
 

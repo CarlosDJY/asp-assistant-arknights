@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
 using System.IO;
 using System.Net.Http;
 using System.Windows;
@@ -29,6 +29,7 @@ public partial class SidePanelWindow : Window
     public LineupPlannerViewModel PlannerVm { get; private set; } = null!;
 
     public event Action? ManualScanRequested;
+    public event Action? GameConnectionRequested;
     public event Action? EnemyRecognitionRequested;
     public event Action<string, bool>? BanToggleRequested;
 
@@ -261,6 +262,10 @@ public partial class SidePanelWindow : Window
 
     public void UpdateManualScanStatus(int pending)
         => OperatorView.UpdateManualScanStatus(pending);
+
+    public void UpdateGameConnectionStatus(string status) => GameConnectionStatus.Text = status;
+
+    private void OnGameConnection(object sender, RoutedEventArgs e) => GameConnectionRequested?.Invoke();
 
     public void SetBanProcessingMaskVisible(bool visible, string? message = null)
     {

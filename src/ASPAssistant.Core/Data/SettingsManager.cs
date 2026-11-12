@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ASPAssistant.Core.Models;
@@ -11,6 +11,7 @@ public class SettingsManager
     private readonly string _settingsDir;
     private readonly SemaphoreSlim _sidePanelPositionLock = new(1, 1);
     private readonly SemaphoreSlim _trackingLock = new(1, 1);
+    private readonly SemaphoreSlim _gameConnectionLock = new(1, 1);
     private static readonly JsonSerializerOptions ThemeJsonOptions = new()
     {
         Converters = { new JsonStringEnumConverter<GameShopTheme>(allowIntegerValues: false) }
@@ -25,6 +26,37 @@ public class SettingsManager
     public SettingsManager(string settingsDir)
     {
         _settingsDir = settingsDir;
+    }
+
+    public async Task<GameConnectionSettings> LoadGameConnectionAsync()
+    {
+        try
+        {
+            var json = await File.ReadAllTextAsync(Path.Combine(_settingsDir, "game-connection.json"));
+            var settings = JsonSerializer.Deserialize<GameConnectionSettings>(json, JsonOptions);
+            if (settings is null || !Enum.IsDefined(settings.Source)
+                || settings.AdbPath is null || settings.AdbSerial is null || settings.WindowTitle is null)
+                throw new JsonException("游戏连接设置无效");
+            return settings;
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException or JsonException)
+        {
+            AppLogger.Warn("Settings", $"Using PC capture settings: {ex.Message}");
+            return new();
+        }
+    }
+
+    public async Task SaveGameConnectionAsync(GameConnectionSettings settings)
+    {
+        await _gameConnectionLock.WaitAsync();
+        try
+        {
+            Directory.CreateDirectory(_settingsDir);
+            var path = Path.Combine(_settingsDir, "game-connection.json");
+            await File.WriteAllTextAsync(path + ".tmp", JsonSerializer.Serialize(settings, JsonOptions));
+            File.Move(path + ".tmp", path, overwrite: true);
+        }
+        finally { _gameConnectionLock.Release(); }
     }
 
     public async Task<bool> LoadLightThemeAsync()

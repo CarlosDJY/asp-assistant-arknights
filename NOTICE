@@ -32,3 +32,8 @@ Game data, character names and artwork retain the rights and attribution of
 their respective owners; the software license does not relicense these assets.
 Data and image source references are retained in data/fetch_spdatabase.py.
 This project is not affiliated with or endorsed by Hypergryph / 鹰角网络.
+
+Solo-layout and scrolled covenant recognition adapt lemon-n-orange's contribution in PR #7:
+https://github.com/bingyunhe/asp-assistant-arknights/pull/7
+Original contribution commit: d4c5434662bf9599c4abd1535b571ca521a99f63
+The local adaptation retains the existing UI-scale, OCR and strategy-piece fixes.

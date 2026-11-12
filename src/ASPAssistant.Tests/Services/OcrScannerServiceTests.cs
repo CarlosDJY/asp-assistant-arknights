@@ -129,7 +129,54 @@ public class OcrScannerServiceTests
         state.ShopItems.Should().BeEmpty();
     }
 
-    private OcrScannerService CreateScanner(Func<byte[]?> capture, ASPAssistant.Core.GameState.GameState state) => new(
+    [Fact]
+    public async Task AdbCaptureFailureClearsCachedShop()
+    {
+        using var connection = new GameConnectionService(new() { Source = GameCaptureSource.Adb });
+        byte[]? capture = _screenshot;
+        var state = new ASPAssistant.Core.GameState.GameState();
+        using var scanner = CreateScanner(() => capture, state, () => connection);
+        await scanner.ScanNowAsync();
+        state.ShopItems.Select(i => i.Name).Should().Equal(_names);
+
+        capture = null;
+        await scanner.ScanNowAsync();
+        await scanner.ScanNowAsync();
+
+        state.ShopItems.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SwitchingConnectionDiscardsInFlightShopResult()
+    {
+        using var previous = new GameConnectionService();
+        using var next = new GameConnectionService(new() { Source = GameCaptureSource.Adb });
+        var connection = previous;
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var release = new TaskCompletionSource<IReadOnlyList<OcrTextResult>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _ocr.Setup(e => e.RecognizeRegionAsync(It.IsAny<byte[]>(), 0, 0, It.IsAny<int>(), It.IsAny<int>()))
+            .Returns(() => { entered.TrySetResult(); return release.Task; });
+        var state = new ASPAssistant.Core.GameState.GameState();
+        using var scanner = CreateScanner(() => _screenshot, state, () => connection);
+        var scan = scanner.ScanNowAsync();
+        try
+        {
+            await entered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            connection = next;
+        }
+        finally
+        {
+            release.TrySetResult(_shopTexts);
+            await scan;
+        }
+
+        state.ShopItems.Should().BeEmpty();
+        await scanner.ScanNowAsync();
+        state.ShopItems.Select(i => i.Name).Should().Equal(_names);
+    }
+
+    private OcrScannerService CreateScanner(Func<byte[]?> capture, ASPAssistant.Core.GameState.GameState state,
+        Func<GameConnectionService>? getConnection = null) => new(
         capture, new GarrisonOcrStrategy(), new ShopReader(_ocr.Object, _names) { Theme = GameShopTheme.Closure },
-        _ocr.Object, state, _names);
+        _ocr.Object, state, _names, getConnection: getConnection);
 }

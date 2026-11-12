@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+﻿// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
 using System.Timers;
 using ASPAssistant.Core.Interop;
 using Timer = System.Timers.Timer;
@@ -10,6 +10,8 @@ public class WindowTrackerService : IDisposable
     private IntPtr _gameWindowHandle;
     private readonly Timer _pollTimer;
     private int _polling;
+    private readonly Func<IntPtr> _findWindow;
+    private readonly Func<IntPtr, RECT?> _getViewport;
 
     public event Action<RECT>? GameWindowMoved;
     public event Action? GameWindowLost;
@@ -24,16 +26,21 @@ public class WindowTrackerService : IDisposable
     public uint CurrentGameDpi { get; private set; }
     public bool IsFullscreen { get; private set; }
     public bool IsGameMinimized { get; private set; }
+    public IntPtr CurrentGameWindowHandle => _gameWindowHandle;
+    public RECT? CurrentViewport => _getViewport(_gameWindowHandle);
 
-    public WindowTrackerService(int pollIntervalMs = 100)
+    public WindowTrackerService(int pollIntervalMs = 100, Func<IntPtr>? findWindow = null,
+        Func<IntPtr, RECT?>? getViewport = null)
     {
+        _findWindow = findWindow ?? User32.FindArknightsWindow;
+        _getViewport = getViewport ?? User32.GetClientRectScreen;
         _pollTimer = new Timer(pollIntervalMs);
         _pollTimer.Elapsed += OnPollTick;
     }
 
     public void Start()
     {
-        _gameWindowHandle = User32.FindArknightsWindow();
+        _gameWindowHandle = _findWindow();
         _pollTimer.Start();
     }
 
@@ -48,9 +55,18 @@ public class WindowTrackerService : IDisposable
             return;
         try
         {
+            var target = _findWindow();
+            if (target != _gameWindowHandle)
+            {
+                _gameWindowHandle = target;
+                CurrentGameRect = null;
+                IsGameMinimized = false;
+                IsGameFocused = false;
+                GameWindowLost?.Invoke();
+            }
             if (!IsGameFound)
             {
-                _gameWindowHandle = User32.FindArknightsWindow();
+                _gameWindowHandle = _findWindow();
                 if (_gameWindowHandle == IntPtr.Zero)
                 {
                     if (CurrentGameRect != null)

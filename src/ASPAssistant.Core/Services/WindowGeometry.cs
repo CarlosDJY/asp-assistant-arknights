@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-11; see NOTICE.
 using ASPAssistant.Core.Interop;
 using ASPAssistant.Core.Models;
 
@@ -6,6 +6,22 @@ namespace ASPAssistant.Core.Services;
 
 public static class WindowGeometry
 {
+    public static bool IsSupportedGameAspectRatio(int width, int height)
+        => width > 0 && height > 0 && Math.Abs(width - height * 16.0 / 9) <= 2;
+
+    /// <summary>Fits the screenshot inside a physical-pixel render surface, preserving letterboxing.</summary>
+    public static RECT FitAspectRatio(RECT bounds, int imageWidth, int imageHeight)
+    {
+        if (bounds.Width <= 0 || bounds.Height <= 0 || imageWidth <= 0 || imageHeight <= 0)
+            throw new ArgumentOutOfRangeException(nameof(bounds));
+        var scale = Math.Min((double)bounds.Width / imageWidth, (double)bounds.Height / imageHeight);
+        var width = (int)Math.Round(imageWidth * scale);
+        var height = (int)Math.Round(imageHeight * scale);
+        var left = bounds.Left + (bounds.Width - width) / 2;
+        var top = bounds.Top + (bounds.Height - height) / 2;
+        return new RECT { Left = left, Top = top, Right = left + width, Bottom = top + height };
+    }
+
     /// <summary>游戏和工作区使用物理像素；侧栏宽度、手动高度使用 WPF DIP。</summary>
     public static RECT SidePanelBounds(RECT game, RECT workArea, double dpiScale,
         double widthDip, double? manualHeightDip, bool fullscreen)

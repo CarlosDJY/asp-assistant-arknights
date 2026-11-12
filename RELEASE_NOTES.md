@@ -1,28 +1,23 @@
-# ASP Assistant · Arknights v1.6.0｜转职装备与识别适配
+# ASP Assistant · Arknights v1.7.0｜模拟器接入与单人信息识别
 
 本项目是基于 [Moonfair/ASP_Assistant](https://github.com/Moonfair/ASP_Assistant) 修改的独立衍生版本，保留上游来源、Apache License 2.0 与第三方归属声明。
 
 ## 更新内容
 
-- “清除高亮”调整为“清除录入”，同步清除本局录入和相关筛选限制；干员页增加“只看本局”。
-- 统一转职与实际装备配置，普通干员常驻转职栏，规划保存、阵容编辑和追踪共用装备需求；读取旧转职配置时先备份再迁移。
-- 补入森蚺策略专属棋子“暴躁铁皮”，根据策略和精锐状态限制选择、装备与转职槽位。
-- 阵容追踪覆盖后期、中期、前期及挂件四阶段，同名干员按此优先级保留配置。
-- 相同阵容内容在链接生成后 30 天内复用分享链接，支持跨重启缓存，并在链接前显示阵容名字。
-- 切换追踪阵容后立即更新已识别商店的高亮，无需等待商店刷新。
-- 改进游戏 UI 90%／100% 下的商店和本局信息识别，处理冻结文字、重复卡片及第二行盟约漏识。
-- 未发现游戏窗口时暂停常规日志和诊断截图，错误日志仍保留。
-- 设置齿轮增加打开状态提示，保留原有面板样式；修复未勾选“侧边栏自由移动”时仍可拖动标题栏的问题。
-- 发布流水线增加 ZIP 实算哈希与解包检查，并提供包内容清单附件。
+- 初步支持 MuMu 模拟器，新增“游戏连接”设置，可切换 PC／ADB 截图，自动发现设备或手动填写 ADB 路径、连接地址。
+- 支持 **Android 12、Android 15**，支持 **1920×1080** 和 **1280×720（240 DPI，平板模式）**。
+- 支持 MuMu 中的商店追踪与本局信息录入，追踪标记跟随模拟器内部游戏显示区域。
+- 支持单人模式两种开局信息页布局及高难 10/16 盟约识别，处理左右分组和滚动后核心标题离开画面的情况。
+- 信息未完整读出时保留已有结果，并提示滚动到末行名称完整可见后重新扫描。
 
-感谢 CarlosDJY（Jiayu Ding）通过 [PR #1](https://github.com/bingyunhe/asp-assistant-arknights/pull/1) 贡献阵容规划等功能。
+感谢 hesperine（Eosbound）通过 [PR #5](https://github.com/bingyunhe/asp-assistant-arknights/pull/5) 贡献模拟器接入，lemon-n-orange 通过 [PR #7](https://github.com/bingyunhe/asp-assistant-arknights/pull/7) 贡献单人信息页识别。
 
 ## 下载与使用
 
-- 下载 **ASPAssistant-v1.6.0-win-x64.zip**；`Source code` 为源码，不能直接运行。
+- 下载 **ASPAssistant-v1.7.0-win-x64.zip**；`Source code` 为源码，不能直接运行。
 - 适用于 Windows 10 / 11 x64。完整解压后运行 **ASPAssistant.App.exe**。
 - 包内包含 .NET 8、OCR 模型、游戏数据、图标及所需 VC++ 运行库，无需另外安装 .NET。
-- 如果旧版仍提示目录被占用，请完全退出旧辅助，将本包完整解压到新目录后启动；个人配置和阵容保留在本机用户数据目录。
-- 同时提供 **SHA256SUMS.txt**，用于核对下载文件完整性；**PACKAGE-MANIFEST.txt** 记录发布包版本、资源数量及实算哈希。
+- 更新前请完全退出旧辅助；个人配置和阵容保留在本机用户数据目录。
+- 同时提供 **SHA256SUMS.txt** 和 **PACKAGE-MANIFEST.txt**，用于核对下载文件及包内容。
 
 包内保留 `LICENSE`、`LICENSE.upstream`、`NOTICE`；第三方依赖和游戏资源保留各自的许可与权利。

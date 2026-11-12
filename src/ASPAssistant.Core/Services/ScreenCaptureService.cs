@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+﻿// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
@@ -8,6 +8,19 @@ namespace ASPAssistant.Core.Services;
 
 public class ScreenCaptureService
 {
+    private GameConnectionService _connection;
+
+    public ScreenCaptureService(GameConnectionService? connection = null)
+        => _connection = connection ?? new GameConnectionService();
+
+    public GameConnectionService Connection => Volatile.Read(ref _connection);
+
+    public void SetConnection(GameConnectionService connection)
+    {
+        var previous = Interlocked.Exchange(ref _connection, connection);
+        previous.Dispose();
+    }
+
     /// <summary>
     /// Maximum capture width in pixels. Screenshots wider than this are scaled down
     /// proportionally before PNG encoding, reducing both encode time and all
@@ -24,7 +37,9 @@ public class ScreenCaptureService
     /// </summary>
     public byte[]? CaptureScreen()
     {
-        var hwnd = User32.FindArknightsWindow();
+        var connection = Connection;
+        if (connection.IsAdb) return connection.CaptureAdbScreen(MaxCaptureWidth);
+        var hwnd = connection.FindGameWindow();
         if (hwnd == IntPtr.Zero)
         {
             AppLogger.Warn("ScreenCapture", "Arknights window not found");

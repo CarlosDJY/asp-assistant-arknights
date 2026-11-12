@@ -1,0 +1,43 @@
+<!-- Modified for ASP Assistant Arknights on 2026-11-11; see NOTICE. -->
+<Window x:Class="ASPAssistant.App.Windows.GameConnectionWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="游戏连接" Width="560" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Background="{DynamicResource PanelBackgroundBrush}"
+        Foreground="{DynamicResource TextPrimaryBrush}">
+    <StackPanel Margin="20">
+        <TextBlock Text="截图来源" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+            <RadioButton x:Name="PcMode" Content="PC 明日方舟" GroupName="Source" Margin="0,0,24,0"
+                         Checked="OnSourceChanged" Foreground="{DynamicResource TextPrimaryBrush}" />
+            <RadioButton x:Name="AdbMode" Content="MuMu / ADB" GroupName="Source"
+                         Checked="OnSourceChanged" Foreground="{DynamicResource TextPrimaryBrush}" />
+        </StackPanel>
+        <StackPanel x:Name="AdbSettings">
+            <DockPanel Margin="0,0,0,6">
+                <Button x:Name="DiscoverButton" DockPanel.Dock="Right" Content="发现设备" Padding="10,4" Click="OnDiscover" />
+                <ComboBox x:Name="DeviceSelector" DisplayMemberPath="Label" SelectionChanged="OnDeviceSelected" Margin="0,0,8,0" />
+            </DockPanel>
+            <TextBlock Text="ADB 路径" Margin="0,8,0,4" />
+            <DockPanel>
+                <Button DockPanel.Dock="Right" Content="浏览…" Padding="10,3" Click="OnBrowseAdb" />
+                <TextBox x:Name="AdbPathBox" Padding="5" Margin="0,0,8,0" />
+            </DockPanel>
+            <TextBlock Text="连接地址 / 设备序列号" Margin="0,10,0,4" />
+            <TextBox x:Name="AdbSerialBox" Padding="5" />
+            <TextBlock Text="对应 MuMu 游戏窗口" Margin="0,10,0,4" />
+            <DockPanel>
+                <Button Content="刷新" DockPanel.Dock="Right" Padding="10,3" Click="OnRefreshWindows" />
+                <ComboBox x:Name="WindowSelector" DisplayMemberPath="Label" Margin="0,0,8,0" />
+            </DockPanel>
+            <TextBlock Text="请确认设备与所选窗口属于同一实例。支持横屏 16∶9，截图可在后台读取。绿色标记跟随游戏显示区域。"
+                       TextWrapping="Wrap" FontSize="12" Margin="0,10,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+        </StackPanel>
+        <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,14,0,12" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Content="取消" IsCancel="True" Padding="16,6" Margin="0,0,10,0" />
+            <Button x:Name="ApplyButton" Content="测试并应用" IsDefault="True" Padding="16,6" Click="OnApply" />
+        </StackPanel>
+    </StackPanel>
+</Window>

@@ -42,6 +42,15 @@ public static class BanIconGrid
 
     private const int MinColumnsPerRow = 4;
 
+    /// <summary>
+    /// 单人模式把核心盟约排成“左组 + 右组”，中间的空隙明显大于列距。
+    /// 相邻两列的间距超过该倍数的中位列距时，视为分组边界；行内不再要求整体等距。
+    /// </summary>
+    private const double LargeGapRatio = 1.7;
+
+    /// <summary>分组后的最小列数：4+4、3+3、2+2 都是合法的一行。</summary>
+    private const int MinColumnsPerGroup = 2;
+
     /// <summary>Horizontal scanning window, as fractions of the screenshot width.</summary>
     private const double ScanLeftPercent = 0.00;
     private const double ScanRightPercent = 0.70;
@@ -123,16 +132,26 @@ public static class BanIconGrid
                 continue;
 
             double pitch = MedianPitch(centers);
-            if (pitch <= 0)
+            if (pitch <= 0 || pitch < MinPitchPercent * width)
                 continue;
 
-            int half = Math.Max(12, (int)(pitch * SampleHalfPitch));
-            foreach (var centerX in centers)
+            foreach (var group in SplitByLargeGaps(centers, pitch))
             {
-                double green = pixels.GreenFraction(
-                    (int)centerX - half, top, (int)centerX + half, bottom);
-                slots.Add(new BanIconSlot(
-                    rowIndex, centerX, (top + bottom) / 2.0, top, bottom, green));
+                if (group.Count < MinColumnsPerGroup || !IsRegular(group, width, MinColumnsPerGroup))
+                    continue;
+
+                double groupPitch = MedianPitch(group);
+                if (groupPitch <= 0)
+                    groupPitch = pitch;
+
+                int half = Math.Max(12, (int)(groupPitch * SampleHalfPitch));
+                foreach (var centerX in group)
+                {
+                    double green = pixels.GreenFraction(
+                        (int)centerX - half, top, (int)centerX + half, bottom);
+                    slots.Add(new BanIconSlot(
+                        rowIndex, centerX, (top + bottom) / 2.0, top, bottom, green));
+                }
             }
             rowIndex++;
         }
@@ -143,7 +162,9 @@ public static class BanIconGrid
     private static List<double> DetectColumns(
         BanScreenPixels pixels, int scanLeft, int scanRight, int top, int bottom, int width)
     {
-        int minSpan = Math.Max(10, (int)(0.012 * width));
+        // 图标盘的宽度约为屏宽的 5.6%；2.5% 能滤掉 “SELECTED” 水印这类
+        // 窄亮条（实测 24 px），又不会误伤小分辨率下的真实图标（960 px 宽时约 54 px）。
+        int minSpan = Math.Max(10, (int)(0.025 * width));
         var centers = new List<double>();
 
         int runStart = -1;
@@ -164,28 +185,51 @@ public static class BanIconGrid
             }
             else if (!light && runStart >= 0)
             {
-                // 右侧地图可能伸入扫描区；被右边界截断的亮带不是完整盟约图标。
                 if (x < scanRight && x - runStart > minSpan)
                     centers.Add((runStart + x) / 2.0);
                 runStart = -1;
             }
         }
 
-        return IsRegular(centers, width) ? centers : [];
+        return centers;
+    }
+
+    /// <summary>
+    /// 按明显大于列距的空隙把一行拆成若干组。单人页的“左 3 + 右 3”“左 2 + 右 2”
+    /// 就是这种排布；多人页没有大空隙，仍然得到单独一组，行为不变。
+    /// </summary>
+    private static List<List<double>> SplitByLargeGaps(List<double> centers, double pitch)
+    {
+        var groups = new List<List<double>> { new() { centers[0] } };
+        double limit = pitch * LargeGapRatio;
+
+        for (int i = 1; i < centers.Count; i++)
+        {
+            if (centers[i] - centers[i - 1] > limit)
+                groups.Add([]);
+            groups[^1].Add(centers[i]);
+        }
+
+        return groups;
     }
 
     /// <summary>
     /// A real icon row has evenly spaced columns; text lines and HUD elements produce
     /// irregular gaps and are rejected here.
     /// </summary>
-    private static bool IsRegular(List<double> centers, int width)
+    private static bool IsRegular(List<double> centers, int width, int minColumns = MinColumnsPerRow)
     {
-        if (centers.Count < MinColumnsPerRow)
+        if (centers.Count < minColumns)
             return false;
 
         var gaps = new List<double>();
         for (int i = 1; i < centers.Count; i++)
             gaps.Add(centers[i] - centers[i - 1]);
+
+        // 只有两列的分组没有可校验的列距；它能通过分组边界检查本身就说明间距
+        // 与整行中位列距一致。
+        if (gaps.Count == 0)
+            return true;
 
         double median = Median(gaps);
         if (median < MinPitchPercent * width)
