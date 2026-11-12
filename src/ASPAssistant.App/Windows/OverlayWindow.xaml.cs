@@ -163,12 +163,31 @@ public partial class OverlayWindow : Window
         }
     }
 
+    private string? _lastBoardLog;
+
+    /// <summary>One log line whenever what the board layer shows changes (map, camera, plan shown or why not).</summary>
+    private void LogBoardState(GarrisonMap? map)
+    {
+        var plan = _placements;
+        var state = map is null ? "board hidden (not recognised or 游戏内显示 off)"
+            : plan is null ? $"board {map.Id}, no plan"
+            : plan.Map.Id != map.Id ? $"board {map.Id}, plan is for {plan.Map.Id} (not drawn)"
+            : $"board {map.Id}, {plan.Placed.Count} placement(s) drawn at {ActualWidth:F0}x{ActualHeight:F0}";
+        if (state == _lastBoardLog) return;
+        _lastBoardLog = state;
+        AppLogger.Info("Overlay", state);
+    }
+
     private void DrawBoard()
     {
         if (!OverlayCanvas.Children.Contains(_boardLayer))
             OverlayCanvas.Children.Insert(0, _boardLayer);
         _boardLayer.Children.Clear();
-        if (_board is not { } board || ActualWidth <= 0 || ActualHeight <= 0) return;
+        if (_board is not { } board || ActualWidth <= 0 || ActualHeight <= 0)
+        {
+            LogBoardState(null);
+            return;
+        }
         var (map, projection) = board;
         double w = ActualWidth, h = ActualHeight;
         Point At(double col, double row)
@@ -244,6 +263,7 @@ public partial class OverlayWindow : Window
             }
         }
         DrawPlacements(map, At, w);
+        LogBoardState(map);
     }
 
     public void UpdatePosition(RECT gameClientRect)
