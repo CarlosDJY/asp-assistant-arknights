@@ -183,6 +183,13 @@
                                     <ListBox.ItemsPanel>
                                         <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
                                     </ListBox.ItemsPanel>
+                                    <!-- same size as 追踪's 购买清单 / 站位 -->
+                                    <ListBox.ItemContainerStyle>
+                                        <Style TargetType="ListBoxItem" BasedOn="{StaticResource SegmentedItem}">
+                                            <Setter Property="MinHeight" Value="26" />
+                                            <Setter Property="FontSize" Value="12" />
+                                        </Style>
+                                    </ListBox.ItemContainerStyle>
                                     <ListBoxItem Content="我的阵容" />
                                     <ListBoxItem Content="规划" />
                                 </ListBox>
