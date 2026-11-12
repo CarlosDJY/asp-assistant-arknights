@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Text.Json.Serialization;
 
 namespace ASPAssistant.Core.Models;
