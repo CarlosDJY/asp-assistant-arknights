@@ -1,43 +1,257 @@
-<!-- Modified for ASP Assistant Arknights on 2026-11-11; see NOTICE. -->
+<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
 <Window x:Class="ASPAssistant.App.Windows.GameConnectionWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="游戏连接" Width="560" SizeToContent="Height" ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Title="游戏连接" Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" WindowStyle="None"
+        Icon="{StaticResource AspaLogo}"
         Background="{DynamicResource PanelBackgroundBrush}"
         Foreground="{DynamicResource TextPrimaryBrush}">
-    <StackPanel Margin="20">
-        <TextBlock Text="截图来源" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,12" />
-        <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
-            <RadioButton x:Name="PcMode" Content="PC 明日方舟" GroupName="Source" Margin="0,0,24,0"
-                         Checked="OnSourceChanged" Foreground="{DynamicResource TextPrimaryBrush}" />
-            <RadioButton x:Name="AdbMode" Content="MuMu / ADB" GroupName="Source"
-                         Checked="OnSourceChanged" Foreground="{DynamicResource TextPrimaryBrush}" />
-        </StackPanel>
-        <StackPanel x:Name="AdbSettings">
-            <DockPanel Margin="0,0,0,6">
-                <Button x:Name="DiscoverButton" DockPanel.Dock="Right" Content="发现设备" Padding="10,4" Click="OnDiscover" />
-                <ComboBox x:Name="DeviceSelector" DisplayMemberPath="Label" SelectionChanged="OnDeviceSelected" Margin="0,0,8,0" />
-            </DockPanel>
-            <TextBlock Text="ADB 路径" Margin="0,8,0,4" />
-            <DockPanel>
-                <Button DockPanel.Dock="Right" Content="浏览…" Padding="10,3" Click="OnBrowseAdb" />
-                <TextBox x:Name="AdbPathBox" Padding="5" Margin="0,0,8,0" />
-            </DockPanel>
-            <TextBlock Text="连接地址 / 设备序列号" Margin="0,10,0,4" />
-            <TextBox x:Name="AdbSerialBox" Padding="5" />
-            <TextBlock Text="对应 MuMu 游戏窗口" Margin="0,10,0,4" />
-            <DockPanel>
-                <Button Content="刷新" DockPanel.Dock="Right" Padding="10,3" Click="OnRefreshWindows" />
-                <ComboBox x:Name="WindowSelector" DisplayMemberPath="Label" Margin="0,0,8,0" />
-            </DockPanel>
-            <TextBlock Text="请确认设备与所选窗口属于同一实例。支持横屏 16∶9，截图可在后台读取。绿色标记跟随游戏显示区域。"
-                       TextWrapping="Wrap" FontSize="12" Margin="0,10,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
-        </StackPanel>
-        <TextBlock x:Name="StatusText" TextWrapping="Wrap" Margin="0,14,0,12" />
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-            <Button Content="取消" IsCancel="True" Padding="16,6" Margin="0,0,10,0" />
-            <Button x:Name="ApplyButton" Content="测试并应用" IsDefault="True" Padding="16,6" Click="OnApply" />
-        </StackPanel>
-    </StackPanel>
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="0" GlassFrameThickness="0" />
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <Style x:Key="Caption" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+        </Style>
+
+        <!-- Radio dot shared by the source cards and the device rows; Tag="on" fills it -->
+        <ControlTemplate x:Key="RadioDot" TargetType="ContentControl">
+            <Grid Width="15" Height="15">
+                <Ellipse x:Name="ring" Stroke="{DynamicResource BorderBrush}" StrokeThickness="1.5" />
+                <Ellipse x:Name="dot" Width="7" Height="7" Fill="{DynamicResource AccentBrush}" Visibility="Collapsed" />
+            </Grid>
+            <ControlTemplate.Triggers>
+                <Trigger Property="Tag" Value="on">
+                    <Setter TargetName="ring" Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                    <Setter TargetName="dot" Property="Visibility" Value="Visible" />
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+
+        <!-- Large clickable source card: Content = name, Tag = icon path, ToolTip = description (shown inline) -->
+        <Style x:Key="SourceCard" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="ToolTipService.IsEnabled" Value="False" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="card" Padding="10,9" BorderThickness="1.5" CornerRadius="{DynamicResource CardCornerRadius}"
+                                Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                            <StackPanel>
+                                <DockPanel>
+                                    <ContentControl x:Name="radio" DockPanel.Dock="Right" Template="{StaticResource RadioDot}" Focusable="False"
+                                                    VerticalAlignment="Center" />
+                                    <Path x:Name="icon" Width="18" Height="18" Stretch="Uniform" StrokeThickness="1.7" Margin="0,0,7,0"
+                                          StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                          Stroke="{DynamicResource TextSecondaryBrush}"
+                                          Data="{Binding Tag, RelativeSource={RelativeSource TemplatedParent}}" />
+                                    <TextBlock Text="{TemplateBinding Content}" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <TextBlock Text="{Binding ToolTip, RelativeSource={RelativeSource TemplatedParent}}" FontSize="11" LineHeight="17"
+                                           TextWrapping="Wrap" Margin="0,6,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </StackPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="card" Property="Background" Value="{DynamicResource AccentTintBrush}" />
+                                <Setter TargetName="card" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                                <Setter TargetName="icon" Property="Stroke" Value="{DynamicResource AccentBrush}" />
+                                <Setter TargetName="radio" Property="Tag" Value="on" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="card" Property="Opacity" Value="0.55" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Discovered emulator instances: one radio row each -->
+        <Style x:Key="DeviceRow" TargetType="ListBoxItem">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="row" Padding="10,7" Background="Transparent" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,0,0,1">
+                            <DockPanel>
+                                <ContentControl x:Name="radio" Template="{StaticResource RadioDot}" Focusable="False" Margin="0,0,9,0"
+                                                VerticalAlignment="Center" />
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{Binding Name}" FontSize="12" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                                               Foreground="{DynamicResource TextPrimaryBrush}" />
+                                    <TextBlock Text="{Binding Serial}" FontSize="11" Margin="0,2,0,0" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                            </DockPanel>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="row" Property="Background" Value="{DynamicResource NeutralHoverBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="row" Property="Background" Value="{DynamicResource AccentTintBrush}" />
+                                <Setter TargetName="radio" Property="Tag" Value="on" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SquareButton" TargetType="Button" BasedOn="{StaticResource DialogSecondaryButton}">
+            <Setter Property="MinWidth" Value="0" />
+            <Setter Property="Width" Value="32" />
+            <Setter Property="Height" Value="32" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="6,0,0,0" />
+        </Style>
+    </Window.Resources>
+
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancel"
+                            Style="{StaticResource DialogCloseButton}" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="游戏连接" Style="{StaticResource DialogTitleText}" />
+                        <TextBlock Text="截图来源" FontSize="11" Margin="-6,0,0,0" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TitleMutedBrush}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+
+            <Border DockPanel.Dock="Bottom" Style="{StaticResource DialogFooter}">
+                <DockPanel>
+                    <Button x:Name="ApplyButton" DockPanel.Dock="Right" Content="测试并应用" IsDefault="True"
+                            Style="{StaticResource DialogPrimaryButton}" Click="OnApply" />
+                    <Button x:Name="CancelButton" DockPanel.Dock="Right" Content="取消" Style="{StaticResource DialogSecondaryButton}"
+                            Click="OnCancel" />
+                    <TextBlock Text="设置保存在本机" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </DockPanel>
+            </Border>
+
+            <StackPanel Margin="14,14,14,12">
+                <!-- 1. Source -->
+                <TextBlock Text="截图来源" Style="{StaticResource Caption}" Margin="0,0,0,6" />
+                <UniformGrid Columns="2">
+                    <RadioButton x:Name="PcMode" GroupName="Source" Content="PC 客户端" Margin="0,0,4,0" Style="{StaticResource SourceCard}"
+                                 Tag="M 3 4.5 H 21 V 16.5 H 3 Z M 9 20 H 15 M 12 16.5 V 20"
+                                 ToolTip="读取明日方舟 PC 窗口。游戏需要在前台，不能被其他窗口挡住。" Checked="OnSourceChanged" />
+                    <RadioButton x:Name="AdbMode" GroupName="Source" Content="MuMu / ADB" Margin="4,0,0,0" Style="{StaticResource SourceCard}"
+                                 Tag="M 2.5 6 H 21.5 V 18 H 2.5 Z M 6 12 H 6.1 M 18 10.5 V 13.5"
+                                 ToolTip="通过 ADB 后台截图，被遮挡也能识别。需横屏 16∶9。" Checked="OnSourceChanged" />
+                </UniformGrid>
+
+                <!-- 2. ADB settings -->
+                <StackPanel x:Name="AdbSettings">
+                    <DockPanel Margin="0,14,0,6">
+                        <Button x:Name="DiscoverButton" DockPanel.Dock="Right" Content="发现设备" Margin="0" Height="28"
+                                Style="{StaticResource DialogSecondaryButton}" Click="OnDiscover" />
+                        <TextBlock Text="模拟器实例" Style="{StaticResource Caption}" />
+                    </DockPanel>
+                    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}"
+                            Background="{DynamicResource CardBackgroundBrush}" ClipToBounds="True">
+                        <Grid>
+                            <ListBox x:Name="DeviceSelector" Background="Transparent" BorderThickness="0" Padding="0" MaxHeight="150"
+                                     ItemContainerStyle="{StaticResource DeviceRow}" SelectionChanged="OnDeviceSelected"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled" Margin="0,0,0,-1" />
+                            <TextBlock x:Name="NoDevicesText" Text="点「发现设备」查找正在运行的模拟器实例" Style="{StaticResource Hint}"
+                                       Margin="10,10" />
+                        </Grid>
+                    </Border>
+
+                    <ToggleButton x:Name="ManualToggle" HorizontalAlignment="Left" Margin="0,8,0,0" Cursor="Hand"
+                                  Checked="OnManualToggled" Unchecked="OnManualToggled">
+                        <ToggleButton.Template>
+                            <ControlTemplate TargetType="ToggleButton">
+                                <StackPanel Orientation="Horizontal" Background="Transparent">
+                                    <Path x:Name="chev" Data="M 0 0 L 4 4 L 0 8" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="1.5"
+                                          VerticalAlignment="Center" Margin="2,0,7,0" RenderTransformOrigin="0.5,0.5" />
+                                    <TextBlock x:Name="text" Text="手动填写 ADB 路径与地址" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
+                                <ControlTemplate.Triggers>
+                                    <Trigger Property="IsChecked" Value="True">
+                                        <Setter TargetName="chev" Property="RenderTransform">
+                                            <Setter.Value><RotateTransform Angle="90" /></Setter.Value>
+                                        </Setter>
+                                    </Trigger>
+                                    <Trigger Property="IsMouseOver" Value="True">
+                                        <Setter TargetName="text" Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                                    </Trigger>
+                                </ControlTemplate.Triggers>
+                            </ControlTemplate>
+                        </ToggleButton.Template>
+                    </ToggleButton>
+                    <Border x:Name="ManualPanel" Visibility="Collapsed" Margin="0,6,0,0" Padding="10"
+                            CornerRadius="{DynamicResource CardCornerRadius}" Background="{DynamicResource SectionBackgroundBrush}">
+                        <StackPanel>
+                            <TextBlock Text="ADB 路径" Style="{StaticResource Hint}" Margin="0,0,0,4" />
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="浏览…" Margin="6,0,0,0" Style="{StaticResource DialogSecondaryButton}"
+                                        Click="OnBrowseAdb" />
+                                <TextBox x:Name="AdbPathBox" Style="{StaticResource DialogTextBox}" TextChanged="OnInputChanged" />
+                            </DockPanel>
+                            <TextBlock Text="连接地址 / 设备序列号" Style="{StaticResource Hint}" Margin="0,8,0,4" />
+                            <TextBox x:Name="AdbSerialBox" Style="{StaticResource DialogTextBox}" TextChanged="OnInputChanged" />
+                        </StackPanel>
+                    </Border>
+
+                    <DockPanel Margin="0,14,0,6">
+                        <TextBlock DockPanel.Dock="Right" Text="叠加层跟随它移动、缩放" Style="{StaticResource Hint}" VerticalAlignment="Center" />
+                        <TextBlock Text="游戏窗口" Style="{StaticResource Caption}" />
+                    </DockPanel>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" ToolTip="刷新窗口列表" Click="OnRefreshWindows" Style="{StaticResource SquareButton}">
+                            <Path Data="M 20 11 A 8 8 0 1 0 17.7 16.7 M 20 5 V 11 H 14" Stroke="{DynamicResource TextSecondaryBrush}"
+                                  StrokeThickness="1.8" Width="13" Height="13" Stretch="Uniform"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                        </Button>
+                        <ComboBox x:Name="WindowSelector" DisplayMemberPath="Label" Height="32" SelectionChanged="OnInputChanged" />
+                    </DockPanel>
+                </StackPanel>
+
+                <!-- PC: what was found -->
+                <Border x:Name="PcSettings" Margin="0,12,0,0" Padding="10,8" CornerRadius="{DynamicResource CardCornerRadius}"
+                        Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="自动查找明日方舟窗口" FontSize="12" FontWeight="Bold" />
+                        <TextBlock x:Name="PcWindowText" Style="{StaticResource Hint}" Margin="0,2,0,0" />
+                    </StackPanel>
+                </Border>
+
+                <!-- 3. Status strip -->
+                <Border x:Name="StatusStrip" Margin="0,14,0,0" Padding="10,8" BorderThickness="1"
+                        CornerRadius="{DynamicResource CardCornerRadius}">
+                    <DockPanel>
+                        <Border x:Name="StatusIcon" Width="22" Height="22" CornerRadius="11" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <TextBlock x:Name="StatusGlyph" FontSize="12" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource PanelBackgroundBrush}" />
+                        </Border>
+                        <Border x:Name="PreviewFrame" DockPanel.Dock="Right" Width="64" Height="36" Margin="10,0,0,0" CornerRadius="3"
+                                BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" ClipToBounds="True" Visibility="Collapsed">
+                            <Image x:Name="PreviewImage" Stretch="UniformToFill" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock x:Name="StatusTitle" FontSize="12" FontWeight="Bold" TextWrapping="Wrap" />
+                            <TextBlock x:Name="StatusText" Style="{StaticResource Hint}" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+            </StackPanel>
+        </DockPanel>
+    </Border>
 </Window>

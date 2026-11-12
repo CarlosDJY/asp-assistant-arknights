@@ -381,7 +381,7 @@ public partial class App : Application
                 {
                     _lastShopItems = [];
                     overlay.UpdateShopItems([]);
-                    sidePanel.UpdateGameConnectionStatus(captureService.Connection.Status);
+                    sidePanel.UpdateGameConnectionStatus(captureService.Connection.IsAdb, captureService.Connection.Status);
                 }
             }
             finally { _informationScanGate.Release(); }
@@ -390,7 +390,7 @@ public partial class App : Application
         {
             Interval = TimeSpan.FromSeconds(1),
         };
-        _connectionStatusTimer.Tick += (_, _) => sidePanel.UpdateGameConnectionStatus(captureService.Connection.Status);
+        _connectionStatusTimer.Tick += (_, _) => sidePanel.UpdateGameConnectionStatus(captureService.Connection.IsAdb, captureService.Connection.Status);
         _connectionStatusTimer.Start();
 
         void UpdateOverlayPosition(bool refreshShopItems)

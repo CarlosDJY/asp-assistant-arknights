@@ -264,7 +264,23 @@ public partial class SidePanelWindow : Window
     public void UpdateManualScanStatus(int pending)
         => OperatorView.UpdateManualScanStatus(pending);
 
-    public void UpdateGameConnectionStatus(string status) => GameConnectionStatus.Text = status;
+    /// <summary>Settings card: source in the title, live status below, icon tinted by state (PC grey, ADB green / red).</summary>
+    public void UpdateGameConnectionStatus(bool isAdb, string status)
+    {
+        var failed = isAdb && (status.Contains("重试") || status.Contains("失败") || status.Contains("横屏"));
+        var connected = isAdb && status.StartsWith("ADB 已连接");
+        GameConnectionTitle.Text = isAdb ? "截图来源 · MuMu / ADB" : "截图来源 · PC 客户端";
+        GameConnectionStatus.Text = status;
+        GameConnectionStatus.ToolTip = status;
+        GameConnectionGlyph.Text = !isAdb ? "PC" : failed ? "!" : connected ? "✓" : "…";
+        var (fill, text) = !isAdb ? ("SectionBackgroundBrush", "TextSecondaryBrush")
+            : failed ? ("DangerTintBrush", "DangerBrush")
+            : connected ? ("SuccessTintBrush", "SuccessTextBrush") : ("AccentTintBrush", "AccentBrush");
+        GameConnectionIcon.SetResourceReference(Border.BackgroundProperty, fill);
+        GameConnectionGlyph.SetResourceReference(TextBlock.ForegroundProperty, text);
+        GameConnectionStatus.SetResourceReference(TextBlock.ForegroundProperty, failed ? "DangerBrush" : connected ? "SuccessTextBrush" : "TextSecondaryBrush");
+        GameConnectionButton.Content = failed ? "重新设置…" : "更改…";
+    }
 
     private void OnGameConnection(object sender, RoutedEventArgs e) => GameConnectionRequested?.Invoke();
 
