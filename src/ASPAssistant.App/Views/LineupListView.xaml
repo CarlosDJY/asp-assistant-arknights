@@ -1,15 +1,13 @@
-<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
+<!-- Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE. -->
 <UserControl x:Class="ASPAssistant.App.Views.LineupListView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:converters="clr-namespace:ASPAssistant.App.Converters"
              xmlns:controls="clr-namespace:ASPAssistant.App.Controls"
-             xmlns:models="clr-namespace:ASPAssistant.Core.Models;assembly=ASPAssistant.Core"
+             xmlns:views="clr-namespace:ASPAssistant.App.Views"
              Background="{DynamicResource PanelBackgroundBrush}">
     <UserControl.Resources>
-        <converters:LocalPathToImageConverter x:Key="PathToImage" />
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
 
-        <!-- Top buttons (new / import) -->
         <Style x:Key="LineupTopButton" TargetType="Button" BasedOn="{StaticResource ClickableButtonBase}">
             <Setter Property="Background" Value="{DynamicResource SectionBackgroundBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
@@ -21,10 +19,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{DynamicResource RowCornerRadius}"
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource RowCornerRadius}"
                                 Padding="{TemplateBinding Padding}">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
@@ -40,39 +36,33 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
         <Style x:Key="LineupPrimaryButton" TargetType="Button" BasedOn="{StaticResource LineupTopButton}">
             <Setter Property="Background" Value="{DynamicResource AccentSolidBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}" />
             <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
-
-        <!-- Card-bottom small button (edit / share / track / delete) -->
-        <Style x:Key="LineupCardActionButton" TargetType="Button" BasedOn="{StaticResource ClickableButtonBase}">
-            <Setter Property="Background" Value="{DynamicResource SectionBackgroundBrush}" />
-            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
-            <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="Padding" Value="10,0" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="FontSize" Value="11" />
+        <Style x:Key="CardAction" TargetType="Button" BasedOn="{StaticResource LineupTopButton}">
             <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="MinWidth" Value="48" />
+        </Style>
+        <Style x:Key="CardPrimaryAction" TargetType="Button" BasedOn="{StaticResource CardAction}">
+            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+        <Style x:Key="TextLink" TargetType="Button" BasedOn="{StaticResource ClickableButtonBase}">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border x:Name="bg" Background="{TemplateBinding Background}"
-                                BorderBrush="{TemplateBinding BorderBrush}"
-                                BorderThickness="{TemplateBinding BorderThickness}"
-                                CornerRadius="{DynamicResource RowCornerRadius}" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
+                        <TextBlock x:Name="t" Text="{TemplateBinding Content}" Background="Transparent" />
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="bg" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="bg" Property="Background" Value="{DynamicResource NeutralPressedBrush}" />
+                                <Setter TargetName="t" Property="TextDecorations" Value="Underline" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -80,113 +70,332 @@
             </Setter>
         </Style>
 
-        <Style x:Key="LineupCardStyle" TargetType="Border">
-            <Setter Property="Padding" Value="10" />
-            <Setter Property="Margin" Value="0,0,0,8" />
-            <Setter Property="Background" Value="{DynamicResource CardBackgroundBrush}" />
-            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+        <!-- Covenant chip in the 筛选 panel: fills its grid cell, name centred; IsBlocked = no lineup has it (dashed, disabled) -->
+        <Style x:Key="GridChip" TargetType="ToggleButton" BasedOn="{StaticResource ClickableToggleButtonBase}">
+            <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=TwoWay}" />
+            <Setter Property="IsEnabled" Value="{Binding IsBlocked, Converter={StaticResource FilterNotConverter}}" />
+            <Setter Property="ToolTip" Value="{Binding Label}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,0,5,5" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Grid Height="28">
+                            <Rectangle x:Name="frame" RadiusX="5" RadiusY="5" StrokeThickness="1"
+                                       Stroke="{DynamicResource LineBrush}" Fill="{DynamicResource CardBackgroundBrush}" />
+                            <TextBlock x:Name="label" Text="{Binding Label}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" Margin="4,0" Foreground="{TemplateBinding Foreground}" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource AccentBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="frame" Property="Fill" Value="{DynamicResource AccentSolidBrush}" />
+                                <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource AccentSolidBrush}" />
+                                <Setter TargetName="label" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                                <Setter TargetName="label" Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                            <DataTrigger Binding="{Binding IsBlocked}" Value="True">
+                                <Setter TargetName="frame" Property="Fill" Value="Transparent" />
+                                <Setter TargetName="frame" Property="StrokeDashArray" Value="3 2" />
+                                <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource BorderBrush}" />
+                                <Setter TargetName="label" Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                                <Setter TargetName="label" Property="Opacity" Value="0.6" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <DataTemplate x:Key="GridChipTemplate">
+            <ToggleButton Style="{StaticResource GridChip}" />
+        </DataTemplate>
+
+        <!-- Tone pill (target covenant / status): Tag = ok / warn / bad / accent / neutral -->
+        <Style x:Key="TonePill" TargetType="Border">
+            <Setter Property="CornerRadius" Value="{DynamicResource PillCornerRadius}" />
+            <Setter Property="Padding" Value="7,1" />
+            <Setter Property="Margin" Value="0,0,4,4" />
             <Setter Property="BorderThickness" Value="1" />
-            <Setter Property="CornerRadius" Value="{DynamicResource CardCornerRadius}" />
+            <Setter Property="Background" Value="{DynamicResource SectionBackgroundBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}" />
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource TextSecondaryBrush}" />
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                <Trigger Property="Tag" Value="ok">
+                    <Setter Property="Background" Value="{DynamicResource SuccessTintBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource SuccessBorderBrush}" />
+                    <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessTextBrush}" />
+                </Trigger>
+                <Trigger Property="Tag" Value="warn">
+                    <Setter Property="Background" Value="{DynamicResource WarningTintBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+                    <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningTextBrush}" />
+                </Trigger>
+                <Trigger Property="Tag" Value="bad">
+                    <Setter Property="Background" Value="{DynamicResource DangerTintBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource DangerBorderBrush}" />
+                    <Setter Property="TextElement.Foreground" Value="{DynamicResource DangerBrush}" />
+                </Trigger>
+                <Trigger Property="Tag" Value="accent">
+                    <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                    <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}" />
                 </Trigger>
             </Style.Triggers>
         </Style>
+
+        <!-- One lineup card (我的阵容 and 本局推荐) -->
+        <DataTemplate x:Key="LineupCardTemplate" DataType="{x:Type views:LineupCardItem}">
+            <Border Padding="10" Margin="0,0,0,8" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}"
+                    Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource LineBrush}">
+                <Grid>
+                    <Border x:Name="rail" Width="3" HorizontalAlignment="Left" Margin="-10,-10,0,-10" Visibility="Collapsed"
+                            CornerRadius="2,0,0,2" Background="{DynamicResource SuccessBrush}" />
+                    <StackPanel>
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Right" Text="{Binding SizeText}" FontSize="11" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <Border DockPanel.Dock="Right" Style="{StaticResource TonePill}" Tag="{Binding Tone}" Margin="0,0,8,0"
+                                    VerticalAlignment="Center" Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Text="{Binding StatusText}" FontSize="10" FontWeight="Bold" />
+                            </Border>
+                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                       Margin="0,0,8,0" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        </DockPanel>
+                        <ItemsControl ItemsSource="{Binding Targets}" Margin="0,7,0,0" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource TonePill}" Tag="{Binding Tone}" ToolTip="{Binding ToolTip}">
+                                        <TextBlock Text="{Binding Text}" FontSize="10" FontWeight="Bold" />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{Binding Avatars}" Margin="0,3,0,0" Focusable="False">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate><UniformGrid Columns="9" /></ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,0,4,4" ToolTip="{Binding ToolTip}">
+                                        <controls:Avatar x:Name="av" Height="28" Text="{Binding Name}" Source="{Binding IconPath}" />
+                                        <Border x:Name="ban" Width="13" Height="13" CornerRadius="7" HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                                                Margin="0,0,-3,-3" Visibility="Collapsed" Background="{DynamicResource DangerBrush}">
+                                            <Path Data="M 3.5 3.5 L 9.5 9.5 M 9.5 3.5 L 3.5 9.5" Stroke="White" StrokeThickness="1.6"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                        </Border>
+                                    </Grid>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsBanned}" Value="True">
+                                            <Setter TargetName="av" Property="Opacity" Value="0.35" />
+                                            <Setter TargetName="ban" Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <TextBlock x:Name="note" Text="{Binding Note}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" Visibility="{Binding HasNote, Converter={StaticResource BoolToVis}}" />
+                        <DockPanel Margin="0,8,0,0">
+                            <Button DockPanel.Dock="Right" Width="28" Height="28" Tag="{StaticResource IconDelete}"
+                                    Style="{StaticResource RowIconButton}" Click="OnDeleteLineup" ToolTip="删除阵容"
+                                    Visibility="{Binding ShowManage, Converter={StaticResource BoolToVis}}" />
+                            <StackPanel Orientation="Horizontal">
+                                <Button Content="修补" Style="{StaticResource CardPrimaryAction}" Click="OnRepairLineup"
+                                        Visibility="{Binding CanRepair, Converter={StaticResource BoolToVis}}"
+                                        ToolTip="在规划里固定没被禁的干员，只给被禁的位置找替补" />
+                                <Button x:Name="track" Content="追踪" Style="{StaticResource CardPrimaryAction}" Click="OnTrackLineup"
+                                        ToolTip="把这套阵容的干员加入追踪" />
+                                <Button Content="编辑" Style="{StaticResource CardAction}" Click="OnEditLineup" />
+                                <Button Content="分享" Style="{StaticResource CardAction}" Click="OnShareLineup"
+                                        Visibility="{Binding ShowManage, Converter={StaticResource BoolToVis}}" />
+                            </StackPanel>
+                        </DockPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsBest}" Value="True">
+                    <Setter TargetName="rail" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Tone}" Value="warn">
+                    <Setter TargetName="note" Property="Foreground" Value="{DynamicResource WarningTextBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Tone}" Value="bad">
+                    <Setter TargetName="note" Property="Foreground" Value="{DynamicResource DangerBrush}" />
+                </DataTrigger>
+                <!-- 修补 leads when the lineup needs it -->
+                <DataTrigger Binding="{Binding CanRepair}" Value="True">
+                    <Setter TargetName="track" Property="Style" Value="{StaticResource CardAction}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </UserControl.Resources>
 
     <DockPanel>
-        <!-- Header: title · count · 导入 · 新建 -->
-        <DockPanel DockPanel.Dock="Top" Margin="10,12,10,8">
-            <Button DockPanel.Dock="Right" Content="新建" Style="{StaticResource LineupPrimaryButton}" Margin="6,0,0,0" Click="OnNewLineup" />
-            <Button DockPanel.Dock="Right" Content="导入" Style="{StaticResource LineupTopButton}" Click="OnImportLineup"
-                    ToolTip="粘贴分享码或分享链接导入阵容" />
-            <TextBlock Text="我的阵容" Foreground="{DynamicResource TextPrimaryBrush}" FontSize="14" FontWeight="Bold" VerticalAlignment="Center" />
-            <TextBlock Text="{Binding Lineups.Count, StringFormat={}{0} 套}" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
-                       Foreground="{DynamicResource TextSecondaryBrush}" />
+        <!-- Search · 筛选 -->
+        <DockPanel DockPanel.Dock="Top" Margin="10,10,10,8">
+            <ToggleButton x:Name="FilterToggle" DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource FilterTogglePill}" Content="筛选" />
+            <Border Height="30" Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}" Padding="9,0">
+                <DockPanel>
+                    <Viewbox DockPanel.Dock="Left" Width="13" Height="13" Margin="0,0,7,0" VerticalAlignment="Center">
+                        <Canvas Width="24" Height="24">
+                            <Path Data="{StaticResource IconSearch}" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2"
+                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                        </Canvas>
+                    </Viewbox>
+                    <Grid>
+                        <TextBlock Text="搜索阵容或干员" FontSize="12" VerticalAlignment="Center" IsHitTestVisible="False"
+                                   Foreground="{DynamicResource TextSecondaryBrush}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Text, ElementName=SearchBox}" Value="">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBox x:Name="SearchBox" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 Background="Transparent" Foreground="{DynamicResource TextPrimaryBrush}" BorderThickness="0" Padding="0"
+                                 FontSize="12" VerticalContentAlignment="Center" CaretBrush="{DynamicResource AccentBrush}" />
+                    </Grid>
+                </DockPanel>
+            </Border>
         </DockPanel>
 
-        <!-- Lineup list -->
         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="10,0,10,10">
-            <Grid>
-                <controls:EmptyState x:Name="EmptyHint" Visibility="Collapsed" Margin="28,60,28,0" VerticalAlignment="Top"
-                                     Icon="{StaticResource IconLineups}" Title="还没有阵容"
-                                     Hint="点右上角“新建”自己搭，或“导入”别人分享的阵容码。规划页的方案也能直接保存过来。" />
+            <StackPanel>
+                <!-- 筛选 panel -->
+                <Border Style="{StaticResource FilterCard}" Margin="0,0,0,8"
+                        Visibility="{Binding IsChecked, ElementName=FilterToggle, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <TextBlock Text="核心盟约" Style="{StaticResource FilterSectionTitle}" Margin="0,0,0,7" />
+                        <ItemsControl ItemsSource="{Binding CoreChips}" ItemTemplate="{StaticResource GridChipTemplate}" Focusable="False" Margin="0,0,-5,0">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                        <TextBlock Text="附加盟约" Style="{StaticResource FilterSectionTitle}" Margin="0,8,0,7" />
+                        <ItemsControl ItemsSource="{Binding ExtraChips}" ItemTemplate="{StaticResource GridChipTemplate}" Focusable="False" Margin="0,0,-5,0">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                        <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,6,0,0" Padding="0,10,0,0">
+                            <DockPanel>
+                                <ListBox x:Name="MatchModeList" DockPanel.Dock="Right" Style="{StaticResource SegmentedListBox}" SelectionChanged="OnMatchModeChanged">
+                                    <ListBoxItem Content="任一" />
+                                    <ListBoxItem Content="全部" />
+                                </ListBox>
+                                <TextBlock DockPanel.Dock="Right" Text="多选" Style="{StaticResource FilterSectionTitle}" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                <TextBlock Text="档位" Style="{StaticResource FilterSectionTitle}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <ListBox x:Name="TierList" Style="{StaticResource SegmentedListBox}" HorizontalAlignment="Left" SelectionChanged="OnTierChanged">
+                                    <ListBoxItem Content="任意" />
+                                    <ListBoxItem Content="Ⅰ" />
+                                    <ListBoxItem Content="Ⅱ" />
+                                </ListBox>
+                            </DockPanel>
+                        </Border>
+                        <Border BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,10,0,0" Padding="0,10,0,0">
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="收起" Style="{StaticResource LineupPrimaryButton}" Margin="6,0,0,0" Click="OnCloseFilter" />
+                                <Button DockPanel.Dock="Right" Content="重置" Style="{StaticResource LineupTopButton}" Click="OnResetFilter" />
+                                <TextBlock VerticalAlignment="Center" FontSize="11" Foreground="{DynamicResource TextSecondaryBrush}">
+                                    <Run Text="符合条件 " /><Run Text="{Binding FilteredLineups.Count, Mode=OneWay}" FontWeight="Bold"
+                                                               Foreground="{DynamicResource TextPrimaryBrush}" /><Run Text=" 套" />
+                                </TextBlock>
+                            </DockPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
 
-                <ItemsControl x:Name="LineupItems" ItemsSource="{Binding Lineups}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type models:Lineup}">
-                            <Border Style="{StaticResource LineupCardStyle}" Tag="{Binding Id}">
-                                <StackPanel>
-                                    <!-- Name · people -->
-                                    <DockPanel>
-                                        <TextBlock DockPanel.Dock="Right" Text="{Binding Slots.Count, StringFormat={}{0} 人}" FontSize="11"
-                                                   VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                        <TextBlock Text="{Binding Name}" Foreground="{DynamicResource TextPrimaryBrush}"
-                                                   FontSize="13" FontWeight="Bold" VerticalAlignment="Center"
-                                                   TextTrimming="CharacterEllipsis" Margin="0,0,8,0" />
-                                    </DockPanel>
+                <!-- Collapsed: chosen conditions as removable tags -->
+                <WrapPanel x:Name="TagsRow" Margin="0,0,0,4" Visibility="Collapsed">
+                    <ItemsControl ItemsSource="{Binding ActiveTags}" Focusable="False">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Height="24" Margin="0,0,5,5" Padding="8,0,2,0" CornerRadius="{DynamicResource PillCornerRadius}" BorderThickness="1"
+                                        Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBorderBrush}">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}" />
+                                        <Button Width="18" Height="18" Margin="3,0,0,0" Tag="{StaticResource IconClose}" Style="{StaticResource RowIconButton}"
+                                                ToolTip="去掉这个条件" Click="OnRemoveTag" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Content="清除" Style="{StaticResource TextLink}" Margin="2,0,0,5" VerticalAlignment="Center" Click="OnResetFilter" />
+                </WrapPanel>
 
-                                    <!-- Activated covenants as people, e.g. "乌萨斯 6" -->
-                                    <ItemsControl Tag="{Binding Id}" Loaded="OnCovenantPillsLoaded" Margin="0,7,0,0" Focusable="False">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
+                <!-- 本局推荐 -->
+                <StackPanel x:Name="RecommendSection" Visibility="Collapsed">
+                    <Border Padding="10" Margin="0,0,0,8" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}"
+                            Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                        <StackPanel>
+                            <DockPanel>
+                                <Button x:Name="RecommendMore" DockPanel.Dock="Right" Style="{StaticResource TextLink}" VerticalAlignment="Center"
+                                        Click="OnToggleAllRecommendations" />
+                                <TextBlock Text="本局推荐" FontSize="13" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                <TextBlock x:Name="RecommendMeta" FontSize="11" Margin="8,0,0,0" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" />
+                            </DockPanel>
+                            <Border x:Name="BannedStrip" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,8,0,0">
+                                <DockPanel>
+                                    <TextBlock Text="本局禁用" FontSize="10" Margin="0,0,8,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <ItemsControl x:Name="BannedCovenantsList" Focusable="False" VerticalAlignment="Center">
+                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
-                                                <Border x:Name="pill" CornerRadius="{DynamicResource PillCornerRadius}" Padding="7,1" Margin="0,0,4,4"
-                                                        Background="{DynamicResource NeutralTintBrush}">
-                                                    <TextBlock x:Name="pillText" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}">
-                                                        <Run Text="{Binding Name, Mode=OneWay}" /><Run Text=" " /><Run Text="{Binding Count, Mode=OneWay}" />
-                                                    </TextBlock>
+                                                <Border Style="{StaticResource TonePill}" Tag="bad" Margin="0,2,4,2" VerticalAlignment="Center">
+                                                    <TextBlock Text="{Binding StringFormat='{}{0} 不完整'}" FontSize="10" FontWeight="Bold" />
                                                 </Border>
-                                                <DataTemplate.Triggers>
-                                                    <DataTrigger Binding="{Binding IsCore}" Value="True">
-                                                        <Setter TargetName="pill" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
-                                                        <Setter TargetName="pillText" Property="Foreground" Value="{DynamicResource AccentBrush}" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding IsCore}" Value="False">
-                                                        <Setter TargetName="pill" Property="Background" Value="{DynamicResource FinalTintBrush}" />
-                                                        <Setter TargetName="pillText" Property="Foreground" Value="{DynamicResource SuccessTextBrush}" />
-                                                    </DataTrigger>
-                                                </DataTemplate.Triggers>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-
-                                    <!-- Operators -->
-                                    <ItemsControl ItemsSource="{Binding Slots}" Margin="0,5,0,0" Focusable="False">
-                                        <ItemsControl.ItemsPanel>
-                                            <ItemsPanelTemplate><UniformGrid Columns="8" /></ItemsPanelTemplate>
-                                        </ItemsControl.ItemsPanel>
+                                    <ItemsControl x:Name="BannedAvatars" Focusable="False">
+                                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
-                                            <DataTemplate DataType="{x:Type models:LineupSlot}">
-                                                <controls:Avatar Height="28" Margin="0,0,4,4" Text="{Binding OperatorName}"
-                                                                 Source="{Binding OperatorName, StringFormat=icons/operators/{0}.png}"
-                                                                 ToolTip="{Binding OperatorName}" />
+                                            <DataTemplate>
+                                                <controls:Avatar Width="24" Height="24" Margin="0,2,4,2" Text="{Binding Name}" Source="{Binding IconPath}"
+                                                                 ToolTip="{Binding Name}" />
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-
-                                    <!-- Actions -->
-                                    <DockPanel Margin="0,6,0,0">
-                                        <Button DockPanel.Dock="Right" Width="28" Height="28" Tag="{StaticResource IconDelete}"
-                                                Style="{StaticResource RowIconButton}" Click="OnDeleteLineup" ToolTip="删除阵容" />
-                                        <StackPanel Orientation="Horizontal">
-                                            <Button Content="追踪" Tag="{Binding Id}" Style="{StaticResource LineupCardActionButton}"
-                                                    Foreground="{DynamicResource AccentBrush}" BorderBrush="{DynamicResource AccentBorderBrush}"
-                                                    Background="{DynamicResource AccentSoftBrush}" FontWeight="Bold"
-                                                    Click="OnTrackLineup" ToolTip="把这套阵容的干员加入追踪" />
-                                            <Button Content="编辑" Tag="{Binding Id}" Style="{StaticResource LineupCardActionButton}" Click="OnEditLineup" />
-                                            <Button Content="分享" Tag="{Binding Id}" Style="{StaticResource LineupCardActionButton}" Click="OnShareLineup" />
-                                        </StackPanel>
-                                    </DockPanel>
-                                </StackPanel>
+                                </DockPanel>
                             </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </Grid>
+                        </StackPanel>
+                    </Border>
+                    <ItemsControl x:Name="RecommendItems" ItemTemplate="{StaticResource LineupCardTemplate}" Focusable="False" />
+                    <DockPanel Margin="0,4,0,10">
+                        <TextBlock Text="全部阵容" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <Border Height="1" Margin="8,0,0,0" VerticalAlignment="Center" Background="{DynamicResource LineBrush}" />
+                    </DockPanel>
+                </StackPanel>
+
+                <!-- Count · 导入 · 新建 -->
+                <DockPanel Margin="0,0,0,8">
+                    <Button DockPanel.Dock="Right" Content="新建" Style="{StaticResource LineupPrimaryButton}" Margin="6,0,0,0" Click="OnNewLineup" />
+                    <Button DockPanel.Dock="Right" Content="导入" Style="{StaticResource LineupTopButton}" Click="OnImportLineup"
+                            ToolTip="粘贴分享码或分享链接导入阵容" />
+                    <TextBlock x:Name="CountText" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    <TextBlock x:Name="TotalText" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </DockPanel>
+
+                <controls:EmptyState x:Name="EmptyHint" Visibility="Collapsed" Margin="18,30,18,0" VerticalAlignment="Top"
+                                     Icon="{StaticResource IconLineups}" Title="还没有阵容"
+                                     Hint="点“新建”自己搭，或“导入”别人分享的阵容码。规划里的方案也能直接保存过来。" />
+                <TextBlock x:Name="NoMatchHint" Visibility="Collapsed" Text="没有符合条件的阵容" FontSize="12" Margin="0,20,0,0"
+                           HorizontalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                <ItemsControl x:Name="LineupItems" ItemTemplate="{StaticResource LineupCardTemplate}" Focusable="False" />
+            </StackPanel>
         </ScrollViewer>
     </DockPanel>
 </UserControl>

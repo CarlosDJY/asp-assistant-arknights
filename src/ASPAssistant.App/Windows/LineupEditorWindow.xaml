@@ -259,6 +259,19 @@
                                  Padding="10,4" VerticalContentAlignment="Center" TextChanged="OnLineupNameChanged" ToolTip="阵容名" />
                     </DockPanel>
 
+                    <!-- 目标盟约: what the lineup is built to reach (filter and 本局推荐 use these) -->
+                    <Border DockPanel.Dock="Top" Margin="0,0,0,12" Padding="10,8,10,4" BorderThickness="1"
+                            CornerRadius="{DynamicResource CardCornerRadius}" Background="{DynamicResource CardBackgroundBrush}"
+                            BorderBrush="{DynamicResource LineBrush}">
+                        <DockPanel>
+                            <Button x:Name="FillTargetsButton" DockPanel.Dock="Right" VerticalAlignment="Top" Margin="8,2,0,4"
+                                    Content="按后期配置填写" Style="{StaticResource CandidateChip}" Tag="add" Click="OnFillTargets"
+                                    ToolTip="用后期阵容现在激活的盟约（够人数的记作 Ⅱ）替换目标" />
+                            <TextBlock DockPanel.Dock="Left" Text="目标盟约" Style="{StaticResource FilterSectionTitle}" Margin="0,6,10,0" VerticalAlignment="Top" />
+                            <WrapPanel x:Name="TargetChips" />
+                        </DockPanel>
+                    </Border>
+
                     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel>
                             <!-- strategy-only piece (暴躁铁皮): outside the 9 places -->

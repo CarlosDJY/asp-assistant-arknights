@@ -103,4 +103,28 @@ public class LineupTargetsTests
         vm.SetRunInfo(null, null);
         vm.Recommendations.Should().BeEmpty();
     }
+
+    [Fact]
+    public void EditorFillsTargetsForOldLineupsAndSavesEdits()
+    {
+        var calc = Calc();
+        var vm = new LineupEditorViewModel(Ursus(), Ops, [], calc);
+        vm.TargetCovenants.Select(t => (t.Name, t.Tier)).Should().Equal(("乌萨斯", 2), ("奥术", 1));
+        vm.TargetStates.Should().OnlyContain(t => t.Reached);
+
+        vm.AddTarget("迅捷");
+        vm.TargetStates.Single(t => t.Name == "迅捷").Missing.Should().Be(1);
+        vm.SetTargetTier("奥术", 2);
+        vm.TargetStates.Single(t => t.Name == "奥术").Missing.Should().Be(1, "奥术 Ⅱ needs 3 people");
+        vm.SetTargetTier("奥术", 1);
+        vm.RemoveTarget("乌萨斯");
+        vm.ToLineup().TargetCovenants.Select(t => t.Name).Should().Equal("奥术", "迅捷");
+
+        vm.FillTargetsFromLate();
+        vm.TargetCovenants.Select(t => t.Name).Should().Equal("乌萨斯", "奥术");
+        vm.RemoveTarget("奥术");
+        vm.Reset();
+        vm.TargetCovenants.Should().HaveCount(2);
+        new LineupEditorViewModel(null, Ops, [], calc).TargetCovenants.Should().BeEmpty();
+    }
 }

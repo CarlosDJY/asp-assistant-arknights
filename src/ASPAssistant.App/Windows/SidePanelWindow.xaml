@@ -174,11 +174,24 @@
                     <TabItem Header="追踪" Tag="{StaticResource IconTracking}">
                         <views:TrackingView x:Name="TrackingView" />
                     </TabItem>
-                    <TabItem Header="阵容" Tag="{StaticResource IconLineups}">
-                        <views:LineupListView x:Name="LineupView" />
-                    </TabItem>
-                    <TabItem Header="规划" Tag="{StaticResource IconPlanner}">
-                        <views:LineupPlannerView x:Name="PlannerView" />
+                    <!-- 阵容: saved lineups (search / 筛选 / 本局推荐) and the planner behind one segment -->
+                    <TabItem x:Name="LineupsTab" Header="阵容" Tag="{StaticResource IconLineups}">
+                        <DockPanel Background="{DynamicResource PanelBackgroundBrush}">
+                            <Border DockPanel.Dock="Top" Padding="10,10,10,0">
+                                <ListBox x:Name="LineupsSegment" Style="{StaticResource SegmentedListBox}" HorizontalAlignment="Stretch"
+                                         SelectedIndex="0" SelectionChanged="OnLineupsSegmentChanged">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate><UniformGrid Rows="1" /></ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBoxItem Content="我的阵容" />
+                                    <ListBoxItem Content="规划" />
+                                </ListBox>
+                            </Border>
+                            <Grid>
+                                <views:LineupListView x:Name="LineupView" />
+                                <views:LineupPlannerView x:Name="PlannerView" Visibility="Collapsed" />
+                            </Grid>
+                        </DockPanel>
                     </TabItem>
                     <TabItem Header="敌人" Tag="{StaticResource IconEnemy}">
                         <views:EnemyView x:Name="EnemyView" />

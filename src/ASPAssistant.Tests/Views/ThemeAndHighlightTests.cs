@@ -537,14 +537,20 @@ public class ThemeAndHighlightTests
                         ((SolidColorBrush)settingsButton.Background).Color.Should().Be(Colors.Transparent);
                         ((SolidColorBrush)((System.Windows.Shapes.Path)settingsButton.Content).Fill).Color.Should()
                             .Be(((SolidColorBrush)application.FindResource("TextPrimaryBrush")).Color);
-                        for (var i = 0; i < tabs.Items.Count; i++)
+                        // The 阵容 tab holds 我的阵容 and 规划 behind a segment; visit both.
+                        var lineupsSegment = (ListBox)sidePanel.FindName("LineupsSegment");
+                        var visits = Enumerable.Range(0, tabs.Items.Count).SelectMany(t =>
+                            ((TabItem)tabs.Items[t]).Content is UserControl ? new[] { (t, -1) } : new[] { (t, 0), (t, 1) });
+                        foreach (var (i, segment) in visits)
                         {
                             tabs.SelectedIndex = i;
+                            if (segment >= 0) lineupsSegment.SelectedIndex = segment;
                             content.Measure(new Size(310, 900));
                             content.Arrange(new Rect(0, 0, 310, 900));
                             content.UpdateLayout();
                             Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
-                            var page = (UserControl)((TabItem)tabs.Items[i]).Content;
+                            var page = segment < 0 ? (UserControl)((TabItem)tabs.Items[i]).Content
+                                : (UserControl)sidePanel.FindName(segment == 0 ? "LineupView" : "PlannerView");
                             if (page is OperatorBrowseView operatorPage)
                             {
                                 var operatorFilters = (System.Windows.Controls.Primitives.ToggleButton)operatorPage.FindName("FilterToggle");
@@ -1197,7 +1203,13 @@ public class ThemeAndHighlightTests
                     content.Measure(new Size(310, 900));
                     content.Arrange(new Rect(0, 0, 310, 900));
                     content.UpdateLayout();
-                    var lineupView = (LineupListView)((TabItem)tabs.Items[3]).Content;
+                    ((ListBox)sidePanel.FindName("LineupsSegment")).SelectedIndex = 0;
+                    var lineupView = (LineupListView)sidePanel.FindName("LineupView");
+                    WaitForUi(() =>
+                    {
+                        content.UpdateLayout();
+                        return Descendants<Button>(lineupView).Any(b => b.Content as string == "分享");
+                    }, "the lineup cards are rebuilt after the list changes");
                     Descendants<Button>(lineupView).Single(b => b.Content as string == "分享")
                         .RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
                     WaitForUi(() => ((TextBlock)sidePanel.FindName("ToastText")).Text.StartsWith("生成分享链接失败"),

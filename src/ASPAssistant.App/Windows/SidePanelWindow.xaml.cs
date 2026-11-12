@@ -209,6 +209,7 @@ public partial class SidePanelWindow : Window
                 OperatorView.RefreshBannedStates();
                 operatorVm.NotifyBansChanged();
                 OperatorView.SetBanSummary([.. banVm.BannedCovenants], banVm.BannedNames.Count);
+                UpdateLineupRunInfo();
             });
         };
         OperatorView.SetBanSummary([.. banVm.BannedCovenants], banVm.BannedNames.Count);
@@ -932,7 +933,46 @@ public partial class SidePanelWindow : Window
                 ShowToast($"追踪失败：{ex.Message}");
             }
         };
+        LineupView.RepairLineupRequested += rec =>
+        {
+            ShowLineupsSegment(planner: true);
+            PlannerVm.BeginRepair(rec.Lineup, LineupVm.TargetsOf(rec.Lineup), rec.Banned);
+        };
         WirePlannerView();
+        UpdateLineupRunInfo();
+    }
+
+    /// <summary>本局推荐 follows the opening bans: none recorded → no recommendations.</summary>
+    private void UpdateLineupRunInfo()
+    {
+        var bannedCovenants = BanVm.BannedCovenants;
+        if (BanVm.BannedNames.Count == 0 && bannedCovenants.Count == 0)
+        {
+            LineupVm.SetRunInfo(null, null);
+            return;
+        }
+        var byName = _allOperators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First());
+        bool Unavailable(string name) => BanVm.IsBanned(name)
+            || (byName.TryGetValue(name, out var op) && CovenantBanRules.IsExcluded(op, bannedCovenants));
+        LineupVm.SetRunInfo(Unavailable, new HashSet<string>(bannedCovenants), [.. BanVm.BannedNames.OrderBy(n => n, StringComparer.Ordinal)]);
+    }
+
+    /// <summary>Opens the 阵容 tab on 我的阵容 (with 本局推荐 in view) or on 规划.</summary>
+    public void ShowLineupsSegment(bool planner)
+    {
+        MainTabs.SelectedItem = LineupsTab;
+        LineupsSegment.SelectedIndex = planner ? 1 : 0;
+        if (!planner) LineupView.ShowRecommendations();
+    }
+
+    private void OnLineupsSegmentChanged(object sender, SelectionChangedEventArgs e)
+    {
+        e.Handled = true;
+        if (LineupView is null || PlannerView is null) return;
+        bool planner = LineupsSegment.SelectedIndex == 1;
+        LineupView.Visibility = planner ? Visibility.Collapsed : Visibility.Visible;
+        PlannerView.Visibility = planner ? Visibility.Visible : Visibility.Collapsed;
+        if (IsLoaded) PageTransition.SlideIn(planner ? PlannerView : LineupView, fromY: 8);
     }
 
     private void WirePlannerView()
@@ -953,6 +993,19 @@ public partial class SidePanelWindow : Window
                 await LineupVm.AddOrUpdateAsync(lineup);
                 LineupView.RefreshAllBadges();
                 ShowToast($"已保存阵容“{lineup.Name}”");
+            }
+            catch (Exception ex)
+            {
+                ShowToast($"保存失败：{ex.Message}");
+            }
+        };
+        PlannerVm.OverwriteRequested += async lineup =>
+        {
+            try
+            {
+                await LineupVm.AddOrUpdateAsync(lineup);
+                LineupView.RefreshAllBadges();
+                ShowToast($"已更新阵容“{lineup.Name}”");
             }
             catch (Exception ex)
             {

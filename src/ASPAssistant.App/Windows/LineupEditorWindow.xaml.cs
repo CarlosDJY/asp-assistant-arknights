@@ -77,6 +77,7 @@ public partial class LineupEditorWindow : Window
         TitleMeta.Text = string.Join(" · ", _vm.StrategySlots.Where(s => s.StrategyId.Length > 0)
             .Select(s => _strategies.FirstOrDefault(x => x.Id == s.StrategyId)?.Name ?? s.StrategyId).Take(2));
         BuildCards();
+        RefreshTargets();
         RefreshSidePanel();
     }
 
@@ -589,6 +590,115 @@ public partial class LineupEditorWindow : Window
         EditorHint.SetResourceReference(TextBlock.ForegroundProperty, error.Length > 0 ? "TransitionTextBrush" : "TextSecondaryBrush");
     }
 
+    /// <summary>目标盟约 chips: name, Ⅰ / Ⅱ, and how the late-game slots stand against it.</summary>
+    private void RefreshTargets()
+    {
+        TargetChips.Children.Clear();
+        foreach (var state in _vm.TargetStates)
+            TargetChips.Children.Add(TargetChip(state));
+        var add = new Button
+        {
+            Content = _vm.TargetCovenants.Count == 0 ? "＋ 添加目标盟约" : "＋ 目标盟约", Style = (Style)FindResource("CandidateChip"),
+            Tag = "add", Margin = new Thickness(0, 0, 4, 4), ToolTip = "这套阵容要凑的盟约；阵容页的筛选和本局推荐都按它判断"
+        };
+        add.Click += (_, _) => PickTarget();
+        TargetChips.Children.Add(add);
+    }
+
+    private UIElement TargetChip(TargetState state)
+    {
+        var chip = new Border { Padding = new Thickness(8, 2, 3, 2), Margin = new Thickness(0, 0, 5, 4), BorderThickness = new Thickness(1), MinHeight = 26 };
+        chip.SetResourceReference(Border.CornerRadiusProperty, "RowCornerRadius");
+        chip.SetResourceReference(Border.BackgroundProperty, state.Reached ? "SuccessTintBrush" : "SectionBackgroundBrush");
+        chip.SetResourceReference(Border.BorderBrushProperty, state.Reached ? "SuccessBorderBrush" : "BorderBrush");
+        var content = new StackPanel { Orientation = Orientation.Horizontal };
+        var dot = new Border { Width = 7, Height = 7, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        dot.SetResourceReference(Border.BackgroundProperty, state.IsCore ? "AccentSolidBrush" : "FinalBrush");
+        dot.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
+        content.Children.Add(dot);
+        var name = new TextBlock { Text = state.Name, FontSize = 12, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
+        name.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
+        content.Children.Add(name);
+
+        if (_vm.HasSecondTier(state.Name))
+        {
+            var tiers = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            foreach (var tier in new[] { 1, 2 })
+            {
+                var active = state.Tier == tier;
+                var b = new Button { Content = Roman[tier], Width = 22, Height = 18, FontSize = 11, Padding = new Thickness(0), BorderThickness = new Thickness(1),
+                    FontWeight = active ? FontWeights.Bold : FontWeights.Normal, ToolTip = tier == 2 ? "目标 Ⅱ 档" : "目标 Ⅰ 档" };
+                b.Style = (Style)FindResource("ClickableButtonBase");
+                b.Template = TierButtonTemplate(tier == 1);
+                b.SetResourceReference(BackgroundProperty, active ? "AccentSolidBrush" : "CardBackgroundBrush");
+                b.SetResourceReference(BorderBrushProperty, active ? "AccentSolidBrush" : "BorderBrush");
+                b.SetResourceReference(ForegroundProperty, active ? "OnAccentBrush" : "TextSecondaryBrush");
+                var name_ = state.Name;
+                b.Click += (_, _) => { _vm.SetTargetTier(name_, tier); RefreshEditor(); };
+                tiers.Children.Add(b);
+            }
+            content.Children.Add(tiers);
+        }
+        else
+        {
+            var tier = new TextBlock { Text = "Ⅰ", FontSize = 11, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            tier.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+            content.Children.Add(tier);
+        }
+
+        var status = new TextBlock
+        {
+            Text = state.Reached ? $"已满足 · {state.Count} 人" : $"差 {state.Missing} 人", FontSize = 11,
+            Margin = new Thickness(7, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
+        };
+        status.SetResourceReference(TextBlock.ForegroundProperty, state.Reached ? "SuccessTextBrush" : "WarningTextBrush");
+        content.Children.Add(status);
+
+        var remove = new Button { Width = 18, Height = 18, Margin = new Thickness(4, 0, 0, 0), ToolTip = "移除这个目标", VerticalAlignment = VerticalAlignment.Center };
+        remove.Style = (Style)FindResource("RowIconButton");
+        remove.Tag = FindResource("IconClose");
+        var target = state.Name;
+        remove.Click += (_, _) => { _vm.RemoveTarget(target); RefreshEditor(); };
+        content.Children.Add(remove);
+        chip.Child = content;
+        chip.ToolTip = $"{state.Label}：需要 {state.Needed} 人，后期现在 {state.Count} 人";
+        return chip;
+    }
+
+    private static ControlTemplate TierButtonTemplate(bool left)
+    {
+        var border = new FrameworkElementFactory(typeof(Border));
+        border.SetValue(Border.CornerRadiusProperty, left ? new CornerRadius(4, 0, 0, 4) : new CornerRadius(0, 4, 4, 0));
+        border.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
+        border.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
+        border.SetValue(Border.BorderThicknessProperty, new Thickness(1));
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        presenter.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
+        presenter.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
+        border.AppendChild(presenter);
+        return new ControlTemplate(typeof(Button)) { VisualTree = border };
+    }
+
+    private void PickTarget()
+    {
+        var taken = _vm.TargetCovenants.Select(t => t.Name).ToHashSet();
+        var stats = _vm.ComputeLate();
+        var items = _vm.AllCovenants.Where(c => !taken.Contains(c.Name))
+            .OrderByDescending(c => c.BondType == "SEASON").ThenByDescending(c => stats.GetValueOrDefault(c.Name))
+            .Select(c => new SimplePickerDialog.PickerItem(c.Name, c.Name, null,
+                $"{(c.BondType == "SEASON" ? "核心" : "附加")} · 后期 {stats.GetValueOrDefault(c.Name)} 人"));
+        var dialog = new SimplePickerDialog("添加目标盟约", items, null, "搜索盟约 · 单击添加") { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.Result is not { Length: > 0 } picked) return;
+        _vm.AddTarget(picked);
+        RefreshEditor();
+    }
+
+    private void OnFillTargets(object sender, RoutedEventArgs e)
+    {
+        _vm.FillTargetsFromLate();
+        RefreshEditor();
+    }
+
     private UIElement CovenantRow(CovenantStat stat)
     {
         var isCore = stat.BondType == "SEASON";
@@ -607,6 +717,17 @@ public partial class LineupEditorWindow : Window
         var count = new TextBlock { Text = stat.Count.ToString(), FontSize = 14, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
         count.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
         count.SetResourceReference(TextBlock.ForegroundProperty, stat.Activated ? "TextPrimaryBrush" : "TextSecondaryBrush");
+        if (_vm.TargetCovenants.FirstOrDefault(t => t.Name == stat.Name) is { } goal)
+        {
+            var mark = new Border { Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center,
+                BorderThickness = new Thickness(1), ToolTip = "这套阵容的目标盟约" };
+            mark.SetResourceReference(Border.BorderBrushProperty, "AccentBorderBrush");
+            mark.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
+            var text = new TextBlock { Text = $"目标 {Roman[Math.Clamp(goal.Tier, 1, 2)]}", FontSize = 10 };
+            text.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+            mark.Child = text;
+            right.Children.Insert(0, mark);
+        }
         right.Children.Add(count);
         if (level > 0)
         {

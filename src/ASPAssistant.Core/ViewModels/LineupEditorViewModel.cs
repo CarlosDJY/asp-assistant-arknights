@@ -18,6 +18,7 @@ public partial class LineupEditorViewModel : ObservableObject
 
     private readonly CovenantCalculator _calculator;
     private readonly string _initialName;
+    private readonly List<TargetCovenant> _initialTargets;
     private readonly Dictionary<LineupPhase, List<LineupSlot>> _initialSlots;
     private readonly Dictionary<LineupPhase, ObservableCollection<LineupSlot>> _phaseSlots = [];
     private readonly LineupPhase _initialPhase;
@@ -116,7 +117,57 @@ public partial class LineupEditorViewModel : ObservableObject
         _initialStrategies = StrategySlots.Select(s => new LineupStrategySlot { StrategyId = s.StrategyId, Tags = [.. s.Tags] }).ToList();
         _initialSlots = _phaseSlots.ToDictionary(pair => pair.Key, pair => pair.Value.Select(CloneSlot).ToList());
         _initialPhase = source is null ? LineupPhase.前期 : LineupPhase.后期;
+        // Lineups saved before target covenants existed get them from their late-game slots.
+        TargetCovenants = [.. source is null ? [] : source.TargetCovenants.Count > 0
+            ? source.TargetCovenants.Select(t => t.Clone())
+            : LineupTargets.Derive(new Lineup { Slots = ExportPhase(LineupPhase.后期) }, calculator)];
+        _initialTargets = [.. TargetCovenants.Select(t => t.Clone())];
         SelectPhase(_initialPhase);
+    }
+
+    // ── 目标盟约 ──────────────────────────────────────────────────────────
+
+    /// <summary>What this lineup is built to reach (core first); 本局推荐 and the 筛选 work from these.</summary>
+    public List<TargetCovenant> TargetCovenants { get; private set; }
+
+    /// <summary>Each target against the current late-game slots: 已满足 or how many people are missing.</summary>
+    public IReadOnlyList<TargetState> TargetStates => TargetCovenants.Count == 0 ? []
+        : LineupTargets.States(new Lineup { Slots = ExportPhase(LineupPhase.后期), TargetCovenants = TargetCovenants },
+            _calculator, _ => false, new HashSet<string>());
+
+    public IReadOnlyList<CovenantInfo> AllCovenants => _calculator.AllCovenants;
+
+    /// <summary>People per covenant in the late-game slots.</summary>
+    public IReadOnlyDictionary<string, int> ComputeLate()
+        => _calculator.Compute(new Lineup { Slots = ExportPhase(LineupPhase.后期) }).ToDictionary(s => s.Name, s => s.Count, StringComparer.Ordinal);
+
+    /// <summary>Whether a covenant has a second tier (core covenants and the 人数 ones).</summary>
+    public bool HasSecondTier(string covenant)
+        => _calculator.AllCovenants.FirstOrDefault(c => c.Name == covenant) is { } info && LineupPlanner.CreateGoal(info, 2).Level == 2;
+
+    public void AddTarget(string covenant)
+    {
+        if (TargetCovenants.Any(t => t.Name == covenant)) return;
+        TargetCovenants.Add(new TargetCovenant { Name = covenant, Tier = 1 });
+        SortTargets();
+    }
+
+    public void RemoveTarget(string covenant) => TargetCovenants.RemoveAll(t => t.Name == covenant);
+
+    public void SetTargetTier(string covenant, int tier)
+    {
+        if (TargetCovenants.FirstOrDefault(t => t.Name == covenant) is { } target)
+            target.Tier = tier >= 2 && HasSecondTier(covenant) ? 2 : 1;
+    }
+
+    /// <summary>按后期配置填写: the late-game slots' active covenants become the targets.</summary>
+    public void FillTargetsFromLate()
+        => TargetCovenants = LineupTargets.Derive(new Lineup { Slots = ExportPhase(LineupPhase.后期) }, _calculator);
+
+    private void SortTargets()
+    {
+        var order = _calculator.AllCovenants.Select((c, i) => (c, i)).ToDictionary(x => x.c.Name, x => (x.c.BondType == "SEASON" ? 0 : 1000) + x.i);
+        TargetCovenants = [.. TargetCovenants.OrderBy(t => order.GetValueOrDefault(t.Name, int.MaxValue))];
     }
 
     private static bool IsMech(LineupSlot slot) => slot.OperatorName == LineupEquipmentService.MechName;
@@ -317,6 +368,7 @@ public partial class LineupEditorViewModel : ObservableObject
             StrategySlots.Add(new LineupStrategySlot { StrategyId = slot.StrategyId, Tags = [.. slot.Tags] });
         foreach (var (phase, slots) in _initialSlots)
             _phaseSlots[phase] = new ObservableCollection<LineupSlot>(slots.Select(CloneSlot));
+        TargetCovenants = [.. _initialTargets.Select(t => t.Clone())];
         SelectPhase(_initialPhase);
     }
 
@@ -405,6 +457,7 @@ public partial class LineupEditorViewModel : ObservableObject
         SupportSlots = ExportPhase(LineupPhase.挂件),
         Strategies = [.. StrategySlots.Where(s => s.StrategyId.Length > 0)
             .Select(s => new LineupStrategySlot { StrategyId = s.StrategyId, Tags = [.. s.Tags] })],
+        TargetCovenants = [.. TargetCovenants.Select(t => t.Clone())],
         UpdatedAt = DateTime.UtcNow,
     };
 

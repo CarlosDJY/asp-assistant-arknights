@@ -56,6 +56,44 @@ public partial class LineupViewModel : ObservableObject
     partial void OnFilterMatchAllChanged(bool value) => Refresh();
 
     public int ActiveFilterCount => FilterCovenants.Count + (FilterTier > 0 ? 1 : 0);
+    /// <summary>Same as <see cref="ActiveFilterCount"/>; the shared 筛选 pill style binds this name.</summary>
+    public int ChipFilterCount => ActiveFilterCount;
+    public bool HasActiveFilters => ActiveFilterCount > 0;
+
+    /// <summary>筛选面板的核心盟约（固定顺序）和附加盟约（以它为目标的阵容多的在前）。</summary>
+    public ObservableCollection<LineupFilterChip> CoreChips { get; } = [];
+    public ObservableCollection<LineupFilterChip> ExtraChips { get; } = [];
+
+    /// <summary>Removable tags shown under the search box while the panel is closed.</summary>
+    public ObservableCollection<string> ActiveTags { get; } = [];
+
+    private void RefreshChips()
+    {
+        var counts = Calculator.AllCovenants.ToDictionary(c => c.Name, c => 0, StringComparer.Ordinal);
+        foreach (var l in Lineups)
+            foreach (var t in LineupTargets.Of(l, Calculator))
+                if (counts.ContainsKey(t.Name)) counts[t.Name]++;
+        LineupFilterChip Chip(CovenantInfo c) => new(c.Name, FilterCovenants.Contains(c.Name), counts[c.Name] == 0, ToggleFilterCovenant);
+        Replace(CoreChips, Calculator.AllCovenants.Where(c => c.BondType == "SEASON").Select(Chip));
+        Replace(ExtraChips, Calculator.AllCovenants.Where(c => c.BondType != "SEASON")
+            .OrderByDescending(c => counts[c.Name]).ThenBy(c => c.Name, StringComparer.Ordinal).Select(Chip));
+        ActiveTags.Clear();
+        foreach (var name in FilterCovenants) ActiveTags.Add(name);
+        if (FilterTier > 0) ActiveTags.Add(FilterTier == 2 ? "仅 Ⅱ 档" : "仅 Ⅰ 档");
+    }
+
+    private static void Replace<T>(ObservableCollection<T> list, IEnumerable<T> items)
+    {
+        list.Clear();
+        foreach (var item in items) list.Add(item);
+    }
+
+    /// <summary>Removes one tag from <see cref="ActiveTags"/>.</summary>
+    public void RemoveTag(string tag)
+    {
+        if (tag.StartsWith("仅 ")) FilterTier = 0;
+        else if (FilterCovenants.Remove(tag)) Refresh();
+    }
 
     public void ToggleFilterCovenant(string name)
     {
@@ -95,14 +133,20 @@ public partial class LineupViewModel : ObservableObject
 
     [ObservableProperty] private bool _hasRunInfo;
 
+    /// <summary>This run's banned operators and incomplete core covenants (the 本局禁用 strip).</summary>
+    public IReadOnlyList<string> RunBannedNames { get; private set; } = [];
+    public IReadOnlyCollection<string> RunBannedCovenants => _bannedCovenants;
+
     /// <summary>
     /// This run's bans: <paramref name="unavailable"/> tells whether an operator is out (banned, or every covenant of
     /// theirs is banned). Null clears the run (no recommendations).
     /// </summary>
-    public void SetRunInfo(Func<string, bool>? unavailable, IReadOnlySet<string>? bannedCovenants)
+    public void SetRunInfo(Func<string, bool>? unavailable, IReadOnlySet<string>? bannedCovenants,
+        IReadOnlyCollection<string>? bannedNames = null)
     {
         _unavailable = unavailable;
         _bannedCovenants = bannedCovenants ?? new HashSet<string>();
+        RunBannedNames = unavailable is null ? [] : [.. bannedNames ?? []];
         HasRunInfo = unavailable is not null;
         Refresh();
     }
@@ -119,7 +163,10 @@ public partial class LineupViewModel : ObservableObject
         if (_unavailable is { } unavailable)
             foreach (var r in LineupTargets.Rank(Lineups, Calculator, unavailable, _bannedCovenants))
                 Recommendations.Add(r);
+        RefreshChips();
         OnPropertyChanged(nameof(ActiveFilterCount));
+        OnPropertyChanged(nameof(ChipFilterCount));
+        OnPropertyChanged(nameof(HasActiveFilters));
     }
 
     /// <summary>新增或更新阵容，并落盘。</summary>
@@ -152,4 +199,26 @@ public partial class LineupViewModel : ObservableObject
     public int CountActivated(Lineup lineup) => Calculator.CountActivated(lineup);
 
     public IReadOnlyList<CovenantStat> ComputeStats(Lineup lineup) => Calculator.Compute(lineup);
+}
+
+/// <summary>One covenant in the 阵容 筛选 panel (same shape as the operator page's chips).</summary>
+public sealed class LineupFilterChip(string name, bool selected, bool blocked, Action<string> toggle) : ObservableObject
+{
+    public string Label { get; } = name;
+    public string CountText => "";
+    public bool IsHighlighted => false;
+    public bool IsReduced => false;
+    /// <summary>No saved lineup has this target: shown dashed and not clickable.</summary>
+    public bool IsBlocked { get; } = blocked;
+
+    public bool IsSelected
+    {
+        get => selected;
+        set
+        {
+            if (value == selected) return;
+            selected = value;
+            toggle(Label);
+        }
+    }
 }

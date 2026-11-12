@@ -597,6 +597,8 @@ public partial class App : Application
                 if (result.EnemyFaction is null)
                     enemyVm.RecognitionFailed("盟约已录入，本次敌人信息未完整读出，可在敌人页重试。");
                 sidePanel.ShowToast(result.EnemyFaction is null ? "盟约已录入，敌人信息可在敌人页重试" : "本局信息已录入");
+                // With saved lineups, the next thing to look at is which of them still work this run.
+                if (sidePanel.LineupVm.Lineups.Count > 0) sidePanel.ShowLineupsSegment(planner: false);
             });
         };
 
