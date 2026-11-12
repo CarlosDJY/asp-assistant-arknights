@@ -166,6 +166,7 @@ public partial class App : Application
 
         // Data layer
         var dataStore = new JsonDataStore(dataDir);
+        SearchMatch.LoadFile(Path.Combine(dataDir, "search_keys.json"));
         _settingsManager = new SettingsManager(settingsDir);
         var appearance = await _settingsManager.LoadSidebarAppearanceAsync();
         ThemeManager.Apply(appearance.Theme, appearance.IsNight(appearance.Theme));

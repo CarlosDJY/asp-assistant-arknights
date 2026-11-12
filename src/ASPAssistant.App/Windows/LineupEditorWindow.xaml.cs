@@ -16,7 +16,6 @@ public partial class LineupEditorWindow : Window
     private readonly LineupEditorViewModel _vm;
     private readonly IReadOnlyList<Strategy> _strategies;
     private readonly Dictionary<string, Operator> _operatorByName;
-    private bool _editingStrategies;
     private static readonly string[] Roman = ["", "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ"];
 
     /// <summary>Set to the saved Lineup if user clicked Save, else null.</summary>
@@ -33,7 +32,6 @@ public partial class LineupEditorWindow : Window
             var button = new Button { Style = (Style)FindResource("PhaseSegment"), DataContext = phase };
             button.Click += (_, _) =>
             {
-                _editingStrategies = false;
                 _vm.SelectPhase(phase);
                 RefreshEditor();
             };
@@ -43,11 +41,7 @@ public partial class LineupEditorWindow : Window
         RefreshEditor();
     }
 
-    private void OnStrategyTabClick(object sender, RoutedEventArgs e)
-    {
-        _editingStrategies = true;
-        RefreshEditor();
-    }
+    private IEnumerable<LineupStrategySlot> ChosenStrategies => _vm.StrategySlots.Where(s => s.StrategyId.Length > 0);
 
     private void RefreshEditor()
     {
@@ -67,19 +61,28 @@ public partial class LineupEditorWindow : Window
                     }
                 }
             };
-            button.Tag = !_editingStrategies && _vm.CurrentPhase == phase ? "active" : null;
+            button.Tag = _vm.CurrentPhase == phase ? "active" : null;
         }
-        var strategyCount = _vm.StrategySlots.Count(s => s.StrategyId.Length > 0);
-        StrategyTabText.Text = strategyCount > 0 ? $"策略 · {strategyCount}" : "策略";
-        StrategyTab.Tag = _editingStrategies ? "active" : null;
-        StrategyTab.SetResourceReference(BorderBrushProperty, _editingStrategies ? "AccentBorderBrush" : "BorderBrush");
-        StrategyTab.SetResourceReference(ForegroundProperty, _editingStrategies ? "AccentBrush" : "TextPrimaryBrush");
-        TitleMeta.Text = string.Join(" · ", _vm.StrategySlots.Where(s => s.StrategyId.Length > 0)
-            .Select(s => _strategies.FirstOrDefault(x => x.Id == s.StrategyId)?.Name ?? s.StrategyId).Take(2));
+        var chosen = ChosenStrategies.ToList();
+        StrategyTabText.Text = chosen.Count > 0 ? chosen.Count.ToString() : "";
+        StrategyTabIcons.Children.Clear();
+        foreach (var slot in chosen.Take(3))
+        {
+            var strategy = _strategies.FirstOrDefault(s => s.Id == slot.StrategyId);
+            StrategyTabIcons.Children.Add(new Controls.Avatar
+            {
+                Width = 22, Height = 22, Small = true, Margin = new Thickness(0, 0, -3, 0),
+                Text = strategy?.Name ?? slot.StrategyId, Source = strategy?.IconPath
+            });
+        }
+        StrategyTabIcons.Visibility = chosen.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        TitleMeta.Text = _vm.Name;
         BuildCards();
         RefreshTargets();
         RefreshSidePanel();
     }
+
+    private void OnStrategyTabClick(object sender, RoutedEventArgs e) => PickStrategies();
 
     private void OnTitleBarDrag(object sender, MouseButtonEventArgs e)
     {
@@ -90,7 +93,11 @@ public partial class LineupEditorWindow : Window
     private void OnMinimize(object sender, RoutedEventArgs e)
         => WindowState = WindowState.Minimized;
 
-    private void OnLineupNameChanged(object sender, TextChangedEventArgs e) => _vm.Name = LineupNameBox.Text;
+    private void OnLineupNameChanged(object sender, TextChangedEventArgs e)
+    {
+        _vm.Name = LineupNameBox.Text;
+        TitleMeta.Text = _vm.Name;
+    }
 
     private void OnSaveClick(object sender, RoutedEventArgs e)
     {
@@ -117,18 +124,15 @@ public partial class LineupEditorWindow : Window
         if (!ConfirmDialog.Ask(this, "撤销修改", "恢复到本次打开编辑器时的状态？本次未保存的修改将被撤销。", "撤销"))
             return;
         _vm.Reset();
-        _editingStrategies = false;
         LineupNameBox.Text = _vm.Name;
         RefreshEditor();
     }
 
     private void OnClearClick(object sender, RoutedEventArgs e)
     {
-        var contents = _editingStrategies ? "策略页的策略和标签" : $"{_vm.CurrentPhase}的干员、装备和标签";
-        if (!ConfirmDialog.Ask(this, "清空本阶段", $"清空{contents}？阵容名称和其他阶段保留，保存前不会改动已保存的阵容。", "清空", danger: true))
+        if (!ConfirmDialog.Ask(this, "清空本阶段", $"清空{_vm.CurrentPhase}的干员、装备和标签？阵容名称和其他阶段保留，保存前不会改动已保存的阵容。", "清空", danger: true))
             return;
-        if (_editingStrategies) _vm.ClearStrategies();
-        else _vm.Clear();
+        _vm.Clear();
         RefreshEditor();
     }
 
@@ -139,11 +143,6 @@ public partial class LineupEditorWindow : Window
         SlotsHost.Items.Clear();
         MechHost.Content = null;
         MechHost.Visibility = Visibility.Collapsed;
-        if (_editingStrategies)
-        {
-            for (var i = 0; i < _vm.StrategySlots.Count; i++) SlotsHost.Items.Add(StrategyCard(i));
-            return;
-        }
         if (_vm.MechSlotIndex is var mech and >= 0)
         {
             MechHost.Content = MechCard(mech);
@@ -156,7 +155,7 @@ public partial class LineupEditorWindow : Window
     {
         var card = new Border
         {
-            Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(9), MinHeight = 118,
+            Margin = new Thickness(0, 0, 8, 8), Padding = new Thickness(10), MinHeight = 122,
             BorderThickness = new Thickness(1), Background = empty ? Brushes.Transparent : null
         };
         card.SetResourceReference(Border.CornerRadiusProperty, "CardCornerRadius");
@@ -165,129 +164,212 @@ public partial class LineupEditorWindow : Window
         return card;
     }
 
-    /// <summary>Dashed “＋ 添加干员 / 策略” card.</summary>
+    /// <summary>Dashed “＋ 添加干员” card.</summary>
     private UIElement EmptyCard(string text, Action onClick)
     {
         var frame = new Rectangle { StrokeThickness = 1, StrokeDashArray = [4, 3] };
         frame.SetResourceReference(Shape.StrokeProperty, "BorderBrush");
         frame.RadiusY = frame.RadiusX = (double)FindResource("RowRadiusValue") + 2;
-        var label = new TextBlock { Text = text, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        var plus = new Path { Data = Geometry.Parse("M 12 5 L 12 19 M 5 12 L 19 12"), StrokeThickness = 1.8, Width = 16, Height = 16, Stretch = Stretch.Uniform,
+            StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, HorizontalAlignment = HorizontalAlignment.Center };
+        plus.SetResourceReference(Shape.StrokeProperty, "TextSecondaryBrush");
+        var label = new TextBlock { Text = text, FontSize = 12, Margin = new Thickness(0, 5, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
         label.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        var content = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, Children = { plus, label } };
         var hover = new Border { Opacity = 0 };
         hover.SetResourceReference(Border.BackgroundProperty, "NeutralHoverBrush");
         hover.SetResourceReference(Border.CornerRadiusProperty, "CardCornerRadius");
-        var grid = new Grid { MinHeight = 118, Margin = new Thickness(0, 0, 8, 8), Background = Brushes.Transparent, Cursor = Cursors.Hand, Children = { hover, frame, label } };
+        var grid = new Grid { MinHeight = 122, Margin = new Thickness(0, 0, 8, 8), Background = Brushes.Transparent, Cursor = Cursors.Hand, Children = { hover, frame, content } };
         grid.MouseEnter += (_, _) => hover.Opacity = 1;
         grid.MouseLeave += (_, _) => hover.Opacity = 0;
         grid.MouseLeftButtonUp += (_, _) => onClick();
         return grid;
     }
 
+    private static TextBlock Text(string text, double size, string brush, bool bold = false)
+    {
+        var t = new TextBlock { Text = text, FontSize = size, FontWeight = bold ? FontWeights.Bold : FontWeights.Normal, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+        t.SetResourceReference(TextBlock.ForegroundProperty, brush);
+        return t;
+    }
+
+    /// <summary>Small pill: tone "core" / "goal" / "goalCore" / "tag" / "extra".</summary>
+    private static Border Pill(string text, string tone)
+    {
+        var (bg, fg, border) = tone switch
+        {
+            "core" => ("AccentSoftBrush", "AccentBrush", null),
+            "goalCore" => ("AccentSoftBrush", "AccentBrush", "AccentBorderBrush"),
+            "goal" => ("SuccessTintBrush", "SuccessTextBrush", "SuccessBorderBrush"),
+            "tag" => (null, "TextSecondaryBrush", "BorderBrush"),
+            _ => ("SectionBackgroundBrush", "TextSecondaryBrush", null),
+        };
+        var pill = new Border { Padding = new Thickness(6, 0, 6, 0), Margin = new Thickness(0, 0, 3, 3), BorderThickness = new Thickness(border is null ? 0 : 1), MinHeight = 17 };
+        pill.SetResourceReference(Border.CornerRadiusProperty, "PillCornerRadius");
+        if (bg is not null) pill.SetResourceReference(Border.BackgroundProperty, bg);
+        if (border is not null) pill.SetResourceReference(Border.BorderBrushProperty, border);
+        pill.Child = Text(text, 10, fg, bold: tone is "core" or "goal" or "goalCore");
+        return pill;
+    }
+
     private UIElement SlotCard(int slotIndex)
     {
         var slot = _vm.Slots[slotIndex];
-        if (string.IsNullOrEmpty(slot.OperatorName)) return EmptyCard("＋ 添加干员", () => PickOperator(slotIndex));
+        if (string.IsNullOrEmpty(slot.OperatorName)) return EmptyCard("添加干员", () => PickOperator(slotIndex));
 
         var isCore = slot.Tags.Contains(LineupTag.阵容核心);
         var card = Card(highlight: isCore);
         var stack = new StackPanel();
-        stack.Children.Add(Header(slotIndex, slot, isCore, avatarSize: 40));
+        stack.Children.Add(Header(slotIndex, slot, isCore));
 
         // 2 equipment tiles + the transformation tile
         var transformations = _vm.EquipmentRules.Transformations(slot);
-        var row = new Grid { Margin = new Thickness(0, 8, 0, 0) };
+        var row = new Grid { Margin = new Thickness(0, 9, 0, 0) };
         row.ColumnDefinitions.Add(new ColumnDefinition());
         row.ColumnDefinitions.Add(new ColumnDefinition());
-        row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(62) });
         for (var e = 0; e < 2; e++)
         {
             var tile = EquipmentTile(slotIndex, slot, e);
             Grid.SetColumn(tile, e);
             row.Children.Add(tile);
         }
-        var tr = TransformTile(slotIndex, slot, 0, transformations);
+        var tr = TransformTile(slotIndex, slot, 0, transformations, compact: true);
         tr.Margin = new Thickness(0);
         Grid.SetColumn(tr, 2);
         row.Children.Add(tr);
         stack.Children.Add(row);
         if (!string.IsNullOrEmpty(slot.TransformedCovenant)) stack.Children.Add(LegacyButton(slotIndex, slot));
         stack.Children.Add(CandidateRow(slotIndex, slot, labelWidth: 0));
-
-        var tags = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
-        foreach (var tag in Enum.GetValues<LineupTag>().Where(t => t != LineupTag.阵容核心))
-        {
-            var chip = new Button { Content = tag.ToString(), Style = (Style)FindResource("TagChip"), Tag = slot.Tags.Contains(tag) ? "active" : null };
-            chip.Click += (_, _) => { _vm.ToggleSlotTag(slotIndex, tag); RefreshEditor(); };
-            tags.Children.Add(chip);
-        }
-        stack.Children.Add(tags);
         card.Child = stack;
+        card.ContextMenu = SlotMenu(slotIndex, slot);
         return card;
     }
 
-    /// <summary>Avatar, name, tier, ★ (阵容核心) and covenants; the ✕ clears the slot.</summary>
-    private DockPanel Header(int slotIndex, LineupSlot slot, bool isCore, int avatarSize)
+    /// <summary>Avatar with the tier in its corner, name, 核心, ⋯; covenants (targets stand out) and the chosen tags.</summary>
+    private Grid Header(int slotIndex, LineupSlot slot, bool isCore)
     {
         var op = _operatorByName.GetValueOrDefault(slot.OperatorName);
-        var header = new DockPanel();
-        var avatar = new Controls.Avatar
-        {
-            Width = avatarSize, Height = avatarSize, Text = slot.OperatorName, Source = op?.IconPath ?? $"icons/operators/{slot.OperatorName}.png",
-            Cursor = Cursors.Hand, ToolTip = "点击更换干员", Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Top
-        };
+        var header = new Grid();
+        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        header.ColumnDefinitions.Add(new ColumnDefinition());
+
+        var avatarBox = new Grid { Margin = new Thickness(0, 0, 9, 0), VerticalAlignment = VerticalAlignment.Top, Cursor = Cursors.Hand, ToolTip = "点击更换干员" };
+        var avatar = new Controls.Avatar { Width = 46, Height = 46, Text = slot.OperatorName, Source = op?.IconPath ?? $"icons/operators/{slot.OperatorName}.png" };
         if (isCore) avatar.SetResourceReference(Controls.Avatar.RingProperty, "EliteBrush");
-        avatar.MouseLeftButtonUp += (_, _) => PickOperator(slotIndex);
-        DockPanel.SetDock(avatar, Dock.Left);
-        header.Children.Add(avatar);
-
-        var remove = new Button { Tag = FindResource("IconClose"), Style = (Style)FindResource("RowIconButton"), Width = 20, Height = 20, ToolTip = "清空该位置", VerticalAlignment = VerticalAlignment.Top };
-        remove.Click += (_, _) => { _vm.SetSlotOperator(slotIndex, ""); RefreshEditor(); };
-        DockPanel.SetDock(remove, Dock.Right);
-        header.Children.Add(remove);
-
-        var star = new Button
-        {
-            Tag = FindResource("IconStar"), Style = (Style)FindResource("RowIconButton"), Width = 20, Height = 20,
-            ToolTip = isCore ? "取消阵容核心" : "设为阵容核心", VerticalAlignment = VerticalAlignment.Top
-        };
-        if (isCore) star.SetResourceReference(ForegroundProperty, "EliteBrush");
-        star.Click += (_, _) => { _vm.ToggleSlotTag(slotIndex, LineupTag.阵容核心); RefreshEditor(); };
-        DockPanel.SetDock(star, Dock.Right);
-        header.Children.Add(star);
-
-        var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-        var nameRow = new StackPanel { Orientation = Orientation.Horizontal };
-        var name = new TextBlock { Text = slot.OperatorName, FontSize = 12, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis };
-        name.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
-        nameRow.Children.Add(name);
+        avatarBox.Children.Add(avatar);
         if (op is not null && op.Tier is > 0 and < 7)
         {
-            var tier = new Border { Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            tier.SetResourceReference(Border.BackgroundProperty, "SectionBackgroundBrush");
+            var tier = new Border { Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(-3, 0, 0, -3), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom };
+            tier.SetResourceReference(Border.BackgroundProperty, "TitleBackgroundBrush");
             tier.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
-            var tierText = new TextBlock { Text = Roman[op.Tier], FontSize = 10, FontWeight = FontWeights.Bold };
+            var tierText = Text(Roman[op.Tier], 10, "TitleTextBrush", bold: true);
             tierText.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
-            tierText.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
             tier.Child = tierText;
-            nameRow.Children.Add(tier);
+            avatarBox.Children.Add(tier);
         }
+        avatarBox.MouseLeftButtonUp += (_, _) => PickOperator(slotIndex);
+        header.Children.Add(avatarBox);
+
+        var info = new StackPanel();
+        Grid.SetColumn(info, 1);
+        var nameRow = new DockPanel();
+        var more = new Button { Tag = FindResource("IconMore"), Style = (Style)FindResource("RowIconButton"), Width = 22, Height = 22, ToolTip = "更多（标签、精锐、复制、移出）" };
+        System.Windows.Automation.AutomationProperties.SetName(more, "更多");
+        more.Click += (_, _) =>
+        {
+            var menu = SlotMenu(slotIndex, slot);
+            menu.PlacementTarget = more;
+            menu.Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom;
+            menu.IsOpen = true;
+        };
+        DockPanel.SetDock(more, Dock.Right);
+        nameRow.Children.Add(more);
+        var name = Text(slot.OperatorName, 13, "TextPrimaryBrush", bold: true);
+        if (isCore)
+        {
+            var badge = Pill("核心", "core");
+            badge.Margin = new Thickness(5, 0, 0, 0);
+            badge.VerticalAlignment = VerticalAlignment.Center;
+            badge.SetResourceReference(Border.BackgroundProperty, "EliteTintBrush");
+            ((TextBlock)badge.Child).SetResourceReference(TextBlock.ForegroundProperty, "EliteBrush");
+            DockPanel.SetDock(badge, Dock.Right);
+            nameRow.Children.Add(badge);
+        }
+        nameRow.Children.Add(name);
         info.Children.Add(nameRow);
-        var covenants = op is null ? "" : string.Join(" · ", op.CoreCovenants.Concat(op.AdditionalCovenants).Distinct());
-        var cov = new TextBlock { Text = covenants, FontSize = 10, Margin = new Thickness(0, 2, 0, 0), TextTrimming = TextTrimming.CharacterEllipsis, ToolTip = covenants };
-        cov.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-        info.Children.Add(cov);
+
+        var pills = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+        var targets = _vm.TargetCovenants.Select(t => t.Name).ToHashSet();
+        if (op is not null)
+            foreach (var c in op.CoreCovenants.Concat(op.AdditionalCovenants).Distinct())
+            {
+                var core = op.CoreCovenants.Contains(c);
+                pills.Children.Add(Pill(c, targets.Contains(c) ? (core ? "goalCore" : "goal") : core ? "core" : "extra"));
+            }
+        foreach (var tag in slot.Tags.Where(t => t != LineupTag.阵容核心))
+            pills.Children.Add(Pill(tag.ToString(), "tag"));
+        info.Children.Add(pills);
         header.Children.Add(info);
         return header;
+    }
+
+    /// <summary>⋯ / right-click: tags, 精锐, replace, copy to another phase, remove.</summary>
+    private ContextMenu SlotMenu(int slotIndex, LineupSlot slot)
+    {
+        var menu = new ContextMenu();
+        foreach (var tag in Enum.GetValues<LineupTag>())
+        {
+            var item = new MenuItem { Header = tag.ToString(), IsCheckable = true, IsChecked = slot.Tags.Contains(tag), StaysOpenOnClick = false };
+            item.Click += (_, _) => { _vm.ToggleSlotTag(slotIndex, tag); RefreshEditor(); };
+            menu.Items.Add(item);
+        }
+        menu.Items.Add(new Separator());
+        var elite = new MenuItem { Header = "精锐", IsCheckable = true, IsChecked = slot.IsElite };
+        elite.Click += (_, _) => { _vm.SetSlotElite(slotIndex, !slot.IsElite); RefreshEditor(); };
+        menu.Items.Add(elite);
+        var replace = new MenuItem { Header = "换一位干员" };
+        replace.Click += (_, _) => PickOperator(slotIndex);
+        menu.Items.Add(replace);
+        var copy = new MenuItem { Header = "复制到" };
+        foreach (var phase in Enum.GetValues<LineupPhase>().Where(p => p != _vm.CurrentPhase))
+        {
+            var target = new MenuItem { Header = phase.ToString() };
+            target.Click += (_, _) =>
+            {
+                if (!_vm.CopySlotToPhase(slotIndex, phase))
+                    EditorHint.Text = $"{phase}已满，没有复制";
+                RefreshEditor();
+            };
+            copy.Items.Add(target);
+        }
+        menu.Items.Add(copy);
+        menu.Items.Add(new Separator());
+        var remove = new MenuItem { Header = "移出阵容" };
+        remove.SetResourceReference(ForegroundProperty, "DangerBrush");
+        remove.Click += (_, _) => { _vm.SetSlotOperator(slotIndex, ""); RefreshEditor(); };
+        menu.Items.Add(remove);
+        return menu;
     }
 
     private Button EquipmentTile(int slotIndex, LineupSlot slot, int index)
     {
         var name = index < slot.Equipments.Count ? slot.Equipments[index] : null;
         var capacity = LineupEquipmentService.Capacity(slot);
+        object content;
+        if (name is null) content = new TextBlock { Text = index < capacity ? "＋ 装备" : "需精锐" };
+        else
+        {
+            var row = new StackPanel { Orientation = Orientation.Horizontal };
+            row.Children.Add(new Controls.Avatar { Width = 18, Height = 18, Small = true, Margin = new Thickness(-3, 0, 4, 0), Text = name,
+                Source = _vm.AllEquipment.FirstOrDefault(e => e.Name == name)?.IconPath });
+            row.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
+            content = row;
+        }
         var tile = new Button
         {
-            Style = (Style)FindResource("EditorTile"),
-            Content = new TextBlock { Text = name ?? (index < capacity ? "＋ 装备" : "需精锐") },
+            Style = (Style)FindResource("EditorTile"), Height = 26, HorizontalContentAlignment = HorizontalAlignment.Left,
+            Content = content,
             Tag = name is null ? "add" : name == LineupEquipmentService.Shapeshifter ? "shape" : slot.CoreEquipments.Contains(name) ? "core" : null,
             ToolTip = index >= capacity && name is null ? "需要精锐状态" : name is null ? "添加装备" : slot.CoreEquipments.Contains(name) ? $"核心装备：{name}" : name,
             IsEnabled = index < capacity || name is not null,
@@ -298,17 +380,17 @@ public partial class LineupEditorWindow : Window
         return tile;
     }
 
-    private Button TransformTile(int slotIndex, LineupSlot slot, int index, IReadOnlyList<EquipmentTransformation> transformations)
+    private Button TransformTile(int slotIndex, LineupSlot slot, int index, IReadOnlyList<EquipmentTransformation> transformations, bool compact = false)
     {
         var current = index < transformations.Count ? transformations[index] : null;
         // One place goes to 变形同构体 itself
         var enabled = index < LineupEquipmentService.Capacity(slot) - 1 || current is not null;
         var tile = new Button
         {
-            Style = (Style)FindResource("EditorTile"),
-            Content = new TextBlock { Text = current is null ? (enabled ? "＋ 转职" : "需精锐") : $"转职 → {current.Covenant}" },
+            Style = (Style)FindResource("EditorTile"), Height = 26,
+            Content = new TextBlock { Text = current is null ? (enabled ? "＋ 转职" : "需精锐") : compact ? $"→ {current.Covenant}" : $"转职 → {current.Covenant}" },
             Tag = current is null ? "add" : "tr",
-            ToolTip = current is null ? enabled ? "选择转职装备（会一起配上变形同构体）" : "需精锐后启用" : $"{current.EquipmentName}（点击更换，右键取消）",
+            ToolTip = current is null ? enabled ? "选择转职装备（会一起配上变形同构体）" : "需精锐后启用" : $"转职 → {current.Covenant}：{current.EquipmentName}（点击更换，右键取消）",
             IsEnabled = enabled,
         };
         System.Windows.Automation.AutomationProperties.SetName(tile, $"转职槽{index + 1}");
@@ -401,33 +483,41 @@ public partial class LineupEditorWindow : Window
     }
 
     /// <summary>
-    /// 候选 row: unlimited candidate equipment (dashed = 候选, gold ★ = 优先). Click a chip or ＋ to open the picker;
-    /// right-click a chip for 设为优先 / 移到装备格 / 移除.
+    /// 候选 row: candidate equipment as small icons (gold ★ = 优先). Click one or ＋ to open the picker;
+    /// right-click an icon for 设为优先 / 移到装备格 / 移除.
     /// </summary>
     private UIElement CandidateRow(int slotIndex, LineupSlot slot, double labelWidth)
     {
         var row = new DockPanel { Margin = new Thickness(0, 7, 0, 0) };
-        var label = new TextBlock { Text = "候选", FontSize = 10, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 4, 8, 0),
-            VerticalAlignment = VerticalAlignment.Top, ToolTip = "候选装备：有了也行，不参与转职和盟约计算；追踪阵容时一起追踪" };
-        if (labelWidth > 0) label.Width = labelWidth;
-        label.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+        var label = Text("候选", 10, "TextSecondaryBrush");
+        label.Margin = new Thickness(0, 0, 6, 0);
+        label.ToolTip = "候选装备：有了也行，不参与转职和盟约计算；追踪阵容时一起追踪";
+        label.Width = labelWidth > 0 ? labelWidth : 26;
         DockPanel.SetDock(label, Dock.Left);
         row.Children.Add(label);
         var chips = new WrapPanel();
         foreach (var candidate in slot.CandidateEquipments)
         {
             var name = candidate.Name;
-            var icon = new Controls.Avatar { Width = 14, Height = 14, Text = name, Margin = new Thickness(0, 0, 4, 0),
-                Source = _vm.AllEquipment.FirstOrDefault(e => e.Name == name)?.IconPath };
-            var content = new StackPanel { Orientation = Orientation.Horizontal };
-            if (candidate.IsPriority) content.Children.Add(new TextBlock { Text = "★", Margin = new Thickness(0, 0, 3, 0), VerticalAlignment = VerticalAlignment.Center });
-            content.Children.Add(icon);
-            content.Children.Add(new TextBlock { Text = name, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center });
-            var chip = new Button
+            var box = new Grid { Width = 26, Height = 24, Margin = new Thickness(0, 0, 4, 0) };
+            var frame = new Border { BorderThickness = new Thickness(1) };
+            frame.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
+            frame.SetResourceReference(Border.BorderBrushProperty, candidate.IsPriority ? "EliteBrush" : "BorderBrush");
+            if (candidate.IsPriority) frame.SetResourceReference(Border.BackgroundProperty, "EliteTintBrush");
+            box.Children.Add(frame);
+            box.Children.Add(new Controls.Avatar { Width = 18, Height = 18, Small = true, Text = name,
+                Source = _vm.AllEquipment.FirstOrDefault(e => e.Name == name)?.IconPath });
+            if (candidate.IsPriority)
             {
-                Content = content, Style = (Style)FindResource("CandidateChip"), Tag = candidate.IsPriority ? "pri" : null,
-                ToolTip = candidate.IsPriority ? $"优先：{name}（右键更多）" : $"候选：{name}（右键更多）"
-            };
+                var star = Text("★", 9, "EliteBrush");
+                star.HorizontalAlignment = HorizontalAlignment.Right;
+                star.VerticalAlignment = VerticalAlignment.Top;
+                star.Margin = new Thickness(0, -5, -4, 0);
+                box.Children.Add(star);
+            }
+            var chip = new Button { Content = box, Style = (Style)FindResource("ClickableButtonBase"), Background = Brushes.Transparent, BorderThickness = new Thickness(0), Padding = new Thickness(0),
+                ToolTip = candidate.IsPriority ? $"优先：{name}（右键更多）" : $"候选：{name}（右键更多）" };
+            chip.Template = BareButton();
             chip.Click += (_, _) => PickCandidates(slotIndex);
             var menu = new ContextMenu();
             var priority = new MenuItem { Header = candidate.IsPriority ? "取消优先" : "设为优先" };
@@ -444,20 +534,27 @@ public partial class LineupEditorWindow : Window
         }
         var add = new Button
         {
-            Content = slot.CandidateEquipments.Count == 0 ? "＋ 添加候选装备" : "＋ 候选", Style = (Style)FindResource("CandidateChip"),
-            Tag = "add", ToolTip = "选择候选装备，可以一次选多件"
+            Content = slot.CandidateEquipments.Count == 0 ? "＋ 候选装备" : "＋", Style = (Style)FindResource("CandidateChip"), Tag = "add",
+            MinWidth = 26, Height = 24, Margin = new Thickness(0), ToolTip = "选择候选装备，可以一次选多件"
         };
+        System.Windows.Automation.AutomationProperties.SetName(add, "添加候选装备");
         add.Click += (_, _) => PickCandidates(slotIndex);
         chips.Children.Add(add);
         row.Children.Add(chips);
         return row;
     }
 
+    private static ControlTemplate BareButton()
+    {
+        var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
+        return new ControlTemplate(typeof(Button)) { VisualTree = presenter };
+    }
+
     private void PickCandidates(int slotIndex)
     {
         var slot = _vm.Slots[slotIndex];
         if (string.IsNullOrEmpty(slot.OperatorName)) return;
-        var dlg = new SimplePickerDialog(_vm.AllEquipment, slot.OperatorName, slot.CandidateEquipments, slot.Equipments) { Owner = this };
+        var dlg = new EquipmentPickerWindow(_vm.AllEquipment, _vm.EquipmentRules, slot.OperatorName, slot.CandidateEquipments, slot.Equipments) { Owner = this };
         if (dlg.ShowDialog() != true || dlg.Candidates is null) return;
         _vm.SetSlotCandidates(slotIndex, dlg.Candidates);
         RefreshEditor();
@@ -480,100 +577,64 @@ public partial class LineupEditorWindow : Window
         return label;
     }
 
-    private UIElement StrategyCard(int slotIndex)
-    {
-        var slot = _vm.StrategySlots[slotIndex];
-        if (slot.StrategyId.Length == 0) return EmptyCard("＋ 添加策略", () => PickStrategy(slotIndex));
-
-        // 外部分享可能引用尚未收录的策略，保留 ID 和删除入口。
-        var strategy = _strategies.FirstOrDefault(s => s.Id == slot.StrategyId);
-        var isCore = slot.Tags.Contains(StrategyTag.阵容核心);
-        var card = Card(highlight: isCore);
-        if (strategy is not null)
-            card.ToolTip = new TextBlock
-            {
-                Text = $"{strategy.Name} · {strategy.Initiator}\n初始生命值：{strategy.InitialHp}\n{strategy.Description}",
-                TextWrapping = TextWrapping.Wrap, MaxWidth = 360,
-            };
-        var stack = new StackPanel();
-        var header = new DockPanel();
-        var portrait = new Controls.Avatar
-        {
-            Width = 40, Height = 40, Cursor = Cursors.Hand, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 0, 8, 0),
-            Text = strategy?.Name ?? slot.StrategyId, Source = strategy?.IconPath, ToolTip = "点击更换策略"
-        };
-        if (isCore) portrait.SetResourceReference(Controls.Avatar.RingProperty, "EliteBrush");
-        portrait.MouseLeftButtonUp += (_, _) => PickStrategy(slotIndex);
-        DockPanel.SetDock(portrait, Dock.Left);
-        header.Children.Add(portrait);
-        var remove = new Button { Tag = FindResource("IconClose"), Style = (Style)FindResource("RowIconButton"), Width = 20, Height = 20, ToolTip = "移除该策略", VerticalAlignment = VerticalAlignment.Top };
-        remove.Click += (_, _) => { _vm.SetStrategy(slotIndex, ""); RefreshEditor(); };
-        DockPanel.SetDock(remove, Dock.Right);
-        header.Children.Add(remove);
-        var info = new StackPanel();
-        var name = new TextBlock { Text = strategy?.Name ?? slot.StrategyId, FontSize = 12, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis };
-        name.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
-        info.Children.Add(name);
-        var by = new TextBlock { Text = strategy?.Initiator ?? "资料未收录", FontSize = 10, Margin = new Thickness(0, 2, 0, 0) };
-        by.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-        info.Children.Add(by);
-        header.Children.Add(info);
-        stack.Children.Add(header);
-        if (strategy is not null)
-        {
-            var description = new TextBlock { Text = strategy.Description, FontSize = 10, Margin = new Thickness(0, 7, 0, 0), TextWrapping = TextWrapping.Wrap, MaxHeight = 42, TextTrimming = TextTrimming.CharacterEllipsis };
-            description.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-            stack.Children.Add(description);
-        }
-        var tags = new WrapPanel { Margin = new Thickness(0, 8, 0, 0) };
-        foreach (var tag in Enum.GetValues<StrategyTag>())
-        {
-            var chip = new Button { Content = tag == StrategyTag.阵容核心 ? "核心" : tag.ToString(), Style = (Style)FindResource("TagChip"), Tag = slot.Tags.Contains(tag) ? "active" : null };
-            chip.Click += (_, _) => { _vm.ToggleStrategyTag(slotIndex, tag); RefreshEditor(); };
-            tags.Children.Add(chip);
-        }
-        stack.Children.Add(tags);
-        card.Child = stack;
-        return card;
-    }
-
     // ── Side panel ──────────────────────────────────────────────────────────
 
-    /// <summary>Covenants as people (“伊比利亚 7” + level), inactive ones with how many are missing; then the strategies.</summary>
+    private TextBlock SideTitle(string text, double top)
+    {
+        var t = Text(text, 11, "TextSecondaryBrush", bold: true);
+        t.Margin = new Thickness(0, top, 0, 8);
+        return t;
+    }
+
+    /// <summary>目标 (with how far each is) first, then the other covenants of the phase, then the strategies.</summary>
     private void RefreshSidePanel()
     {
         CovenantList.Children.Clear();
-        foreach (var stat in _vm.ActiveStats)
-            CovenantList.Children.Add(CovenantRow(stat));
-        CovenantEmpty.Visibility = _vm.ActiveStats.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        var targets = _vm.TargetCovenants.Select(t => t.Name).ToHashSet();
+        var phaseStats = _vm.ActiveStats.ToDictionary(s => s.Name);
+        if (_vm.TargetStates.Count > 0)
+        {
+            CovenantList.Children.Add(SideTitle("目标", 0));
+            foreach (var state in _vm.TargetStates)
+                CovenantList.Children.Add(TargetRow(state, phaseStats.GetValueOrDefault(state.Name)?.Count ?? 0));
+        }
+        var others = _vm.ActiveStats.Where(s => !targets.Contains(s.Name)).ToList();
+        if (others.Count > 0)
+        {
+            CovenantList.Children.Add(SideTitle(targets.Count > 0 ? "其他盟约" : "盟约", CovenantList.Children.Count > 0 ? 8 : 0));
+            foreach (var stat in others) CovenantList.Children.Add(CovenantRow(stat));
+        }
+        CovenantEmpty.Visibility = CovenantList.Children.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
 
         StrategyList.Children.Clear();
-        foreach (var slot in _vm.StrategySlots.Where(s => s.StrategyId.Length > 0))
+        foreach (var slot in ChosenStrategies)
         {
             var strategy = _strategies.FirstOrDefault(s => s.Id == slot.StrategyId);
-            var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
-            var icon = new Controls.Avatar { Width = 28, Height = 28, Small = true, Text = strategy?.Name ?? slot.StrategyId, Source = strategy?.IconPath, Margin = new Thickness(0, 0, 8, 0) };
+            var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8), Cursor = Cursors.Hand, Background = Brushes.Transparent };
+            row.MouseLeftButtonUp += (_, _) => PickStrategies();
+            var icon = new Controls.Avatar { Width = 30, Height = 30, Small = true, Text = strategy?.Name ?? slot.StrategyId, Source = strategy?.IconPath, Margin = new Thickness(0, 0, 8, 0) };
             DockPanel.SetDock(icon, Dock.Left);
             row.Children.Add(icon);
-            var tag = slot.Tags.Contains(StrategyTag.阵容核心) ? "核心" : slot.Tags.Contains(StrategyTag.优选) ? "优选" : slot.Tags.Contains(StrategyTag.次选) ? "次选" : null;
-            if (tag is not null)
+            if (StrategyTagText(slot) is { } tag)
             {
-                var pill = new Border { Padding = new Thickness(6, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
-                pill.SetResourceReference(Border.BackgroundProperty, tag == "核心" ? "EliteTintBrush" : "AccentSoftBrush");
-                pill.SetResourceReference(Border.CornerRadiusProperty, "PillCornerRadius");
-                var text = new TextBlock { Text = tag, FontSize = 10, FontWeight = FontWeights.Bold };
-                text.SetResourceReference(TextBlock.ForegroundProperty, tag == "核心" ? "EliteBrush" : "AccentBrush");
-                pill.Child = text;
+                var pill = Pill(tag, tag == "核心" ? "core" : "extra");
+                pill.VerticalAlignment = VerticalAlignment.Center;
+                if (tag == "核心")
+                {
+                    pill.SetResourceReference(Border.BackgroundProperty, "EliteTintBrush");
+                    ((TextBlock)pill.Child).SetResourceReference(TextBlock.ForegroundProperty, "EliteBrush");
+                }
+                else if (tag == "优选")
+                {
+                    pill.SetResourceReference(Border.BackgroundProperty, "AccentSoftBrush");
+                    ((TextBlock)pill.Child).SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
+                }
                 DockPanel.SetDock(pill, Dock.Right);
                 row.Children.Add(pill);
             }
             var info = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-            var name = new TextBlock { Text = strategy?.Name ?? slot.StrategyId, FontSize = 12, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis };
-            name.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
-            info.Children.Add(name);
-            var by = new TextBlock { Text = strategy?.Initiator ?? "", FontSize = 10 };
-            by.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-            info.Children.Add(by);
+            info.Children.Add(Text(strategy?.Name ?? slot.StrategyId, 12, "TextPrimaryBrush", bold: true));
+            info.Children.Add(Text(strategy?.Initiator ?? "", 10, "TextSecondaryBrush"));
             row.Children.Add(info);
             StrategyList.Children.Add(row);
         }
@@ -582,15 +643,93 @@ public partial class LineupEditorWindow : Window
         var error = _vm.ValidationError;
         WarningIcon.Visibility = error.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         WarningIcon.SetResourceReference(Shape.StrokeProperty, "TransitionTextBrush");
-        var empty = _editingStrategies ? 0 : LineupEditorViewModel.MaxSlots - _vm.FilledSlotCount;
+        var empty = LineupEditorViewModel.MaxSlots - _vm.FilledSlotCount;
         EditorHint.Text = error.Length > 0 ? error
-            : _editingStrategies ? "一局只会带其中一个策略；标记“核心”的会写进规划"
             : empty > 0 && _vm.FilledSlotCount > 0 ? $"{_vm.CurrentPhase}还有 {empty} 个空位" : $"正在编辑{_vm.CurrentPhase} · 列表预览与追踪使用后期阵容";
         EditorHint.ToolTip = error.Length > 0 ? error : null;
         EditorHint.SetResourceReference(TextBlock.ForegroundProperty, error.Length > 0 ? "TransitionTextBrush" : "TextSecondaryBrush");
     }
 
-    /// <summary>目标盟约 chips: name, Ⅰ / Ⅱ, and how the late-game slots stand against it.</summary>
+    private static string? StrategyTagText(LineupStrategySlot slot)
+        => slot.Tags.Contains(StrategyTag.阵容核心) ? "核心" : slot.Tags.Contains(StrategyTag.优选) ? "优选" : slot.Tags.Contains(StrategyTag.次选) ? "次选" : null;
+
+    private static Border LevelBadge(string text, bool core, bool reached = true)
+    {
+        var badge = new Border { Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        badge.SetResourceReference(Border.BackgroundProperty, !reached ? "SectionBackgroundBrush" : core ? "AccentSoftBrush" : "SuccessTintBrush");
+        badge.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
+        var t = Text(text, 11, !reached ? "TextSecondaryBrush" : core ? "AccentBrush" : "SuccessTextBrush", bold: true);
+        t.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
+        badge.Child = t;
+        return badge;
+    }
+
+    /// <summary>A target: icon, name, late-game people / needed, the target tier, and a bar towards it.</summary>
+    private UIElement TargetRow(TargetState state, int phaseCount)
+    {
+        var box = new StackPanel { Margin = new Thickness(0, 0, 0, 10) };
+        var row = new DockPanel();
+        var icon = new Controls.CovenantIcon { Covenant = state.Name, Width = 16, Height = 16, Margin = new Thickness(0, 0, 7, 0), Opacity = 0.85 };
+        DockPanel.SetDock(icon, Dock.Left);
+        row.Children.Add(icon);
+        var right = new StackPanel { Orientation = Orientation.Horizontal };
+        var count = Text(state.Count.ToString(), 15, state.Reached ? "TextPrimaryBrush" : "WarningTextBrush", bold: true);
+        count.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
+        right.Children.Add(count);
+        var need = Text($" / {state.Needed}", 11, "TextSecondaryBrush");
+        need.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
+        right.Children.Add(need);
+        right.Children.Add(LevelBadge(Roman[Math.Clamp(state.Tier, 1, 2)], state.IsCore, state.Reached));
+        DockPanel.SetDock(right, Dock.Right);
+        row.Children.Add(right);
+        row.Children.Add(Text(state.Name, 12, "TextPrimaryBrush", bold: true));
+        box.Children.Add(row);
+        var track = new Border { Height = 4, Margin = new Thickness(0, 6, 0, 0), CornerRadius = new CornerRadius(2), ClipToBounds = true };
+        track.SetResourceReference(Border.BackgroundProperty, "SectionBackgroundBrush");
+        var grid = new Grid();
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Min(state.Count, state.Needed), GridUnitType.Star) });
+        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(Math.Max(0, state.Needed - state.Count), GridUnitType.Star) });
+        var fill = new Border { CornerRadius = new CornerRadius(2) };
+        fill.SetResourceReference(Border.BackgroundProperty, !state.Reached ? "WarningBrush" : state.IsCore ? "AccentSolidBrush" : "FinalBrush");
+        grid.Children.Add(fill);
+        track.Child = grid;
+        box.Children.Add(track);
+        box.ToolTip = _vm.CurrentPhase == LineupPhase.后期
+            ? $"{state.Label}：需要 {state.Needed} 人，后期 {state.Count} 人"
+            : $"{state.Label}：需要 {state.Needed} 人，后期 {state.Count} 人，{_vm.CurrentPhase} {phaseCount} 人";
+        return box;
+    }
+
+    /// <summary>A non-target covenant of the phase: icon, people, level (or how many are missing).</summary>
+    private UIElement CovenantRow(CovenantStat stat)
+    {
+        var isCore = stat.BondType == "SEASON";
+        var activate = stat.ActivateCount ?? (isCore ? 3 : 2);
+        var level = !stat.Activated ? 0
+            : isCore ? (stat.Count >= 9 ? 3 : stat.Count >= 6 ? 2 : 1)
+            : LineupPlanner.PeopleSecond.Contains(stat.Name) && stat.Count >= 3 ? 2 : 1;
+        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 8) };
+        var icon = new Controls.CovenantIcon { Covenant = stat.Name, Width = 16, Height = 16, Margin = new Thickness(0, 0, 7, 0), Opacity = stat.Activated ? 0.85 : 0.35 };
+        DockPanel.SetDock(icon, Dock.Left);
+        row.Children.Add(icon);
+        var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        var count = Text(stat.Count.ToString(), 13, stat.Activated ? "TextPrimaryBrush" : "TextSecondaryBrush", bold: true);
+        count.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
+        right.Children.Add(count);
+        if (level > 0) right.Children.Add(LevelBadge(Roman[level], isCore));
+        else
+        {
+            var missing = Text($"差 {Math.Max(1, activate - stat.Count)}", 10, "TextSecondaryBrush");
+            missing.Margin = new Thickness(6, 0, 0, 0);
+            right.Children.Add(missing);
+        }
+        DockPanel.SetDock(right, Dock.Right);
+        row.Children.Add(right);
+        row.Children.Add(Text(stat.Name, 12, stat.Activated ? "TextPrimaryBrush" : "TextSecondaryBrush", bold: stat.Activated));
+        return row;
+    }
+
+    /// <summary>目标盟约 chips: icon, name, Ⅰ / Ⅱ, and how the late-game slots stand against it.</summary>
     private void RefreshTargets()
     {
         TargetChips.Children.Clear();
@@ -598,8 +737,8 @@ public partial class LineupEditorWindow : Window
             TargetChips.Children.Add(TargetChip(state));
         var add = new Button
         {
-            Content = _vm.TargetCovenants.Count == 0 ? "＋ 添加目标盟约" : "＋ 目标盟约", Style = (Style)FindResource("CandidateChip"),
-            Tag = "add", Margin = new Thickness(0, 0, 4, 4), ToolTip = "这套阵容要凑的盟约；阵容页的筛选和本局推荐都按它判断"
+            Content = _vm.TargetCovenants.Count == 0 ? "＋ 添加目标盟约" : "＋ 目标", Style = (Style)FindResource("CandidateChip"),
+            Tag = "add", Height = 28, Margin = new Thickness(0, 0, 4, 4), ToolTip = "这套阵容要凑的盟约；阵容页的筛选和本局推荐都按它判断"
         };
         add.Click += (_, _) => PickTarget();
         TargetChips.Children.Add(add);
@@ -607,54 +746,51 @@ public partial class LineupEditorWindow : Window
 
     private UIElement TargetChip(TargetState state)
     {
-        var chip = new Border { Padding = new Thickness(8, 2, 3, 2), Margin = new Thickness(0, 0, 5, 4), BorderThickness = new Thickness(1), MinHeight = 26 };
+        var chip = new Border { Padding = new Thickness(8, 0, 3, 0), Margin = new Thickness(0, 0, 5, 4), BorderThickness = new Thickness(1), Height = 28 };
         chip.SetResourceReference(Border.CornerRadiusProperty, "RowCornerRadius");
-        chip.SetResourceReference(Border.BackgroundProperty, state.Reached ? "SuccessTintBrush" : "SectionBackgroundBrush");
-        chip.SetResourceReference(Border.BorderBrushProperty, state.Reached ? "SuccessBorderBrush" : "BorderBrush");
-        var content = new StackPanel { Orientation = Orientation.Horizontal };
-        var dot = new Border { Width = 7, Height = 7, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
-        dot.SetResourceReference(Border.BackgroundProperty, state.IsCore ? "AccentSolidBrush" : "FinalBrush");
-        dot.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
-        content.Children.Add(dot);
-        var name = new TextBlock { Text = state.Name, FontSize = 12, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
-        name.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
-        content.Children.Add(name);
+        chip.SetResourceReference(Border.BackgroundProperty, state.Reached ? "SuccessTintBrush" : "EliteTintBrush");
+        chip.SetResourceReference(Border.BorderBrushProperty, state.Reached ? "SuccessBorderBrush" : "EliteBrush");
+        var content = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+        content.Children.Add(new Controls.CovenantIcon { Covenant = state.Name, Width = 16, Height = 16, Margin = new Thickness(0, 0, 6, 0), Opacity = 0.85 });
+        content.Children.Add(Text(state.Name, 12, "TextPrimaryBrush", bold: true));
 
         if (_vm.HasSecondTier(state.Name))
         {
-            var tiers = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            var seg = new Border { Padding = new Thickness(1), Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            seg.SetResourceReference(Border.BackgroundProperty, "SectionBackgroundBrush");
+            seg.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
+            var tiers = new StackPanel { Orientation = Orientation.Horizontal };
             foreach (var tier in new[] { 1, 2 })
             {
                 var active = state.Tier == tier;
-                var b = new Button { Content = Roman[tier], Width = 22, Height = 18, FontSize = 11, Padding = new Thickness(0), BorderThickness = new Thickness(1),
+                var b = new Button { Content = Roman[tier], Width = 20, Height = 18, FontSize = 11, Padding = new Thickness(0), BorderThickness = new Thickness(0),
                     FontWeight = active ? FontWeights.Bold : FontWeights.Normal, ToolTip = tier == 2 ? "目标 Ⅱ 档" : "目标 Ⅰ 档" };
                 b.Style = (Style)FindResource("ClickableButtonBase");
-                b.Template = TierButtonTemplate(tier == 1);
-                b.SetResourceReference(BackgroundProperty, active ? "AccentSolidBrush" : "CardBackgroundBrush");
-                b.SetResourceReference(BorderBrushProperty, active ? "AccentSolidBrush" : "BorderBrush");
+                b.Template = TierButtonTemplate();
+                b.SetResourceReference(FontFamilyProperty, "NumberFontFamily");
+                if (active) b.SetResourceReference(BackgroundProperty, "AccentSolidBrush");
+                else b.Background = Brushes.Transparent;
                 b.SetResourceReference(ForegroundProperty, active ? "OnAccentBrush" : "TextSecondaryBrush");
                 var name_ = state.Name;
                 b.Click += (_, _) => { _vm.SetTargetTier(name_, tier); RefreshEditor(); };
                 tiers.Children.Add(b);
             }
-            content.Children.Add(tiers);
+            seg.Child = tiers;
+            content.Children.Add(seg);
         }
         else
         {
-            var tier = new TextBlock { Text = "Ⅰ", FontSize = 11, Margin = new Thickness(5, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            tier.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
+            var tier = Text("Ⅰ", 11, "TextSecondaryBrush", bold: true);
+            tier.Margin = new Thickness(6, 0, 0, 0);
             content.Children.Add(tier);
         }
 
-        var status = new TextBlock
-        {
-            Text = state.Reached ? $"已满足 · {state.Count} 人" : $"差 {state.Missing} 人", FontSize = 11,
-            Margin = new Thickness(7, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center,
-        };
-        status.SetResourceReference(TextBlock.ForegroundProperty, state.Reached ? "SuccessTextBrush" : "WarningTextBrush");
+        var status = Text(state.Reached ? $"{state.Count}/{state.Needed}" : $"差 {state.Missing}", 12, state.Reached ? "SuccessTextBrush" : "WarningTextBrush", bold: true);
+        status.Margin = new Thickness(7, 0, 0, 0);
+        status.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
         content.Children.Add(status);
 
-        var remove = new Button { Width = 18, Height = 18, Margin = new Thickness(4, 0, 0, 0), ToolTip = "移除这个目标", VerticalAlignment = VerticalAlignment.Center };
+        var remove = new Button { Width = 18, Height = 18, Margin = new Thickness(3, 0, 0, 0), ToolTip = "移除这个目标", VerticalAlignment = VerticalAlignment.Center };
         remove.Style = (Style)FindResource("RowIconButton");
         remove.Tag = FindResource("IconClose");
         var target = state.Name;
@@ -665,13 +801,11 @@ public partial class LineupEditorWindow : Window
         return chip;
     }
 
-    private static ControlTemplate TierButtonTemplate(bool left)
+    private static ControlTemplate TierButtonTemplate()
     {
         var border = new FrameworkElementFactory(typeof(Border));
-        border.SetValue(Border.CornerRadiusProperty, left ? new CornerRadius(4, 0, 0, 4) : new CornerRadius(0, 4, 4, 0));
+        border.SetValue(Border.CornerRadiusProperty, new CornerRadius(3));
         border.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding("Background") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
-        border.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding("BorderBrush") { RelativeSource = System.Windows.Data.RelativeSource.TemplatedParent });
-        border.SetValue(Border.BorderThicknessProperty, new Thickness(1));
         var presenter = new FrameworkElementFactory(typeof(ContentPresenter));
         presenter.SetValue(HorizontalAlignmentProperty, HorizontalAlignment.Center);
         presenter.SetValue(VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -681,15 +815,13 @@ public partial class LineupEditorWindow : Window
 
     private void PickTarget()
     {
-        var taken = _vm.TargetCovenants.Select(t => t.Name).ToHashSet();
-        var stats = _vm.ComputeLate();
-        var items = _vm.AllCovenants.Where(c => !taken.Contains(c.Name))
-            .OrderByDescending(c => c.BondType == "SEASON").ThenByDescending(c => stats.GetValueOrDefault(c.Name))
-            .Select(c => new SimplePickerDialog.PickerItem(c.Name, c.Name, null,
-                $"{(c.BondType == "SEASON" ? "核心" : "附加")} · 后期 {stats.GetValueOrDefault(c.Name)} 人"));
-        var dialog = new SimplePickerDialog("添加目标盟约", items, null, "搜索盟约 · 单击添加") { Owner = this };
-        if (dialog.ShowDialog() != true || dialog.Result is not { Length: > 0 } picked) return;
-        _vm.AddTarget(picked);
+        var dialog = new TargetPickerWindow(_vm.AllCovenants, _vm.ComputeLate(), _vm.TargetCovenants, _vm.HasSecondTier) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        foreach (var (name, tier) in dialog.Picked)
+        {
+            _vm.AddTarget(name);
+            _vm.SetTargetTier(name, tier);
+        }
         RefreshEditor();
     }
 
@@ -699,77 +831,25 @@ public partial class LineupEditorWindow : Window
         RefreshEditor();
     }
 
-    private UIElement CovenantRow(CovenantStat stat)
+    private void PickStrategies()
     {
-        var isCore = stat.BondType == "SEASON";
-        var activate = stat.ActivateCount ?? (isCore ? 3 : 2);
-        var level = !stat.Activated ? 0
-            : isCore ? (stat.Count >= 9 ? 3 : stat.Count >= 6 ? 2 : 1)
-            : LineupPlanner.PeopleSecond.Contains(stat.Name) && stat.Count >= 3 ? 2 : 1;
-        var row = new DockPanel { Margin = new Thickness(0, 0, 0, 9), Opacity = stat.Activated ? 1 : 0.75 };
-        var dot = new Border { Width = 8, Height = 8, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center, Opacity = stat.Activated ? 1 : 0.35 };
-        dot.SetResourceReference(Border.BackgroundProperty, isCore ? "AccentSolidBrush" : "FinalBrush");
-        dot.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
-        DockPanel.SetDock(dot, Dock.Left);
-        row.Children.Add(dot);
-
-        var right = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        var count = new TextBlock { Text = stat.Count.ToString(), FontSize = 14, FontWeight = FontWeights.Bold, VerticalAlignment = VerticalAlignment.Center };
-        count.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
-        count.SetResourceReference(TextBlock.ForegroundProperty, stat.Activated ? "TextPrimaryBrush" : "TextSecondaryBrush");
-        if (_vm.TargetCovenants.FirstOrDefault(t => t.Name == stat.Name) is { } goal)
-        {
-            var mark = new Border { Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center,
-                BorderThickness = new Thickness(1), ToolTip = "这套阵容的目标盟约" };
-            mark.SetResourceReference(Border.BorderBrushProperty, "AccentBorderBrush");
-            mark.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
-            var text = new TextBlock { Text = $"目标 {Roman[Math.Clamp(goal.Tier, 1, 2)]}", FontSize = 10 };
-            text.SetResourceReference(TextBlock.ForegroundProperty, "AccentBrush");
-            mark.Child = text;
-            right.Children.Insert(0, mark);
-        }
-        right.Children.Add(count);
-        if (level > 0)
-        {
-            var badge = new Border { Padding = new Thickness(5, 0, 5, 0), Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            badge.SetResourceReference(Border.BackgroundProperty, isCore ? "AccentSoftBrush" : "SuccessTintBrush");
-            badge.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
-            var text = new TextBlock { Text = Roman[level], FontSize = 11, FontWeight = FontWeights.Bold };
-            text.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
-            text.SetResourceReference(TextBlock.ForegroundProperty, isCore ? "AccentBrush" : "SuccessTextBrush");
-            badge.Child = text;
-            right.Children.Add(badge);
-        }
-        else
-        {
-            var missing = new TextBlock { Text = $"差 {Math.Max(1, activate - stat.Count)}", FontSize = 11, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-            missing.SetResourceReference(TextBlock.ForegroundProperty, "TextSecondaryBrush");
-            right.Children.Add(missing);
-        }
-        DockPanel.SetDock(right, Dock.Right);
-        row.Children.Add(right);
-        var name = new TextBlock { Text = stat.Name, FontSize = 12, FontWeight = stat.Activated ? FontWeights.Bold : FontWeights.Normal, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-        name.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimaryBrush");
-        row.Children.Add(name);
-        return row;
-    }
-
-    private void PickStrategy(int slotIndex)
-    {
-        var dialog = new SimplePickerDialog("选择策略", _strategies.Select(s => new SimplePickerDialog.PickerItem(
-            s.Id, $"{s.Name} · {s.Initiator}", s.IconPath, null,
-            $"{s.Name} · {s.Initiator}\n初始生命值：{s.InitialHp}\n{s.Description}")),
-            _vm.StrategySlots[slotIndex].StrategyId, "搜索策略名或发起人 · 单击选择") { Owner = this };
+        var current = ChosenStrategies.Select(s => (s.StrategyId, Tag: s.Tags.Count > 0 ? (StrategyTag?)s.Tags[0] : null)).ToList();
+        var dialog = new StrategyPickerWindow(_strategies, current) { Owner = this };
         if (dialog.ShowDialog() != true) return;
-        _vm.SetStrategy(slotIndex, dialog.Result!);
+        _vm.SetStrategies(dialog.Picked);
         RefreshEditor();
     }
 
     private async void PickOperator(int slotIndex)
     {
         var current = _vm.Slots[slotIndex].OperatorName;
+        var context = new OperatorPickerContext(
+            $"{_vm.CurrentPhase} · 第 {slotIndex + 1} 位", current,
+            _vm.Slots.Where((s, i) => i != slotIndex && s.OperatorName.Length > 0).Select(s => s.OperatorName).ToHashSet(),
+            _vm.CountsWith(slotIndex, ""), name => _vm.CountsWith(slotIndex, name), _vm.TargetStates, _vm.AllCovenants);
         // 暴躁铁皮 has its own card (added with the strategy), so it is not offered for the 9 places
-        var dlg = new OperatorPickerWindow(_vm.AllOperators.Where(o => o.Name != LineupEquipmentService.MechName), current, _vm.StrategySlots.Select(s => s.StrategyId).ToHashSet())
+        var dlg = new OperatorPickerWindow(_vm.AllOperators.Where(o => o.Name != LineupEquipmentService.MechName), current,
+            _vm.StrategySlots.Select(s => s.StrategyId).ToHashSet(), context)
         {
             Owner = this,
         };
@@ -787,8 +867,7 @@ public partial class LineupEditorWindow : Window
         if (string.IsNullOrEmpty(slot.OperatorName)) return;
 
         var current = equipIndex < slot.Equipments.Count ? slot.Equipments[equipIndex] : null;
-
-        var dlg = new SimplePickerDialog(_vm.AllEquipment, current,
+        var dlg = new EquipmentPickerWindow(_vm.AllEquipment, _vm.EquipmentRules, $"{slot.OperatorName} · 装备格 {equipIndex + 1}", current,
             current is not null && slot.CoreEquipments.Contains(current))
         {
             Owner = this,

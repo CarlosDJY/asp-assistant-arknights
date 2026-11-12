@@ -1,0 +1,38 @@
+<!-- Added for ASP Assistant Arknights on 2026-11-13; see NOTICE. -->
+<Window x:Class="ASPAssistant.App.Windows.TargetPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="添加目标盟约" Width="540" Height="620" MinWidth="460" MinHeight="420"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource PanelBackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+        Icon="{StaticResource AspaLogo}">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="5" GlassFrameThickness="0" />
+    </WindowChrome.WindowChrome>
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Background="{DynamicResource PanelBackgroundBrush}">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancelClick" Style="{StaticResource DialogCloseButton}" />
+                    <TextBlock Style="{StaticResource DialogTitleText}" Text="添加目标盟约" />
+                </DockPanel>
+            </Border>
+            <Border Style="{StaticResource DialogFooter}" DockPanel.Dock="Bottom">
+                <DockPanel>
+                    <Button x:Name="ConfirmButton" Style="{StaticResource DialogPrimaryButton}" DockPanel.Dock="Right" Content="添加" Margin="8,0,0,0"
+                            IsEnabled="False" Click="OnConfirmClick" />
+                    <Button Style="{StaticResource DialogSecondaryButton}" DockPanel.Dock="Right" Content="取消" Click="OnCancelClick" />
+                    <TextBlock Text="再点一次换成 Ⅱ 档" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </DockPanel>
+            </Border>
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="14,12,14,10">
+                    <TextBlock Text="核心盟约" Style="{StaticResource FilterSectionTitle}" Margin="0,0,0,8" />
+                    <UniformGrid x:Name="CoreGrid" Columns="3" Margin="0,0,-5,6" />
+                    <TextBlock Text="附加盟约" Style="{StaticResource FilterSectionTitle}" Margin="0,6,0,8" />
+                    <UniformGrid x:Name="ExtraGrid" Columns="3" Margin="0,0,-5,0" />
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+    </Border>
+</Window>

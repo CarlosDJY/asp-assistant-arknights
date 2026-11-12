@@ -1,0 +1,189 @@
+<!-- Added for ASP Assistant Arknights on 2026-11-13; see NOTICE. -->
+<Window x:Class="ASPAssistant.App.Windows.EquipmentPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:ASPAssistant.App.Controls"
+        Title="选择装备" Width="780" Height="660" MinWidth="620" MinHeight="460"
+        WindowStartupLocation="CenterOwner" WindowStyle="None" ResizeMode="CanResizeWithGrip"
+        Background="{DynamicResource PanelBackgroundBrush}" Foreground="{DynamicResource TextPrimaryBrush}"
+        Icon="{StaticResource AspaLogo}">
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0" ResizeBorderThickness="5" GlassFrameThickness="0" />
+    </WindowChrome.WindowChrome>
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis" />
+        <Style x:Key="CatChip" TargetType="ToggleButton" BasedOn="{StaticResource ClickableToggleButtonBase}">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Margin" Value="0,0,5,0" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="bg" Height="26" Padding="10,0" CornerRadius="{DynamicResource RowCornerRadius}" BorderThickness="1"
+                                Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource LineBrush}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{DynamicResource AccentSolidBrush}" />
+                                <Setter TargetName="bg" Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                                <Setter Property="FontWeight" Value="Bold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+    <Border BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Background="{DynamicResource PanelBackgroundBrush}">
+        <DockPanel>
+            <Border DockPanel.Dock="Top" Style="{StaticResource DialogTitleBar}" MouseLeftButtonDown="OnTitleBarDrag">
+                <DockPanel>
+                    <Button DockPanel.Dock="Right" Tag="{StaticResource IconClose}" ToolTip="关闭" Click="OnCancelClick" Style="{StaticResource DialogCloseButton}" />
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock x:Name="TitleText" Style="{StaticResource DialogTitleText}" Text="选择装备" />
+                        <TextBlock x:Name="TitleMeta" FontSize="11" Margin="2,0,0,0" VerticalAlignment="Center" Foreground="{DynamicResource TitleMutedBrush}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+            <Border Style="{StaticResource DialogFooter}" DockPanel.Dock="Bottom">
+                <DockPanel>
+                    <Button x:Name="ConfirmButton" Style="{StaticResource DialogPrimaryButton}" DockPanel.Dock="Right" Content="放入" Margin="8,0,0,0" Click="OnConfirmClick" />
+                    <Button x:Name="ClearButton" Style="{StaticResource DialogSecondaryButton}" DockPanel.Dock="Right" Content="清空这一格" Click="OnClearClick" />
+                    <TextBlock x:Name="HintText" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                </DockPanel>
+            </Border>
+            <DockPanel Margin="14,12,14,10">
+                <!-- candidate mode: what is picked so far -->
+                <Border x:Name="PickedBar" DockPanel.Dock="Top" Margin="0,0,0,9" Padding="10,4" MinHeight="34" Visibility="Collapsed"
+                        CornerRadius="{DynamicResource RowCornerRadius}" Background="{DynamicResource SectionBackgroundBrush}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Left" Text="已选" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <ItemsControl x:Name="PickedList" Focusable="False" VerticalAlignment="Center">
+                            <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border x:Name="chip" Height="24" Margin="0,2,5,2" Padding="4,0,8,0" BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}"
+                                            Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                                        <StackPanel Orientation="Horizontal">
+                                            <controls:Avatar Width="16" Height="16" Small="True" Margin="0,0,5,0" Text="{Binding Name}" Source="{Binding IconPath}" />
+                                            <TextBlock x:Name="text" Text="{Binding PickedText}" FontSize="11" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        </StackPanel>
+                                    </Border>
+                                    <DataTemplate.Triggers>
+                                        <DataTrigger Binding="{Binding IsPriority}" Value="True">
+                                            <Setter TargetName="chip" Property="Background" Value="{DynamicResource EliteTintBrush}" />
+                                            <Setter TargetName="chip" Property="BorderBrush" Value="{DynamicResource EliteBrush}" />
+                                            <Setter TargetName="text" Property="Foreground" Value="{DynamicResource EliteBrush}" />
+                                            <Setter TargetName="text" Property="FontWeight" Value="Bold" />
+                                        </DataTrigger>
+                                    </DataTemplate.Triggers>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </DockPanel>
+                </Border>
+                <!-- single mode: where it goes, and 普通 / 核心 -->
+                <Border x:Name="ContextBar" DockPanel.Dock="Top" Margin="0,0,0,9" Padding="10,0,4,0" MinHeight="34" Visibility="Collapsed"
+                        CornerRadius="{DynamicResource RowCornerRadius}" Background="{DynamicResource SectionBackgroundBrush}">
+                    <DockPanel>
+                        <ListBox x:Name="CoreMode" DockPanel.Dock="Right" VerticalAlignment="Center" Style="{StaticResource SegmentedListBox}">
+                            <ListBoxItem Content="普通" IsSelected="True" />
+                            <ListBoxItem Content="核心装备" ToolTip="核心装备：这套阵容一定要的那件，追踪时优先" />
+                        </ListBox>
+                        <TextBlock DockPanel.Dock="Right" Text="放成" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <TextBlock x:Name="ContextText" FontSize="12" FontWeight="Bold" VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" />
+                    </DockPanel>
+                </Border>
+                <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                    <ListBox x:Name="TierList" DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource SegmentedListBox}" SelectionChanged="OnFilterChanged" />
+                    <TextBox x:Name="SearchBox" Style="{StaticResource PickerSearchBox}" Tag="装备名、效果或首字母" TextChanged="OnFilterChanged" />
+                </DockPanel>
+                <WrapPanel x:Name="CategoryChips" DockPanel.Dock="Top" Margin="0,0,0,9" />
+                <Grid>
+                    <ListBox x:Name="ItemsList" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             SelectionMode="Single" PreviewMouseLeftButtonUp="OnItemClick" MouseDoubleClick="OnItemDoubleClick">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Columns="2" VerticalAlignment="Top" /></ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem" BasedOn="{StaticResource ClickableListBoxItemBase}">
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Margin" Value="0,0,6,6" />
+                                <Setter Property="ToolTip" Value="{Binding Summary}" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="ListBoxItem">
+                                            <Border x:Name="row" Padding="10,8" BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}"
+                                                    Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource LineBrush}">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="row" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                                                </Trigger>
+                                                <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                                    <Setter TargetName="row" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                                    <Setter TargetName="row" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                                                </DataTrigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <DockPanel>
+                                    <!-- candidate mode: check box on the left, ★ on the right once checked -->
+                                    <Border x:Name="check" DockPanel.Dock="Left" Width="18" Height="18" Margin="0,0,9,0" VerticalAlignment="Center" BorderThickness="1.5"
+                                            CornerRadius="{DynamicResource DotCornerRadius}" BorderBrush="{DynamicResource BorderBrush}"
+                                            Visibility="{Binding CandidateMode, Converter={StaticResource BoolToVis}}">
+                                        <Path x:Name="tick" Data="M 5 12.5 L 9.5 17 L 19 7.5" Stretch="Uniform" Margin="3" StrokeThickness="2.4" Visibility="Collapsed"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" Stroke="{DynamicResource OnAccentBrush}" />
+                                    </Border>
+                                    <Button x:Name="star" DockPanel.Dock="Right" Width="30" Height="30" Margin="6,0,-4,0" VerticalAlignment="Center"
+                                            Style="{StaticResource RowIconButton}" Tag="{StaticResource IconStar}" Click="OnStarClick"
+                                            ToolTip="设为优先" Visibility="Collapsed" />
+                                    <controls:Avatar DockPanel.Dock="Left" Width="38" Height="38" Margin="0,0,10,0" VerticalAlignment="Center" Small="True"
+                                                     Text="{Binding Name}" Source="{Binding IconPath}" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            <TextBlock Text="{Binding TierText}" Margin="6,0,0,0" VerticalAlignment="Center" FontSize="11" FontWeight="Bold"
+                                                       FontFamily="{DynamicResource NumberFontFamily}" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <Border Margin="6,0,0,0" Padding="6,0" VerticalAlignment="Center" CornerRadius="{DynamicResource PillCornerRadius}"
+                                                    Background="{DynamicResource EliteTintBrush}" Visibility="{Binding HasJob, Converter={StaticResource BoolToVis}}">
+                                                <TextBlock Text="{Binding JobText}" FontSize="10" LineHeight="16" FontWeight="Bold" Foreground="{DynamicResource EliteBrush}" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Effect}" FontSize="11" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    </StackPanel>
+                                </DockPanel>
+                                <DataTemplate.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked}" Value="True">
+                                        <Setter TargetName="check" Property="Background" Value="{DynamicResource AccentSolidBrush}" />
+                                        <Setter TargetName="check" Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}" />
+                                        <Setter TargetName="tick" Property="Visibility" Value="Visible" />
+                                        <Setter TargetName="star" Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                    <DataTrigger Binding="{Binding IsPriority}" Value="True">
+                                        <Setter TargetName="star" Property="Foreground" Value="{DynamicResource EliteBrush}" />
+                                        <Setter TargetName="star" Property="Background" Value="{DynamicResource EliteTintBrush}" />
+                                        <Setter TargetName="star" Property="ToolTip" Value="取消优先" />
+                                    </DataTrigger>
+                                </DataTemplate.Triggers>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                    <controls:EmptyState x:Name="EmptyHint" Icon="{StaticResource IconEquipment}" Title="没有符合条件的装备" Hint="换个关键词，或取消分类。" Visibility="Collapsed" />
+                </Grid>
+            </DockPanel>
+        </DockPanel>
+    </Border>
+</Window>

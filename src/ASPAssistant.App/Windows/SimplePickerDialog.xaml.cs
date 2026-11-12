@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using ASPAssistant.Core.Models;
+using ASPAssistant.Core.Services;
 
 namespace ASPAssistant.App.Windows;
 
@@ -146,8 +147,7 @@ public partial class SimplePickerDialog : Window
         {
             foreach (var item in _allItems)
             {
-                if (item.Display.Contains(text, StringComparison.OrdinalIgnoreCase)
-                    || item.Key.Contains(text, StringComparison.OrdinalIgnoreCase))
+                if (SearchMatch.Matches(text, item.Display, item.Key))
                     _filtered.Add(item);
             }
         }

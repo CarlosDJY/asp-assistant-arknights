@@ -137,6 +137,14 @@ public partial class LineupEditorViewModel : ObservableObject
 
     public IReadOnlyList<CovenantInfo> AllCovenants => _calculator.AllCovenants;
 
+    /// <summary>People per covenant in the current phase with place <paramref name="slotIndex"/> holding <paramref name="operatorName"/> ("" = empty).</summary>
+    public IReadOnlyDictionary<string, int> CountsWith(int slotIndex, string operatorName)
+    {
+        var slots = Slots.Select((s, i) => i == slotIndex ? new LineupSlot { OperatorName = operatorName } : s)
+            .Where(s => s.OperatorName.Length > 0).ToList();
+        return _calculator.Compute(new Lineup { Slots = slots }).ToDictionary(s => s.Name, s => s.Count, StringComparer.Ordinal);
+    }
+
     /// <summary>People per covenant in the late-game slots.</summary>
     public IReadOnlyDictionary<string, int> ComputeLate()
         => _calculator.Compute(new Lineup { Slots = ExportPhase(LineupPhase.后期) }).ToDictionary(s => s.Name, s => s.Count, StringComparer.Ordinal);
@@ -270,6 +278,35 @@ public partial class LineupEditorViewModel : ObservableObject
         if (slot.Equipments.Count > LineupEquipmentService.Capacity(slot))
             throw new InvalidOperationException("装备位不足，请先选择需要替换的装备");
         Slots[slotIndex] = slot;
+        Recalculate();
+    }
+
+    /// <summary>
+    /// Copies a slot (operator, gear, tags) into <paramref name="phase"/>: over the same operator if it is there,
+    /// else into its first empty place. False when the phase is full.
+    /// </summary>
+    public bool CopySlotToPhase(int slotIndex, LineupPhase phase)
+    {
+        if (slotIndex < 0 || slotIndex >= Slots.Count || phase == CurrentPhase) return false;
+        var source = Slots[slotIndex];
+        if (string.IsNullOrEmpty(source.OperatorName)) return false;
+        var target = _phaseSlots[phase];
+        var index = target.ToList().FindIndex(s => s.OperatorName == source.OperatorName);
+        if (index < 0) index = target.ToList().FindIndex(s => s.OperatorName.Length == 0);
+        if (index < 0) return false;
+        target[index] = CloneSlot(source);
+        return true;
+    }
+
+    /// <summary>Replaces the strategies with <paramref name="picked"/> (id + its one tag, or none), keeping 9 places.</summary>
+    public void SetStrategies(IEnumerable<(string Id, StrategyTag? Tag)> picked)
+    {
+        StrategySlots.Clear();
+        foreach (var (id, tag) in picked.Where(p => p.Id.Length > 0).Take(MaxSlots))
+            StrategySlots.Add(new LineupStrategySlot { StrategyId = id, Tags = tag is { } t ? [t] : [] });
+        while (StrategySlots.Count < MaxSlots) StrategySlots.Add(new LineupStrategySlot());
+        SyncMechSlots();
+        OnPropertyChanged(nameof(HasMechStrategy));
         Recalculate();
     }
 

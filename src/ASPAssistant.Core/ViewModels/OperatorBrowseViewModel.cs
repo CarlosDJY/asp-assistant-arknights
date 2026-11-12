@@ -1,8 +1,9 @@
-// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Collections.ObjectModel;
 using System.Text.RegularExpressions;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ASPAssistant.Core.Models;
+using ASPAssistant.Core.Services;
 
 namespace ASPAssistant.Core.ViewModels;
 
@@ -406,8 +407,7 @@ public partial class OperatorBrowseViewModel : ObservableObject
         }
 
         if (!string.IsNullOrEmpty(SearchText))
-            filtered = filtered.Where(o =>
-                o.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase));
+            filtered = filtered.Where(o => SearchMatch.Matches(SearchText, o.Name));
 
         SyncList(FilteredOperators, filtered.ToList());
         SyncChips();

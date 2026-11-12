@@ -1348,4 +1348,83 @@
             </Setter.Value>
         </Setter>
     </Style>
+    <!-- Filter chip that fills a grid cell (pickers' filter rails): name centred, no count; IsBlocked = dashed, disabled -->
+    <Style x:Key="GridChipToggle" TargetType="ToggleButton" BasedOn="{StaticResource ClickableToggleButtonBase}">
+        <Setter Property="IsChecked" Value="{Binding IsSelected, Mode=TwoWay}" />
+        <Setter Property="IsEnabled" Value="{Binding IsBlocked, Converter={StaticResource FilterNotConverter}}" />
+        <Setter Property="ToolTip" Value="{Binding Label}" />
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Margin" Value="0,0,4,4" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ToggleButton">
+                    <Grid Height="28">
+                        <Rectangle x:Name="frame" RadiusX="{DynamicResource RowRadiusValue}" RadiusY="{DynamicResource RowRadiusValue}" StrokeThickness="1"
+                                   Stroke="{DynamicResource LineBrush}" Fill="{DynamicResource CardBackgroundBrush}" />
+                        <TextBlock x:Name="label" Text="{Binding Label}" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   TextTrimming="CharacterEllipsis" Margin="4,0" Foreground="{TemplateBinding Foreground}" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource AccentBorderBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="frame" Property="Fill" Value="{DynamicResource AccentSolidBrush}" />
+                            <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource AccentSolidBrush}" />
+                            <Setter TargetName="label" Property="Foreground" Value="{DynamicResource OnAccentBrush}" />
+                            <Setter TargetName="label" Property="FontWeight" Value="Bold" />
+                        </Trigger>
+                        <DataTrigger Binding="{Binding IsBlocked}" Value="True">
+                            <Setter TargetName="frame" Property="Fill" Value="Transparent" />
+                            <Setter TargetName="frame" Property="StrokeDashArray" Value="3 2" />
+                            <Setter TargetName="frame" Property="Stroke" Value="{DynamicResource BorderBrush}" />
+                            <Setter TargetName="label" Property="Foreground" Value="{DynamicResource TextSecondaryBrush}" />
+                            <Setter TargetName="label" Property="Opacity" Value="0.6" />
+                        </DataTrigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- Picker search box: magnifier + placeholder (Tag) -->
+    <Style x:Key="PickerSearchBox" TargetType="TextBox">
+        <Setter Property="Foreground" Value="{DynamicResource TextPrimaryBrush}" />
+        <Setter Property="CaretBrush" Value="{DynamicResource AccentBrush}" />
+        <Setter Property="FontSize" Value="12" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TextBox">
+                    <Border x:Name="box" Background="{DynamicResource InputBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="{DynamicResource RowCornerRadius}" Padding="9,0">
+                        <DockPanel>
+                            <Viewbox DockPanel.Dock="Left" Width="13" Height="13" Margin="0,0,7,0" VerticalAlignment="Center">
+                                <Canvas Width="24" Height="24">
+                                    <Path Data="{StaticResource IconSearch}" Stroke="{DynamicResource TextSecondaryBrush}" StrokeThickness="2"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
+                                </Canvas>
+                            </Viewbox>
+                            <Grid>
+                                <TextBlock x:Name="hint" Text="{TemplateBinding Tag}" FontSize="12" VerticalAlignment="Center" IsHitTestVisible="False"
+                                           Foreground="{DynamicResource TextSecondaryBrush}" Visibility="Collapsed" />
+                                <ScrollViewer x:Name="PART_ContentHost" VerticalAlignment="Center" />
+                            </Grid>
+                        </DockPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="Text" Value="">
+                            <Setter TargetName="hint" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="box" Property="BorderBrush" Value="{DynamicResource AccentBorderBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
 </ResourceDictionary>
