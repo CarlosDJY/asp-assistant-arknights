@@ -936,7 +936,10 @@ public partial class SidePanelWindow : Window
             try
             {
                 var added = TrackingVm.TrackLineup(lineup);
-                ShowToast($"已追踪阵容“{lineup.Name}”：新增 {added.Operators} 干员 / {added.Equipment} 装备");
+                var transition = TrackingVm.TrackedOperators.Count(e => e.IsTransition && !e.IsAcquired);
+                ShowToast(transition > 0
+                    ? $"已追踪阵容“{lineup.Name}”：新增 {added.Operators} 干员（{transition} 名过渡）/ {added.Equipment} 装备"
+                    : $"已追踪阵容“{lineup.Name}”：新增 {added.Operators} 干员 / {added.Equipment} 装备");
             }
             catch (Exception ex)
             {

@@ -198,6 +198,33 @@ public class TrackingViewModelTests
     }
 
     [Fact]
+    public void TrackLineup_MarksOperatorsOutsideLateAsTransition()
+    {
+        var vm = new TrackingViewModel();
+        vm.TrackLineup(new Lineup
+        {
+            Slots = [new() { OperatorName = "大成" }, new() { OperatorName = "两段" }],
+            EarlySlots = [new() { OperatorName = "前期" }, new() { OperatorName = "两段" }, new() { OperatorName = "前中" }],
+            MidSlots = [new() { OperatorName = "前中" }],
+            SupportSlots = [new() { OperatorName = "挂件" }]
+        });
+
+        vm.TrackedOperators.Single(e => e.Name == "大成").Role.Should().Be(TrackingRole.Final);
+        vm.TrackedOperators.Single(e => e.Name == "两段").Role.Should().Be(TrackingRole.Final);
+        var early = vm.TrackedOperators.Single(e => e.Name == "前期");
+        early.Role.Should().Be(TrackingRole.Transition);
+        early.Stages.Should().Be("前期");
+        early.ExpiresAt.Should().Be(4);
+        var both = vm.TrackedOperators.Single(e => e.Name == "前中");
+        both.Stages.Should().Be("前期 · 中期");
+        both.ExpiresAt.Should().Be(6);
+        vm.TrackedOperators.Single(e => e.Name == "挂件").ExpiresAt.Should().Be(0);
+
+        vm.TerminalLevelChoice = 4;
+        vm.ActiveEntries.Select(e => e.Name).Should().NotContain("前期").And.Contain("前中");
+    }
+
+    [Fact]
     public void TrackLineup_WithoutLateOperatorsStillTracksOtherPhases()
     {
         var vm = new TrackingViewModel();

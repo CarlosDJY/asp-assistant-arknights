@@ -106,32 +106,79 @@ public partial class TrackingViewModel : ObservableObject
         IsAcquired = e.IsAcquired
     };
 
+    /// <summary>
+    /// Tracks a saved lineup: 后期 operators as <see cref="TrackingRole.Final"/> (大成); operators only in 前期 / 中期 / 挂件
+    /// as <see cref="TrackingRole.Transition"/> (过渡) with the phases that use them, dropped once the terminal level passes
+    /// them (前期 at 中期's level, 中期 at 后期's; 挂件 stays). A lineup without 后期 operators tracks everyone as 大成.
+    /// An operator already tracked as 大成 stays 大成. Returns (new operators, new equipment).
+    /// </summary>
     public (int Operators, int Equipment) TrackLineup(Lineup lineup)
     {
         if (!TrackMultipleLineups) ClearAllTracking();
         var previousOperators = TrackedOperators.Where(e => !e.IsAcquired).Select(e => e.Name).ToHashSet();
         var previousEquipment = TrackedEquipment.Where(e => !e.IsAcquired).Select(e => e.Name).ToHashSet();
+        var finalNames = lineup.Slots.Select(s => s.OperatorName).Where(n => !string.IsNullOrEmpty(n)).ToHashSet(StringComparer.Ordinal);
+        var stages = LineupPhases(lineup, finalNames);
+        var level = TerminalLevel;
         foreach (var slot in lineup.Slots.Concat(lineup.MidSlots).Concat(lineup.EarlySlots).Concat(lineup.SupportSlots)
             .DistinctBy(slot => slot.OperatorName))
         {
-            if (!string.IsNullOrEmpty(slot.OperatorName))
+            if (string.IsNullOrEmpty(slot.OperatorName)) continue;
+            var transition = stages.TryGetValue(slot.OperatorName, out var phase);
+            var existing = TrackedOperators.FirstOrDefault(e => e.Name == slot.OperatorName);
+            if (transition && existing is { Role: TrackingRole.Final, IsAcquired: false }) continue;
+            var entry = new TrackingEntry
             {
-                var existing = TrackedOperators.FirstOrDefault(e => e.Name == slot.OperatorName);
-                var entry = new TrackingEntry
-                {
-                    Name = slot.OperatorName, Type = TrackingType.Operator,
-                    TransformedCovenant = slot.TransformedCovenant, Equipments = [.. slot.Equipments], IsElite = slot.IsElite,
-                    CandidateEquipments = [.. slot.CandidateEquipments.Where(c => !slot.Equipments.Contains(c.Name)).Select(c => c.Clone())]
-                };
-                if (existing is null) TrackedOperators.Add(entry);
-                else if (existing.IsAcquired || existing.TransformedCovenant != slot.TransformedCovenant || existing.IsElite != slot.IsElite
-                    || !existing.Equipments.SequenceEqual(slot.Equipments) || existing.Role != TrackingRole.Final
-                    || !SameCandidates(existing.CandidateEquipments, entry.CandidateEquipments))
-                    TrackedOperators[TrackedOperators.IndexOf(existing)] = entry;
+                Name = slot.OperatorName, Type = TrackingType.Operator,
+                TransformedCovenant = slot.TransformedCovenant, Equipments = [.. slot.Equipments], IsElite = slot.IsElite,
+                CandidateEquipments = [.. slot.CandidateEquipments.Where(c => !slot.Equipments.Contains(c.Name)).Select(c => c.Clone())]
+            };
+            if (transition)
+            {
+                entry.Role = TrackingRole.Transition;
+                entry.Stages = string.Join(" · ", phase.Names);
+                entry.ExpiresAt = phase.ExpiresAt;
+                entry.IsExpired = entry.ExpiredAt(level);
             }
+            if (existing is null) TrackedOperators.Add(entry);
+            else if (existing.IsAcquired || existing.TransformedCovenant != slot.TransformedCovenant || existing.IsElite != slot.IsElite
+                || !existing.Equipments.SequenceEqual(slot.Equipments) || existing.Role != entry.Role
+                || existing.Stages != entry.Stages || existing.ExpiresAt != entry.ExpiresAt
+                || !SameCandidates(existing.CandidateEquipments, entry.CandidateEquipments))
+                TrackedOperators[TrackedOperators.IndexOf(existing)] = entry;
         }
         RefreshEquipmentRequirements();
         return (TrackedOperators.Count(e => !e.IsAcquired && !previousOperators.Contains(e.Name)), TrackedEquipment.Count(e => !e.IsAcquired && !previousEquipment.Contains(e.Name)));
+    }
+
+    /// <summary>
+    /// 过渡 operators of a saved lineup (not in 后期) with the phases that use them and the terminal level they expire at
+    /// (前期 → 中期's level, or 后期's when there is no 中期; 中期 → 后期's; 挂件 → never). Empty without 后期 operators.
+    /// </summary>
+    private static Dictionary<string, (List<string> Names, int ExpiresAt)> LineupPhases(Lineup lineup, HashSet<string> finalNames)
+    {
+        var result = new Dictionary<string, (List<string> Names, int ExpiresAt)>(StringComparer.Ordinal);
+        if (finalNames.Count == 0) return result;
+        var levels = RouteStageDefinition.Defaults.ToDictionary(d => d.Name, d => d.TerminalLevel);
+        var hasMid = lineup.MidSlots.Any(s => !string.IsNullOrEmpty(s.OperatorName));
+        (string Name, List<LineupSlot> Slots, int ExpiresAt)[] phases =
+        [
+            ("前期", lineup.EarlySlots, hasMid ? levels["中期"] : levels["后期"]),
+            ("中期", lineup.MidSlots, levels["后期"]),
+            ("挂件", lineup.SupportSlots, 0),
+        ];
+        foreach (var (name, slots, expiresAt) in phases)
+        {
+            foreach (var op in slots.Select(s => s.OperatorName).Where(n => !string.IsNullOrEmpty(n) && !finalNames.Contains(n)).Distinct())
+            {
+                if (!result.TryGetValue(op, out var info)) info = ([], -1);
+                info.Names.Add(name);
+                // Kept as long as its latest phase is (0 = never expires wins).
+                var at = info.ExpiresAt == 0 || expiresAt == 0 ? 0 : Math.Max(info.ExpiresAt, expiresAt);
+                result[op] = (info.Names, at);
+            }
+        }
+        return result;
     }
 
     /// <summary>
