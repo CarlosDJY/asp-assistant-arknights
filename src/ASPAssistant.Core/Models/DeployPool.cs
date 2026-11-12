@@ -18,8 +18,8 @@ public sealed class DeployPoolState
     [JsonPropertyName("mode")] public PlacementMode Mode { get; set; } = PlacementMode.Balanced;
     /// <summary>Map picked by hand (null = follow recognition).</summary>
     [JsonPropertyName("manualMap")] public string? ManualMap { get; set; }
-    /// <summary>Draw the plan on the game window.</summary>
-    [JsonPropertyName("showInGame")] public bool ShowInGame { get; set; } = true;
+    /// <summary>Draw the plan on the game window (off until the player turns it on).</summary>
+    [JsonPropertyName("showInGame")] public bool ShowInGame { get; set; }
 
     public bool IsOwned(string name) => Owned.Contains(name);
     public bool IsElite(string name) => Elite.Contains(name);
