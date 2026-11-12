@@ -41,4 +41,31 @@ public class BossInfo
     /// </summary>
     [JsonPropertyName("iconPath")]
     public string IconPath { get; set; } = "";
+
+    /// <summary>HP per mode, in the game's mode order; empty in data generated before 2026-11-13.</summary>
+    [JsonPropertyName("hp")]
+    public List<BossHpLevel> Hp { get; set; } = [];
+}
+
+/// <summary>One difficulty's HP from <c>bossInfoDict.bloodDataDict</c>.</summary>
+public class BossHpLevel
+{
+    /// <summary>Game mode id, e.g. <c>mode_single_3</c> or <c>mode_multi_hard</c>.</summary>
+    [JsonPropertyName("mode")]
+    public string Mode { get; set; } = "";
+
+    /// <summary>Mode name shown in game, e.g. 规程等级3 / 绝境模拟.</summary>
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = "";
+
+    /// <summary><c>single</c> or <c>multi</c>.</summary>
+    [JsonPropertyName("group")]
+    public string Group { get; set; } = "";
+
+    [JsonPropertyName("hp")]
+    public long Hp { get; set; }
+
+    /// <summary>HP of the hidden form (isHidingBoss, enemy id ending in _2), when the boss has one.</summary>
+    [JsonPropertyName("hiddenHp")]
+    public long? HiddenHp { get; set; }
 }

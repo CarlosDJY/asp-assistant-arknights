@@ -21,7 +21,184 @@
         "<“斩胄之剑”>和<“破胄之锤”>初始无敌；被击落时受到伤害以一定比例传递给<假想敌：胄>",
         "<“斩胄之剑”>和<“破胄之锤”>周期性飞向场上攻击力最低的一名干员并自爆，使目标及其周围8格的干员<$ba.stun>晕眩</>，每秒受到物理伤害，随后返回<假想敌：胄>身边；飞行途中失去无敌且受到一定次数伤害后会被击落；被击落后，视为地面单位且受到的伤害增加"
       ],
-      "iconPath": "icons/bosses/enemy_9013_acstmk.png"
+      "iconPath": "icons/bosses/enemy_9013_acstmk.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 226944,
+          "hiddenHp": 393984
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 283680,
+          "hiddenHp": 492480
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 378240,
+          "hiddenHp": 656640
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 472800,
+          "hiddenHp": 820800
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 567360,
+          "hiddenHp": 984960
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 661920,
+          "hiddenHp": 1149120
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 756480,
+          "hiddenHp": 1313280
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 851040,
+          "hiddenHp": 1477440
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 945600,
+          "hiddenHp": 1641600
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1182000,
+          "hiddenHp": 2052000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1418400,
+          "hiddenHp": 2462400
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1654800,
+          "hiddenHp": 2872800
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1891200,
+          "hiddenHp": 3283200
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2127600,
+          "hiddenHp": 3693600
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2364000,
+          "hiddenHp": 4104000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2626667,
+          "hiddenHp": 4560000
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 2889333,
+          "hiddenHp": 5016000
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3152000,
+          "hiddenHp": 5472000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3414667,
+          "hiddenHp": 5928000
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3677333,
+          "hiddenHp": 6384000
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 3940000,
+          "hiddenHp": 6840000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 283680,
+          "hiddenHp": 492480
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 945600,
+          "hiddenHp": 1641600
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2364000,
+          "hiddenHp": 4104000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 3940000,
+          "hiddenHp": 6840000
+        }
+      ]
     },
     {
       "enemyId": "enemy_9017_achunt",
@@ -43,7 +220,184 @@
         "【盲信之誓】与场上所有<“碎铳之簧”>连结，<“碎铳之簧”>受到伤害时以一定比例传递给<假想敌：铳>，处于【盲信之誓】连结上的我方单位每秒受到物理伤害",
         "【末日布道】持续召唤场上所有<“碎铳之簧”>向自身移动，<“碎铳之簧”>移动速度大幅提升并免疫伤害，对经过的我方单位造成物理伤害"
       ],
-      "iconPath": "icons/bosses/enemy_9017_achunt.png"
+      "iconPath": "icons/bosses/enemy_9017_achunt.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 129600,
+          "hiddenHp": 344448
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 162000,
+          "hiddenHp": 430560
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 216000,
+          "hiddenHp": 574080
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 270000,
+          "hiddenHp": 717600
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 324000,
+          "hiddenHp": 861120
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 378000,
+          "hiddenHp": 1004640
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 432000,
+          "hiddenHp": 1148160
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 486000,
+          "hiddenHp": 1291680
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 540000,
+          "hiddenHp": 1435200
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 675000,
+          "hiddenHp": 1794000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 810000,
+          "hiddenHp": 2152800
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 945000,
+          "hiddenHp": 2511600
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1080000,
+          "hiddenHp": 2870400
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1215000,
+          "hiddenHp": 3229200
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 1350000,
+          "hiddenHp": 3588000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 1500000,
+          "hiddenHp": 3986667
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 1650000,
+          "hiddenHp": 4385333
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 1800000,
+          "hiddenHp": 4784000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 1950000,
+          "hiddenHp": 5182667
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 2100000,
+          "hiddenHp": 5581333
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 2250000,
+          "hiddenHp": 5980000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 162000,
+          "hiddenHp": 430560
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 540000,
+          "hiddenHp": 1435200
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 1350000,
+          "hiddenHp": 3588000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 2250000,
+          "hiddenHp": 5980000
+        }
+      ]
     },
     {
       "enemyId": "enemy_9021_acduml",
@@ -62,7 +416,184 @@
         "隐秘核心",
         "在模拟中达成特定条件并进入隐秘核心回合时，<假想敌：弦>将与<假想敌：管>同时登场"
       ],
-      "iconPath": "icons/bosses/enemy_9021_acduml.png"
+      "iconPath": "icons/bosses/enemy_9021_acduml.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 241920,
+          "hiddenHp": 415872
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 302400,
+          "hiddenHp": 519840
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 403200,
+          "hiddenHp": 693120
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 504000,
+          "hiddenHp": 866400
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 604800,
+          "hiddenHp": 1039680
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 705600,
+          "hiddenHp": 1212960
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 806400,
+          "hiddenHp": 1386240
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 907200,
+          "hiddenHp": 1559520
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 1008000,
+          "hiddenHp": 1732800
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1260000,
+          "hiddenHp": 2166000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1512000,
+          "hiddenHp": 2599200
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1764000,
+          "hiddenHp": 3032400
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 2016000,
+          "hiddenHp": 3465600
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2268000,
+          "hiddenHp": 3898800
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2520000,
+          "hiddenHp": 4332000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2800000,
+          "hiddenHp": 4813333
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 3080000,
+          "hiddenHp": 5294667
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3360000,
+          "hiddenHp": 5776000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3640000,
+          "hiddenHp": 6257333
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3920000,
+          "hiddenHp": 6738667
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 4200000,
+          "hiddenHp": 7220000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 302400,
+          "hiddenHp": 519840
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 1008000,
+          "hiddenHp": 1732800
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2520000,
+          "hiddenHp": 4332000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 4200000,
+          "hiddenHp": 7220000
+        }
+      ]
     },
     {
       "enemyId": "enemy_1521_dslily",
@@ -81,7 +612,159 @@
         "【断裂生殖】召唤子代缠绕我方单位使其<$ba.stun>晕眩</>",
         "【物种爆发】战斗经过较长时间后扣除所有目标生命"
       ],
-      "iconPath": "icons/bosses/enemy_1521_dslily.png"
+      "iconPath": "icons/bosses/enemy_1521_dslily.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 251712
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 314640
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 419520
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 524400
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 629280
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 734160
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 839040
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 943920
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 1048800
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1311000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1573200
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1835400
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 2097600
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2359800
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2622000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2913333
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 3204667
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3496000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3787333
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 4078667
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 4370000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 314640
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 1048800
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2622000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 4370000
+        }
+      ]
     },
     {
       "enemyId": "enemy_9032_aclionk",
@@ -101,7 +784,159 @@
         "【王权号令】锁定一个我方单位及其周围四格，对范围内目标造成一次高额物理伤害并在此范围内的地块上生成随机装备",
         "【莫非王土】场上存在装备时，使一件装备活化，不同的装备将产生不同效果。"
       ],
-      "iconPath": "icons/bosses/enemy_9032_aclionk.png"
+      "iconPath": "icons/bosses/enemy_9032_aclionk.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 213120
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 266400
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 355200
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 444000
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 532800
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 621600
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 710400
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 799200
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 888000
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1110000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1332000
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1554000
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1776000
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1998000
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2220000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2466667
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 2713333
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 2960000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3206667
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3453333
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 3700000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 266400
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 888000
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2220000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 3700000
+        }
+      ]
     },
     {
       "enemyId": "enemy_9033_acdeer",
@@ -120,7 +955,159 @@
         "生命值低于一半时，受到的物理和法术伤害降低，【冰凌】和【自然涌动】额外选择一个目标",
         "战斗经过较长时间后，对全场我方单位造成法术伤害，并扣除30目标生命"
       ],
-      "iconPath": "icons/bosses/enemy_9033_acdeer.png"
+      "iconPath": "icons/bosses/enemy_9033_acdeer.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 232704
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 290880
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 387840
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 484800
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 581760
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 678720
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 775680
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 872640
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 969600
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1212000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1454400
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1696800
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1939200
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2181600
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2424000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2693333
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 2962667
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3232000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3501333
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3770667
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 4040000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 290880
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 969600
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2424000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 4040000
+        }
+      ]
     },
     {
       "enemyId": "enemy_9029_acfnc",
@@ -141,7 +1128,184 @@
         "【威光冲击】使<冲击之械>向两侧飞出并在经过数个我方单位或到达最远处时砸下，造成大量物理伤害；两个<冲击之械>之间的我方单位攻击速度大幅降低；<冲击之械>受到伤害时缓慢反向移动，若撞击<假想敌：械>，则销毁场上所有<冲击之械>",
         "【衰颓与复兴】销毁并重新召唤<冲击之械>"
       ],
-      "iconPath": "icons/bosses/enemy_9029_acfnc.png"
+      "iconPath": "icons/bosses/enemy_9029_acfnc.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 191520,
+          "hiddenHp": 300960
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 239400,
+          "hiddenHp": 376200
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 319200,
+          "hiddenHp": 501600
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 399000,
+          "hiddenHp": 627000
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 478800,
+          "hiddenHp": 752400
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 558600,
+          "hiddenHp": 877800
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 638400,
+          "hiddenHp": 1003200
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 718200,
+          "hiddenHp": 1128600
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 798000,
+          "hiddenHp": 1254000
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 997500,
+          "hiddenHp": 1567500
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1197000,
+          "hiddenHp": 1881000
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1396500,
+          "hiddenHp": 2194500
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1596000,
+          "hiddenHp": 2508000
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1795500,
+          "hiddenHp": 2821500
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 1995000,
+          "hiddenHp": 3135000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2216667,
+          "hiddenHp": 3483333
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 2438333,
+          "hiddenHp": 3831667
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 2660000,
+          "hiddenHp": 4180000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 2881667,
+          "hiddenHp": 4528333
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3103333,
+          "hiddenHp": 4876667
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 3325000,
+          "hiddenHp": 5225000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 239400,
+          "hiddenHp": 376200
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 798000,
+          "hiddenHp": 1254000
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 1995000,
+          "hiddenHp": 3135000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 3325000,
+          "hiddenHp": 5225000
+        }
+      ]
     },
     {
       "enemyId": "enemy_9035_acspider",
@@ -161,7 +1325,184 @@
         "在模拟中达成特定条件并进入隐秘核心回合时，<假想敌：茧>将获得强化，普通攻击附加中毒并额外选择每个场地一名我方单位，【淤困捕食】目标数增加",
         "【悲惨之雨】释放酸雨覆盖一片场地，使场地上所有我方单位攻击速度下降并持续受到真实伤害"
       ],
-      "iconPath": "icons/bosses/enemy_9035_acspider.png"
+      "iconPath": "icons/bosses/enemy_9035_acspider.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 239040,
+          "hiddenHp": 454176
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 298800,
+          "hiddenHp": 567720
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 398400,
+          "hiddenHp": 756960
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 498000,
+          "hiddenHp": 946200
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 597600,
+          "hiddenHp": 1135440
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 697200,
+          "hiddenHp": 1324680
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 796800,
+          "hiddenHp": 1513920
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 896400,
+          "hiddenHp": 1703160
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 996000,
+          "hiddenHp": 1892400
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 1245000,
+          "hiddenHp": 2365500
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 1494000,
+          "hiddenHp": 2838600
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 1743000,
+          "hiddenHp": 3311700
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1992000,
+          "hiddenHp": 3784800
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 2241000,
+          "hiddenHp": 4257900
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 2490000,
+          "hiddenHp": 4731000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 2766667,
+          "hiddenHp": 5256667
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 3043333,
+          "hiddenHp": 5782333
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 3320000,
+          "hiddenHp": 6308000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 3596667,
+          "hiddenHp": 6833667
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 3873333,
+          "hiddenHp": 7359333
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 4150000,
+          "hiddenHp": 7885000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 298800,
+          "hiddenHp": 567720
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 996000,
+          "hiddenHp": 1892400
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 2490000,
+          "hiddenHp": 4731000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 4150000,
+          "hiddenHp": 7885000
+        }
+      ]
     },
     {
       "enemyId": "enemy_9037_aceel",
@@ -182,7 +1523,184 @@
         "连续攻击同一目标时提升该次攻击造成的伤害，并增加跳跃次数",
         "在场时变为雷暴天气，周期性雷击站位密集的我方单位"
       ],
-      "iconPath": "icons/bosses/enemy_9037_aceel.png"
+      "iconPath": "icons/bosses/enemy_9037_aceel.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 120960,
+          "hiddenHp": 355680
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 151200,
+          "hiddenHp": 444600
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 201600,
+          "hiddenHp": 592800
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 252000,
+          "hiddenHp": 741000
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 302400,
+          "hiddenHp": 889200
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 352800,
+          "hiddenHp": 1037400
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 403200,
+          "hiddenHp": 1185600
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 453600,
+          "hiddenHp": 1333800
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 504000,
+          "hiddenHp": 1482000
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 630000,
+          "hiddenHp": 1852500
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 756000,
+          "hiddenHp": 2223000
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 882000,
+          "hiddenHp": 2593500
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 1008000,
+          "hiddenHp": 2964000
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1134000,
+          "hiddenHp": 3334500
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 1260000,
+          "hiddenHp": 3705000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 1400000,
+          "hiddenHp": 4116667
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 1540000,
+          "hiddenHp": 4528333
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 1680000,
+          "hiddenHp": 4940000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 1820000,
+          "hiddenHp": 5351667
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 1960000,
+          "hiddenHp": 5763333
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 2100000,
+          "hiddenHp": 6175000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 151200,
+          "hiddenHp": 444600
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 504000,
+          "hiddenHp": 1482000
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 1260000,
+          "hiddenHp": 3705000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 2100000,
+          "hiddenHp": 6175000
+        }
+      ]
     },
     {
       "enemyId": "enemy_2124_dyjsfg",
@@ -200,7 +1718,159 @@
         "【非命】生命值首次低于50%时，自身占用阻挡数、攻击力与移动速度提升",
         "【兼爱】自身被击倒或退场时，使场上除<后兽>以外的所有敌人退场，对场上所有友方单位造成一次无视<$ba.invisible>隐匿</>的高额物理伤害"
       ],
-      "iconPath": "icons/bosses/enemy_2124_dyjsfg.png"
+      "iconPath": "icons/bosses/enemy_2124_dyjsfg.png",
+      "hp": [
+        {
+          "mode": "mode_single_funny",
+          "name": "极速模拟",
+          "group": "single",
+          "hp": 112320
+        },
+        {
+          "mode": "mode_single_1",
+          "name": "规程等级1",
+          "group": "single",
+          "hp": 140400
+        },
+        {
+          "mode": "mode_single_2",
+          "name": "规程等级2",
+          "group": "single",
+          "hp": 187200
+        },
+        {
+          "mode": "mode_single_3",
+          "name": "规程等级3",
+          "group": "single",
+          "hp": 234000
+        },
+        {
+          "mode": "mode_single_4",
+          "name": "规程等级4",
+          "group": "single",
+          "hp": 280800
+        },
+        {
+          "mode": "mode_single_5",
+          "name": "规程等级5",
+          "group": "single",
+          "hp": 327600
+        },
+        {
+          "mode": "mode_single_6",
+          "name": "规程等级6",
+          "group": "single",
+          "hp": 374400
+        },
+        {
+          "mode": "mode_single_7",
+          "name": "规程等级7",
+          "group": "single",
+          "hp": 421200
+        },
+        {
+          "mode": "mode_single_8",
+          "name": "规程等级8",
+          "group": "single",
+          "hp": 468000
+        },
+        {
+          "mode": "mode_single_9",
+          "name": "规程等级9",
+          "group": "single",
+          "hp": 585000
+        },
+        {
+          "mode": "mode_single_10",
+          "name": "规程等级10",
+          "group": "single",
+          "hp": 702000
+        },
+        {
+          "mode": "mode_single_11",
+          "name": "规程等级11",
+          "group": "single",
+          "hp": 819000
+        },
+        {
+          "mode": "mode_single_12",
+          "name": "规程等级12",
+          "group": "single",
+          "hp": 936000
+        },
+        {
+          "mode": "mode_single_13",
+          "name": "规程等级13",
+          "group": "single",
+          "hp": 1053000
+        },
+        {
+          "mode": "mode_single_14",
+          "name": "规程等级14",
+          "group": "single",
+          "hp": 1170000
+        },
+        {
+          "mode": "mode_single_15",
+          "name": "规程等级15",
+          "group": "single",
+          "hp": 1300000
+        },
+        {
+          "mode": "mode_single_16",
+          "name": "规程等级16",
+          "group": "single",
+          "hp": 1430000
+        },
+        {
+          "mode": "mode_single_17",
+          "name": "规程等级17",
+          "group": "single",
+          "hp": 1560000
+        },
+        {
+          "mode": "mode_single_18",
+          "name": "规程等级18",
+          "group": "single",
+          "hp": 1690000
+        },
+        {
+          "mode": "mode_single_19",
+          "name": "规程等级19",
+          "group": "single",
+          "hp": 1820000
+        },
+        {
+          "mode": "mode_single_20",
+          "name": "规程等级20",
+          "group": "single",
+          "hp": 1950000
+        },
+        {
+          "mode": "mode_multi_funny",
+          "name": "标准模拟",
+          "group": "multi",
+          "hp": 140400
+        },
+        {
+          "mode": "mode_multi_normal",
+          "name": "险境模拟",
+          "group": "multi",
+          "hp": 468000
+        },
+        {
+          "mode": "mode_multi_hard",
+          "name": "绝境模拟",
+          "group": "multi",
+          "hp": 1170000
+        },
+        {
+          "mode": "mode_multi_abyss",
+          "name": "终极模拟",
+          "group": "multi",
+          "hp": 1950000
+        }
+      ]
     }
   ]
 }

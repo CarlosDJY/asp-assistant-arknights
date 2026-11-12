@@ -594,6 +594,23 @@ BOSS_EXTRA_ALIASES: dict[str, list[str]] = {
 }
 
 
+def boss_hp_levels(season_data: dict, boss: dict) -> list[dict]:
+    """按模式排序的各难度血量：单人（极速模拟、规程等级 1–20）与多人（标准 / 险境 / 绝境 / 终极模拟）。"""
+    blood = boss.get("bloodDataDict") or {}
+    levels = []
+    modes = sorted(season_data.get("modeDataDict", {}).values(), key=lambda m: m["sortId"])
+    for mode in modes:
+        if mode.get("modeType") not in ("SINGLE", "MULTI") or mode["modeId"] not in blood:
+            continue
+        levels.append({
+            "mode": mode["modeId"],
+            "name": mode["name"],
+            "group": "single" if mode["modeType"] == "SINGLE" else "multi",
+            "hp": blood[mode["modeId"]],
+        })
+    return levels
+
+
 def process_bosses(handbook_data: dict, season_data: dict, boss_metadata: dict) -> list[dict]:
     """
     按赛季首领池和 sortId 选取图鉴资料，同名强化形态只保留一条。
@@ -620,6 +637,13 @@ def process_bosses(handbook_data: dict, season_data: dict, boss_metadata: dict) 
         if not name:
             raise ValueError(f"首领 {boss_id} 的图鉴名称为空，停止更新")
         if name in seen_names:
+            # 隐藏首领（isHidingBoss，enemyId 带 _2）与普通形态同名，只补它的各难度血量。
+            if boss.get("isHidingBoss"):
+                row = next(r for r in bosses if r["name"] == name)
+                for level in row["hp"]:
+                    hidden = (boss.get("bloodDataDict") or {}).get(level["mode"])
+                    if hidden is not None:
+                        level["hiddenHp"] = hidden
             continue
         seen_names.add(name)
 
@@ -640,6 +664,7 @@ def process_bosses(handbook_data: dict, season_data: dict, boss_metadata: dict) 
             "damageTypes": damage_types,
             "abilityList": ability_list,
             "iconPath": f"icons/bosses/{enemy_id}.png",
+            "hp": boss_hp_levels(season_data, boss),
         }
         extras = BOSS_EXTRA_ALIASES.get(enemy_id)
         if extras:

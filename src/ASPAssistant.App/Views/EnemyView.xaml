@@ -206,6 +206,100 @@
                     </ItemsControl>
                 </Border>
             </StackPanel>
+            <!-- 首领各难度血量 -->
+            <StackPanel Margin="0,2,0,0">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding BossHpSingle.Count}" Value="0" />
+                                    <Condition Binding="{Binding BossHpMulti.Count}" Value="0" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+                <DockPanel Margin="0,0,0,6">
+                    <Border Width="3" Height="14" CornerRadius="{DynamicResource DotCornerRadius}"
+                            Background="{DynamicResource AccentBrush}" Margin="0,0,8,0" VerticalAlignment="Center" />
+                    <TextBlock DockPanel.Dock="Right" Text="红字为隐藏首领" FontSize="10" VerticalAlignment="Center"
+                               Foreground="{DynamicResource TextSecondaryBrush}">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding BossHasHiddenForm}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="各难度血量" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                </DockPanel>
+                <Border Style="{StaticResource ItemCardBorder}" Padding="8,8" Margin="0,0,0,12">
+                    <StackPanel>
+                        <TextBlock Text="多人" FontSize="11" FontWeight="SemiBold" Margin="2,0,0,2" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <ItemsControl ItemsSource="{Binding BossHpMulti}" Margin="0,0,0,8">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="2" Padding="6,4" CornerRadius="{DynamicResource RowCornerRadius}"
+                                        Background="{DynamicResource SectionBackgroundBrush}" ToolTip="{Binding Name}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Label}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding Hp}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding HiddenHp, StringFormat='隐藏 {0}'}" FontSize="10" Foreground="{DynamicResource DangerBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HiddenHp}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                        <TextBlock Text="单人 · 规程等级" FontSize="11" FontWeight="SemiBold" Margin="2,0,0,2" Foreground="{DynamicResource TextSecondaryBrush}" />
+                        <ItemsControl ItemsSource="{Binding BossHpSingle}" Margin="0,0,0,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><UniformGrid Columns="4" /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="2" Padding="6,4" CornerRadius="{DynamicResource RowCornerRadius}"
+                                        Background="{DynamicResource SectionBackgroundBrush}" ToolTip="{Binding Name}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Label}" FontSize="10" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                        <TextBlock Text="{Binding Hp}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                        <TextBlock Text="{Binding HiddenHp, StringFormat='隐藏 {0}'}" FontSize="10" Foreground="{DynamicResource DangerBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding HiddenHp}" Value="{x:Null}">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
             <!-- 特训敌人 -->
             <StackPanel Orientation="Horizontal" Margin="0,4,0,6" VerticalAlignment="Center">
                 <Border Width="3" Height="14" CornerRadius="{DynamicResource DotCornerRadius}"

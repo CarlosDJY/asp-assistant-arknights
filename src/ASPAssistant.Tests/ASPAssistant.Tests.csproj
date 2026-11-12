@@ -42,7 +42,7 @@
     <Content Include="TestData\**\*.bmp">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
-    <Content Include="..\..\data\operators.json;..\..\data\equipment.json;..\..\data\covenants.json;..\..\data\equipment_categories.json;..\..\data\strategies.json;..\..\data\covenant_effects.json;..\..\data\operator_profiles.json;..\..\data\garrison_maps.json;..\..\data\garrison_map_refs.json"
+    <Content Include="..\..\data\operators.json;..\..\data\equipment.json;..\..\data\covenants.json;..\..\data\equipment_categories.json;..\..\data\strategies.json;..\..\data\covenant_effects.json;..\..\data\operator_profiles.json;..\..\data\garrison_maps.json;..\..\data\garrison_map_refs.json;..\..\data\bosses.json"
              Link="TestData\Regulation\%(Filename)%(Extension)">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
