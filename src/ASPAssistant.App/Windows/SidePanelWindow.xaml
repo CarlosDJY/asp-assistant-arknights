@@ -1,4 +1,4 @@
-<!-- Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE. -->
+<!-- Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE. -->
 <Window x:Class="ASPAssistant.App.Windows.SidePanelWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -219,8 +219,11 @@
                             </Grid>
                         </DockPanel>
                     </TabItem>
-                    <TabItem Header="敌人" Tag="{StaticResource IconEnemy}">
-                        <views:EnemyView x:Name="EnemyView" />
+                    <TabItem x:Name="RunInfoTab" Header="对局信息" Tag="{StaticResource IconEnemy}">
+                        <DockPanel>
+                            <views:RunBanView x:Name="RunBanView" DockPanel.Dock="Top" Margin="10,10,10,0" />
+                            <views:EnemyView x:Name="EnemyView" />
+                        </DockPanel>
                     </TabItem>
                 </TabControl>
 

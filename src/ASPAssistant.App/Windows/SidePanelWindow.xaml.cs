@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-13; see NOTICE.
 using System.IO;
 using System.Net.Http;
 using System.Windows;
@@ -175,6 +175,7 @@ public partial class SidePanelWindow : Window
         TrackingView.SetCovenantCalculator(lineupVm.Calculator);
         TrackingView.DataContext = trackingVm;
         EnemyView.DataContext = enemyVm;
+        RunBanView.DataContext = operatorVm;
         EnemyView.RecognitionRequested += () => EnemyRecognitionRequested?.Invoke();
         LineupView.DataContext = lineupVm;
         WireLineupView();
@@ -192,14 +193,14 @@ public partial class SidePanelWindow : Window
         TrackingView.ToggleAcquiredRequested += name => trackingVm.ToggleAcquired(name);
         TrackingView.ClearAllTrackingRequested += () => trackingVm.ClearAllTracking();
 
-        OperatorView.ClearBansRequested += () => banVm.ClearBans();
-        OperatorView.ClearRunRequested += () =>
+        RunBanView.ClearBansRequested += () => banVm.ClearBans();
+        RunBanView.ClearRunRequested += () =>
         {
             banVm.SetCovenantBans([]);
             operatorVm.ClearCovenantHighlights();
             PlannerVm.OnlyCurrentRun = false;
         };
-        OperatorView.ManualScanRequested += () => ManualScanRequested?.Invoke();
+        RunBanView.ManualScanRequested += () => ManualScanRequested?.Invoke();
         OperatorView.BanToggleRequested += (name, banned) => BanToggleRequested?.Invoke(name, banned);
 
         banVm.BansChanged += () =>
@@ -208,11 +209,11 @@ public partial class SidePanelWindow : Window
             {
                 OperatorView.RefreshBannedStates();
                 operatorVm.NotifyBansChanged();
-                OperatorView.SetBanSummary([.. banVm.BannedCovenants], banVm.BannedNames.Count);
+                UpdateBanSummary();
                 UpdateLineupRunInfo();
             });
         };
-        OperatorView.SetBanSummary([.. banVm.BannedCovenants], banVm.BannedNames.Count);
+        UpdateBanSummary();
 
         trackingVm.TrackedOperators.CollectionChanged += (_, _) =>
         {
@@ -262,8 +263,17 @@ public partial class SidePanelWindow : Window
         return IntPtr.Zero;
     }
 
+    /// <summary>对局信息 header: banned covenants, banned operators' portraits and the unusable count.</summary>
+    private void UpdateBanSummary()
+    {
+        var byName = _allOperators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First());
+        var banned = BanVm.BannedNames.OrderBy(n => n, StringComparer.Ordinal)
+            .Select(n => byName.TryGetValue(n, out var op) ? op : new Operator { Name = n }).ToList();
+        RunBanView.SetBanSummary([.. BanVm.BannedCovenants], BanVm.BannedNames.Count, banned);
+    }
+
     public void UpdateManualScanStatus(int pending)
-        => OperatorView.UpdateManualScanStatus(pending);
+        => RunBanView.UpdateManualScanStatus(pending);
 
     /// <summary>Settings card: source in the title, live status below, icon tinted by state (PC grey, ADB green / red).</summary>
     public void UpdateGameConnectionStatus(bool isAdb, string status)

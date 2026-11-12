@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -18,9 +18,6 @@ public partial class OperatorBrowseView : UserControl
     public Func<string, bool>? IsTrackedCheck { get; set; }
 
     public Func<string, bool>? IsBannedCheck { get; set; }
-    public event Action? ClearBansRequested;
-    public event Action? ClearRunRequested;
-    public event Action? ManualScanRequested;
 
     public OperatorBrowseView()
     {
@@ -100,45 +97,6 @@ public partial class OperatorBrowseView : UserControl
         };
     }
 
-    private void OnClearBansClicked(object sender, RoutedEventArgs e)
-    {
-        ClearBansRequested?.Invoke();
-    }
-
-    private void OnClearHighlightsClicked(object sender, RoutedEventArgs e)
-    {
-        ClearRunRequested?.Invoke();
-    }
-
-    private void OnManualScanClicked(object sender, RoutedEventArgs e)
-    {
-        ManualScanRequested?.Invoke();
-    }
-
-    /// <summary>Run banner: banned covenants as pills, how many operators that leaves unusable.</summary>
-    public void SetBanSummary(IReadOnlyCollection<string> bannedCovenants, int unavailableOperators)
-    {
-        var any = bannedCovenants.Count > 0 || unavailableOperators > 0;
-        BanBannerMeta.Text = !any ? "未录入 · 打开本局信息页后截屏录入"
-            : unavailableOperators > 0 ? $"{unavailableOperators} 名干员不可用" : "无干员被禁用";
-        BanCovenantPills.ItemsSource = bannedCovenants.ToList();
-        BanCovenantPills.Visibility = bannedCovenants.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        ManualScanButton.Content = any ? "重新录入" : "截屏录入";
-    }
-
-    public void UpdateManualScanStatus(int pending)
-    {
-        ManualScanButton.IsEnabled = pending == 0;
-        ManualScanStatusText.Text = $"{pending} 录入任务执行中";
-        ManualScanStatusText.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed;
-    }
-
-    private void OnRunMenuClicked(object sender, RoutedEventArgs e)
-    {
-        if (RunMenuButton.ContextMenu is not { } menu) return;
-        menu.PlacementTarget = RunMenuButton;
-        menu.IsOpen = true;
-    }
 
     private void OnCollapseFiltersClicked(object sender, RoutedEventArgs e) => FilterToggle.IsChecked = false;
 

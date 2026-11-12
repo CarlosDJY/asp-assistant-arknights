@@ -1,0 +1,65 @@
+<!-- Added for ASP Assistant Arknights on 2026-11-13; see NOTICE. -->
+<!-- 对局信息 page header: this run's bans (moved here from the operator page) · 截屏录入 · ⋯ -->
+<UserControl x:Class="ASPAssistant.App.Views.RunBanView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ASPAssistant.App.Controls">
+        <Border Padding="10,8" Background="{DynamicResource CardBackgroundBrush}"
+                BorderBrush="{DynamicResource LineBrush}" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}">
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                    <Button x:Name="ManualScanButton" Content="截屏录入" Height="28" Padding="10,0"
+                            Style="{StaticResource SmallActionButton}"
+                            ToolTip="打开游戏内的本局信息页后点击，录入 Ban 位、盟约和敌人（Ctrl+Shift+/）"
+                            Click="OnManualScanClicked" />
+                    <Button x:Name="RunMenuButton" Style="{StaticResource MoreButton}" Margin="4,0,0,0"
+                            AutomationProperties.Name="更多本局操作" ToolTip="更多本局操作" Click="OnRunMenuClicked">
+                        <Button.ContextMenu>
+                            <ContextMenu Placement="Bottom">
+                                <MenuItem x:Name="OnlyCurrentRunToggle" Header="只看本局盟约" IsCheckable="True"
+                                          IsChecked="{Binding OnlyCurrentRun}" IsEnabled="{Binding HasRunInfo}"
+                                          ToolTip="筛选里只列出本局录入的盟约" />
+                                <Separator />
+                                <MenuItem x:Name="ClearHighlightsButton" Header="清除录入" Click="OnClearHighlightsClicked"
+                                          ToolTip="清除本局盟约录入及规划限制" />
+                                <MenuItem x:Name="ClearBansButton" Header="清除本局 Ban 位" Foreground="{DynamicResource DangerBrush}" Click="OnClearBansClicked" />
+                            </ContextMenu>
+                        </Button.ContextMenu>
+                    </Button>
+                </StackPanel>
+                <StackPanel VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="本局 Ban 位" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                        <TextBlock x:Name="BanBannerMeta" Text="未录入" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Bottom"
+                                   Foreground="{DynamicResource TextSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <ItemsControl x:Name="BanCovenantPills" Margin="0,6,0,0" Focusable="False" Visibility="Collapsed" ClipToBounds="True">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border CornerRadius="{DynamicResource PillCornerRadius}" Padding="6,1" Margin="0,0,4,2" BorderThickness="1"
+                                        Background="{DynamicResource DangerTintBrush}" BorderBrush="{DynamicResource DangerBorderBrush}">
+                                    <TextBlock Text="{Binding}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" />
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <ItemsControl x:Name="BannedOperators" Margin="0,4,0,0" Focusable="False" Visibility="Collapsed">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <controls:Avatar Width="24" Height="24" Small="True" Margin="0,0,4,4" Text="{Binding Name}" Source="{Binding IconPath}"
+                                                 ToolTip="{Binding Name}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="ManualScanStatusText" FontSize="10" Margin="0,4,0,0"
+                               Foreground="{DynamicResource TextSecondaryBrush}" Visibility="Collapsed" />
+                </StackPanel>
+            </DockPanel>
+        </Border>
+</UserControl>
