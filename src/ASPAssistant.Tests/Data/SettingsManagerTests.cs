@@ -17,6 +17,22 @@ public class SettingsManagerTests : IDisposable
         Directory.GetFiles(_tempDir, "*.tmp").Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task HotkeysDefaultRoundTripAndSurviveACorruptFile()
+    {
+        (await _manager.LoadHotkeysAsync()).Should().Be(new HotkeySettings());
+        (await _manager.LoadHotkeysAsync()).TogglePanel.Should().Be(new Hotkey(Hotkey.Control | Hotkey.Shift, 0x48));
+
+        var custom = new HotkeySettings { TogglePanel = new Hotkey(Hotkey.Alt, 0x70), ManualScan = Hotkey.None };
+        await _manager.SaveHotkeysAsync(custom);
+        var loaded = await _manager.LoadHotkeysAsync();
+        loaded.Should().Be(custom);
+        loaded.ManualScan.IsNone.Should().BeTrue();
+
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "hotkeys.json"), "{ not json");
+        (await _manager.LoadHotkeysAsync()).Should().Be(new HotkeySettings());
+    }
+
     private readonly string _tempDir;
     private readonly SettingsManager _manager;
 

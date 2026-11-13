@@ -385,6 +385,41 @@
                                     </StackPanel>
                                 </Border>
 
+                                <TextBlock Text="快捷键" Style="{StaticResource SettingsCaption}" />
+                                <Border Style="{StaticResource SettingsCard}">
+                                    <StackPanel>
+                                        <DockPanel>
+                                            <Button x:Name="TogglePanelHotkeyButton" DockPanel.Dock="Right" MinWidth="96" Style="{StaticResource SmallActionButton}"
+                                                    VerticalAlignment="Center" Click="OnHotkeyButtonClick" PreviewKeyDown="OnHotkeyButtonKeyDown"
+                                                    LostKeyboardFocus="OnHotkeyButtonLostFocus" AutomationProperties.Name="收起 / 展开侧栏的快捷键"
+                                                    ToolTip="点击后按下新的组合键；Esc 取消，Backspace 不使用" />
+                                            <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock Text="收起 / 展开侧栏" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                <TextBlock x:Name="TogglePanelHotkeyText" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" />
+                                        <DockPanel>
+                                            <Button x:Name="ManualScanHotkeyButton" DockPanel.Dock="Right" MinWidth="96" Style="{StaticResource SmallActionButton}"
+                                                    VerticalAlignment="Center" Click="OnHotkeyButtonClick" PreviewKeyDown="OnHotkeyButtonKeyDown"
+                                                    LostKeyboardFocus="OnHotkeyButtonLostFocus" AutomationProperties.Name="截屏录入的快捷键"
+                                                    ToolTip="点击后按下新的组合键；Esc 取消，Backspace 不使用" />
+                                            <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock Text="截屏录入" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                <TextBlock x:Name="ManualScanHotkeyText" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" />
+                                        <DockPanel>
+                                            <Button DockPanel.Dock="Right" Content="恢复默认" Click="OnResetHotkeys" Style="{StaticResource SmallActionButton}" VerticalAlignment="Center" />
+                                            <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock Text="默认快捷键" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                <TextBlock Text="Ctrl + Shift + H 收起 / 展开，Ctrl + Shift + / 截屏录入" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                    </StackPanel>
+                                </Border>
+
                                 <TextBlock Text="更新" Style="{StaticResource SettingsCaption}" />
                                 <Border Style="{StaticResource SettingsCard}">
                                     <DockPanel>

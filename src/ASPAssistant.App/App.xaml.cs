@@ -305,11 +305,12 @@ public partial class App : Application
 
         // Windows
         var sidePanelPosition = await _settingsManager.LoadSidePanelPositionAsync();
+        var hotkeys = await _settingsManager.LoadHotkeysAsync();
         var sidePanel = _sidePanel = new SidePanelWindow(
             operatorVm, equipmentVm, trackingVm, gameStateVm, banVm, enemyVm,
             lineupVm, lineupShareService,
             operators, equipment, strategies, _settingsManager, gameTheme, sidePanelPosition,
-            new LineupPlanner(operators, covenantInfos), covenantInfos);
+            new LineupPlanner(operators, covenantInfos), covenantInfos, hotkeys: hotkeys);
         sidePanel.GameThemeChanged += theme => shopReader.Theme = theme;
         var overlay = _overlay = new OverlayWindow()
         {

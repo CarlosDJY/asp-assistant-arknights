@@ -31,6 +31,10 @@ public partial class RunBanView : UserControl
         ManualScanButton.Content = any ? "重新录入" : "截屏录入";
     }
 
+    /// <summary>Shows the current 截屏录入 hotkey (null = none) in the button's tooltip.</summary>
+    public void SetScanHotkey(string? text)
+        => ManualScanButton.ToolTip = "打开游戏内的本局信息页后点击，录入 Ban 位、盟约和敌人" + (text is null ? "" : $"（{text}）");
+
     public void UpdateManualScanStatus(int pending)
     {
         ManualScanButton.IsEnabled = pending == 0;

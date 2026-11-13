@@ -67,6 +67,10 @@ public partial class SidePanelWindow : Window
 
     // Global hotkey (Ctrl+Shift+/) for manual screenshot scan
     private const int HotkeyIdManualScan = 0x4153; // 'AS' — arbitrary unique app-scoped ID
+    private const int HotkeyIdTogglePanel = 0x4154;
+    private HotkeySettings _hotkeys;
+    /// <summary>Which hotkey row is waiting for a new combination (null = none).</summary>
+    private Button? _capturingHotkey;
     private HwndSource? _hwndSource;
 
     // 全屏状态追踪
@@ -90,8 +94,10 @@ public partial class SidePanelWindow : Window
         SidePanelPositionSettings positionSettings,
         LineupPlanner? lineupPlanner = null,
         IReadOnlyList<CovenantInfo>? covenants = null,
-        SidebarAppearance? appearance = null)
+        SidebarAppearance? appearance = null,
+        HotkeySettings? hotkeys = null)
     {
+        _hotkeys = hotkeys ?? new HotkeySettings();
         _appearance = appearance ?? new SidebarAppearance();
         OperatorBrowseVm = operatorVm;
         EquipmentBrowseVm = equipmentVm;
@@ -234,8 +240,7 @@ public partial class SidePanelWindow : Window
         _hwndSource = HwndSource.FromHwnd(hwnd);
         _hwndSource.AddHook(WndProc);
         SystemBorder.Hide(hwnd);
-        User32.RegisterHotKey(hwnd, HotkeyIdManualScan,
-            User32.MOD_CONTROL | User32.MOD_SHIFT, User32.VK_OEM_2);
+        RegisterHotkeys();
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
@@ -258,6 +263,11 @@ public partial class SidePanelWindow : Window
         if (msg == User32.WM_HOTKEY && wParam.ToInt32() == HotkeyIdManualScan)
         {
             ManualScanRequested?.Invoke();
+            handled = true;
+        }
+        if (msg == User32.WM_HOTKEY && wParam.ToInt32() == HotkeyIdTogglePanel)
+        {
+            ToggleCollapsed();
             handled = true;
         }
         return IntPtr.Zero;
@@ -649,6 +659,122 @@ public partial class SidePanelWindow : Window
         WindowState = WindowState.Minimized;
     }
 
+    /// <summary>收起 / 展开 hotkey: minimize, or bring the panel back without taking focus from the game.</summary>
+    public void ToggleCollapsed()
+    {
+        if (WindowState == WindowState.Minimized)
+            User32.ShowWindow(new WindowInteropHelper(this).Handle, User32.SW_SHOWNOACTIVATE);
+        else
+            WindowState = WindowState.Minimized;
+    }
+
+    // ---- Hotkeys (设置 · 快捷键) ----
+
+    /// <summary>(Re)registers both hotkeys; a combination another program holds is reported on its row.</summary>
+    private void RegisterHotkeys()
+    {
+        var hwnd = new WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        User32.UnregisterHotKey(hwnd, HotkeyIdManualScan);
+        User32.UnregisterHotKey(hwnd, HotkeyIdTogglePanel);
+        var scanOk = Register(hwnd, HotkeyIdManualScan, _hotkeys.ManualScan);
+        var toggleOk = Register(hwnd, HotkeyIdTogglePanel, _hotkeys.TogglePanel);
+        ShowHotkey(TogglePanelHotkeyButton, TogglePanelHotkeyText, _hotkeys.TogglePanel, toggleOk, "最小化侧栏，再按一次恢复（不会抢走游戏焦点）");
+        ShowHotkey(ManualScanHotkeyButton, ManualScanHotkeyText, _hotkeys.ManualScan, scanOk, "打开游戏内的本局信息页后按下，录入 Ban 位、盟约和敌人");
+        RunBanView.SetScanHotkey(_hotkeys.ManualScan.IsNone ? null : HotkeyText.Describe(_hotkeys.ManualScan));
+    }
+
+    private static bool Register(IntPtr hwnd, int id, Hotkey key)
+        => key.IsNone || User32.RegisterHotKey(hwnd, id, key.Modifiers | User32.MOD_NOREPEAT, key.Key);
+
+    private static void ShowHotkey(Button button, TextBlock status, Hotkey key, bool ok, string hint)
+    {
+        button.Content = HotkeyText.Describe(key);
+        status.Text = ok ? hint : $"{HotkeyText.Describe(key)} 已被其他程序占用，点右侧换一个组合";
+        status.SetResourceReference(TextBlock.ForegroundProperty, ok ? "TextSecondaryBrush" : "DangerBrush");
+    }
+
+    private void OnHotkeyButtonClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button button) return;
+        if (_capturingHotkey is not null) EndHotkeyCapture();
+        _capturingHotkey = button;
+        // Let the current combinations reach the box instead of firing.
+        var hwnd = new WindowInteropHelper(this).Handle;
+        User32.UnregisterHotKey(hwnd, HotkeyIdManualScan);
+        User32.UnregisterHotKey(hwnd, HotkeyIdTogglePanel);
+        button.Content = "按下组合键…";
+        button.Tag = "accent";
+        // The side panel normally sits beside the game without focus; it needs the keyboard while recording.
+        Activate();
+        button.Focus();
+    }
+
+    private void OnHotkeyButtonKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_capturingHotkey is null || !ReferenceEquals(sender, _capturingHotkey)) return;
+        e.Handled = true;
+        var key = e.Key == Key.System ? e.SystemKey : e.Key;
+        var modifiers = HotkeyText.Modifiers(Keyboard.Modifiers);
+        if (key == Key.Escape && modifiers == 0) { EndHotkeyCapture(); return; }
+        if (key is Key.Back or Key.Delete && modifiers == 0) { ApplyHotkey(Hotkey.None); return; }
+        if (HotkeyText.IsModifierKey(key))
+        {
+            _capturingHotkey.Content = modifiers == 0 ? "按下组合键…" : HotkeyText.DescribeModifiers(modifiers) + " + …";
+            return;
+        }
+        if (modifiers == 0 && !HotkeyText.IsFunctionKey(key))
+        {
+            ShowToast("需要搭配 Ctrl / Alt / Shift / Win，或者用 F1–F12");
+            return;
+        }
+        ApplyHotkey(new Hotkey(modifiers, (uint)KeyInterop.VirtualKeyFromKey(key)));
+    }
+
+    private void OnHotkeyButtonLostFocus(object sender, RoutedEventArgs e)
+    {
+        if (ReferenceEquals(sender, _capturingHotkey)) EndHotkeyCapture();
+    }
+
+    private void ApplyHotkey(Hotkey key)
+    {
+        var toggle = ReferenceEquals(_capturingHotkey, TogglePanelHotkeyButton);
+        var other = toggle ? _hotkeys.ManualScan : _hotkeys.TogglePanel;
+        if (!key.IsNone && key == other)
+        {
+            ShowToast($"{HotkeyText.Describe(key)} 已用于{(toggle ? "截屏录入" : "收起 / 展开侧栏")}");
+            return;
+        }
+        _hotkeys = toggle ? _hotkeys with { TogglePanel = key } : _hotkeys with { ManualScan = key };
+        EndHotkeyCapture();
+        _ = SaveHotkeysAsync();
+    }
+
+    private void EndHotkeyCapture()
+    {
+        if (_capturingHotkey is { } button) button.Tag = null;
+        _capturingHotkey = null;
+        RegisterHotkeys();
+    }
+
+    private void OnResetHotkeys(object sender, RoutedEventArgs e)
+    {
+        _capturingHotkey = null;
+        _hotkeys = new HotkeySettings();
+        RegisterHotkeys();
+        _ = SaveHotkeysAsync();
+    }
+
+    private async Task SaveHotkeysAsync()
+    {
+        try { await _settingsManager.SaveHotkeysAsync(_hotkeys); }
+        catch (Exception ex)
+        {
+            AppLogger.Warn("Settings", $"Saving hotkeys failed: {ex.Message}");
+            ShowToast("快捷键保存失败");
+        }
+    }
+
     private void OnToggleSettings(object sender, RoutedEventArgs e)
     {
         var open = SettingsPanel.Visibility != Visibility.Visible || SettingsPanel.Tag as string == "closing";
@@ -851,6 +977,7 @@ public partial class SidePanelWindow : Window
             return;
 
         User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, HotkeyIdManualScan);
+        User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, HotkeyIdTogglePanel);
         Application.Current.Shutdown();
     }
 

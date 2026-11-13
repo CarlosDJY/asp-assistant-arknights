@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-13; see NOTICE.
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ASPAssistant.Core.Models;
@@ -186,6 +186,21 @@ public class SettingsManager
         Directory.CreateDirectory(_settingsDir);
         await File.WriteAllTextAsync(Path.Combine(_settingsDir, "multiple-lineups.json"),
             JsonSerializer.Serialize(enabled));
+    }
+
+    /// <summary>Global hotkeys; defaults when missing or unreadable.</summary>
+    public async Task<HotkeySettings> LoadHotkeysAsync()
+    {
+        var path = Path.Combine(_settingsDir, "hotkeys.json");
+        if (!File.Exists(path)) return new HotkeySettings();
+        try { return JsonSerializer.Deserialize<HotkeySettings>(await File.ReadAllTextAsync(path), JsonOptions) ?? new HotkeySettings(); }
+        catch (JsonException) { return new HotkeySettings(); }
+    }
+
+    public async Task SaveHotkeysAsync(HotkeySettings hotkeys)
+    {
+        Directory.CreateDirectory(_settingsDir);
+        await File.WriteAllTextAsync(Path.Combine(_settingsDir, "hotkeys.json"), JsonSerializer.Serialize(hotkeys, JsonOptions));
     }
 
     /// <summary>Draw deployable cells and enemy routes over the game board (on by default).</summary>

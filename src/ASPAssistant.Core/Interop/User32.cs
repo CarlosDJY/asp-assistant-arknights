@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-11; see NOTICE.
+﻿// Modified for ASP Assistant Regulation on 2026-11-13; see NOTICE.
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.Text;
@@ -205,6 +205,14 @@ public static class User32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool UnregisterHotKey(IntPtr hWnd, int id);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    /// <summary>Restore without taking focus from the game.</summary>
+    public const int SW_SHOWNOACTIVATE = 4;
+    /// <summary>Holding the keys down does not repeat the hotkey.</summary>
+    public const uint MOD_NOREPEAT = 0x4000;
     public const uint MOD_CONTROL = 0x0002;
     public const uint MOD_SHIFT   = 0x0004;
     public const uint VK_OEM_2    = 0xBF;  // '/' key
