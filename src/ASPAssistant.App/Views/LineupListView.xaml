@@ -349,8 +349,10 @@
                             </DockPanel>
                             <Border x:Name="BannedStrip" BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Margin="0,8,0,0" Padding="0,8,0,0">
                                 <DockPanel>
-                                    <TextBlock Text="本局禁用" FontSize="10" Margin="0,0,8,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}" />
-                                    <ItemsControl x:Name="BannedCovenantsList" Focusable="False" VerticalAlignment="Center">
+                                    <TextBlock DockPanel.Dock="Left" Text="本局禁用" FontSize="10" Margin="0,5,8,0" VerticalAlignment="Top" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <!-- covenants, then the banned operators below them; both wrap across the full width -->
+                                    <StackPanel>
+                                    <ItemsControl x:Name="BannedCovenantsList" Focusable="False">
                                         <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
@@ -369,6 +371,7 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
+                                    </StackPanel>
                                 </DockPanel>
                             </Border>
                         </StackPanel>
