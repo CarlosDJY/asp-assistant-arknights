@@ -42,6 +42,17 @@ public sealed class DeployPoolState
         else { Elite.Remove(name); Counts.Remove(name); }
     }
 
+    /// <summary>一键清空：所有干员变回没拥有（精锐、数量一起清掉），手动添加的也删掉。地图、人数、模式不动。</summary>
+    public void ClearPool()
+    {
+        Owned.Clear();
+        Elite.Clear();
+        Counts.Clear();
+        Extra.Clear();
+    }
+
+    public bool IsPoolEmpty => Owned.Count == 0 && Extra.Count == 0;
+
     public void SetElite(string name, bool elite)
     {
         Elite.Remove(name);

@@ -127,6 +127,20 @@ public class PlacementPlannerTests
         ["涤火杰西卡", "塞雷娅", "维娜·维多利亚", "白铁", "凯瑟琳", "哈洛德", "酒神", "慕斯", "罗比菈塔", "云迹", "空弦", "星源"];
 
     [Fact]
+    public void ClearPool_ForgetsOwnedEliteCountsAndHandAdded_KeepsSettings()
+    {
+        var state = new DeployPoolState { Owned = ["塔露拉", "夏栎"], Extra = ["夏栎"], FieldCount = 9, ManualMap = "palace" };
+        state.SetElite("塔露拉", true);
+        state.SetCount("塔露拉", 2);
+        state.ClearPool();
+        state.IsPoolEmpty.Should().BeTrue();
+        state.Elite.Should().BeEmpty();
+        state.Counts.Should().BeEmpty();
+        state.CountOf("塔露拉").Should().Be(0);
+        (state.FieldCount, state.ManualMap).Should().Be((9, "palace"));
+    }
+
+    [Fact]
     public async Task Plan_PutsJessicaInFrontOfSaria()
     {
         var (planner, board) = await LoadAsync();

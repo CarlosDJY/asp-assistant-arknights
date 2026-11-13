@@ -1044,6 +1044,7 @@ public partial class DeployView : UserControl
         PoolGroups.Children.Clear();
         var groups = Groups();
         int owned = Candidates().Count;
+        ClearPoolButton.IsEnabled = !_state.IsPoolEmpty;
         PoolHeaderMeta.Text = "";
         PoolSearchHint.Visibility = _poolQuery.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
         var extItems = groups.Where(g => g.Kind == DeployPoolGroupKind.Extension).SelectMany(g => g.Items).ToList();
@@ -1310,6 +1311,15 @@ public partial class DeployView : UserControl
         int level = _tracking?.TerminalLevel ?? 0;
         foreach (var entry in _tracking?.TrackedOperators.Where(t => t.Type == TrackingType.Operator) ?? [])
             if (!entry.ExpiredAt(level) && !_state.IsOwned(entry.Name)) _state.SetOwned(entry.Name, true);
+        SaveState();
+        RefreshPool();
+        ScheduleReplan();
+    }
+
+    private void OnClearPool(object sender, RoutedEventArgs e)
+    {
+        _state.ClearPool();
+        _pins.Clear();
         SaveState();
         RefreshPool();
         ScheduleReplan();

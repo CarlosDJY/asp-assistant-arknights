@@ -171,6 +171,8 @@
                             <ListBoxItem Content="已拥有" />
                         </ListBox>
                         <Button DockPanel.Dock="Right" Content="＋ 添加" Margin="5,0,0,0" Tag="accent" Style="{StaticResource SmallActionButton}" Click="OnAddOther" />
+                        <Button x:Name="ClearPoolButton" DockPanel.Dock="Right" Content="清空" Margin="5,0,0,0" Style="{StaticResource SmallActionButton}" Click="OnClearPool"
+                                ToolTip="所有干员变回没拥有，手动添加的也删掉" />
                         <Button DockPanel.Dock="Right" Content="本阶段全拥有" Margin="5,0,0,0" Style="{StaticResource SmallActionButton}" Click="OnOwnCurrentStage"
                                 ToolTip="把最终阵容和还没过期的过渡干员全部点亮" />
                         <TextBlock x:Name="PoolHeaderMeta" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
