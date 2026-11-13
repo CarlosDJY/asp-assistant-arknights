@@ -200,30 +200,50 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <!-- 推荐策略 (本局推荐 cards): icon + name, 核心 / 优选 / 次选 when set -->
-                        <ItemsControl ItemsSource="{Binding Strategies}" Margin="0,2,0,0" Focusable="False"
+                        <!-- 推荐策略 (本局推荐 cards): up to four, two per row; more than four → the 4th looks like a stack of cards -->
+                        <ItemsControl ItemsSource="{Binding Strategies}" Focusable="False"
                                       Visibility="{Binding HasStrategies, Converter={StaticResource BoolToVis}}">
+                            <ItemsControl.Style>
+                                <Style TargetType="ItemsControl">
+                                    <Setter Property="Margin" Value="0,4,0,0" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding StrategiesStacked}" Value="True">
+                                            <Setter Property="Margin" Value="0,4,6,6" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ItemsControl.Style>
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><UniformGrid Columns="2" VerticalAlignment="Top" /></ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,0,4,4" Padding="3,3,6,3" CornerRadius="{DynamicResource RowCornerRadius}"
-                                            Background="{DynamicResource SectionBackgroundBrush}" ToolTip="{Binding ToolTip}">
-                                        <DockPanel>
-                                            <controls:Avatar DockPanel.Dock="Left" Width="22" Height="22" Small="True" Margin="0,0,6,0"
-                                                             Text="{Binding Name}" Source="{Binding IconPath}" />
-                                            <Border x:Name="tag" DockPanel.Dock="Right" Style="{StaticResource TonePill}" Tag="accent" Margin="4,0,0,0"
-                                                    VerticalAlignment="Center" Visibility="{Binding HasTag, Converter={StaticResource BoolToVis}}">
-                                                <TextBlock Text="{Binding TagText}" FontSize="9.5" FontWeight="Bold" />
-                                            </Border>
-                                            <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                        </DockPanel>
-                                    </Border>
+                                    <Grid Margin="0,0,4,4" ToolTip="{Binding ToolTip}">
+                                        <Border x:Name="layer2" Margin="6,6,-6,-6" Visibility="Collapsed" BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}"
+                                                Background="{DynamicResource SectionBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" />
+                                        <Border x:Name="layer1" Margin="3,3,-3,-3" Visibility="Collapsed" BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}"
+                                                Background="{DynamicResource SectionBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}" />
+                                        <Border Height="30" Padding="4,0,6,0" BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}"
+                                                Background="{DynamicResource SectionBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                                            <DockPanel>
+                                                <controls:Avatar DockPanel.Dock="Left" Width="22" Height="22" Small="True" Margin="0,0,6,0"
+                                                                 Text="{Binding Name}" Source="{Binding IconPath}" />
+                                                <Border x:Name="tag" DockPanel.Dock="Right" Style="{StaticResource TonePill}" Tag="accent" Margin="4,0,0,0"
+                                                        VerticalAlignment="Center" Visibility="{Binding HasTag, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="{Binding TagText}" FontSize="9.5" FontWeight="Bold" />
+                                                </Border>
+                                                <TextBlock Text="{Binding Name}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                            </DockPanel>
+                                        </Border>
+                                    </Grid>
                                     <DataTemplate.Triggers>
                                         <DataTrigger Binding="{Binding IsSecondary}" Value="True">
                                             <Setter TargetName="tag" Property="Tag" Value="neutral" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding IsStacked}" Value="True">
+                                            <Setter TargetName="layer1" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="layer2" Property="Visibility" Value="Visible" />
                                         </DataTrigger>
                                     </DataTemplate.Triggers>
                                 </DataTemplate>
@@ -385,7 +405,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate>
                                                 <Border Style="{StaticResource TonePill}" Tag="bad" Margin="0,2,4,2" VerticalAlignment="Center">
-                                                    <TextBlock Text="{Binding StringFormat='{}{0} 不完整'}" FontSize="10" FontWeight="Bold" />
+                                                    <TextBlock Text="{Binding}" FontSize="10" FontWeight="Bold" />
                                                 </Border>
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>

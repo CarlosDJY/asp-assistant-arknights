@@ -190,7 +190,11 @@ public sealed record LineupStrategyItem(string Name, string? IconPath, string Ta
 {
     public bool HasTag => TagText.Length > 0;
     public bool IsSecondary => TagText == "次选";
-    public string ToolTip => Description is { Length: > 0 } d ? $"{Name}\n{d}" : Name;
+    /// <summary>The 4th of more than four: drawn as a stack; <see cref="More"/> names the rest.</summary>
+    public bool IsStacked => More.Count > 0;
+    public IReadOnlyList<string> More { get; init; } = [];
+    public string ToolTip => (Description is { Length: > 0 } d ? $"{Name}\n{d}" : Name)
+        + (More.Count > 0 ? $"\n另有：{string.Join("、", More)}" : "");
 }
 
 /// <summary>A target covenant pill. Tone: ok / warn / bad / accent (core, no run) / neutral.</summary>
@@ -220,6 +224,7 @@ public sealed class LineupCardItem
     public bool IsBest { get; init; }
     public IReadOnlyList<LineupStrategyItem> Strategies { get; init; } = [];
     public bool HasStrategies => Strategies.Count > 0;
+    public bool StrategiesStacked => Strategies.Any(s => s.IsStacked);
     /// <summary>Share / delete live on the full list; 本局推荐 keeps to 修补 / 追踪 / 编辑.</summary>
     public bool ShowManage { get; init; }
 
@@ -228,7 +233,15 @@ public sealed class LineupCardItem
 
     private static readonly StrategyTag[] TagOrder = [StrategyTag.阵容核心, StrategyTag.优选, StrategyTag.次选];
 
+    /// <summary>Up to four; past four the 4th carries the rest (drawn as a stack).</summary>
     private static IReadOnlyList<LineupStrategyItem> StrategiesOf(Lineup lineup)
+    {
+        var all = AllStrategiesOf(lineup);
+        if (all.Count <= 4) return all;
+        return [.. all.Take(3), all[3] with { More = [.. all.Skip(4).Select(s => s.Name)] }];
+    }
+
+    private static IReadOnlyList<LineupStrategyItem> AllStrategiesOf(Lineup lineup)
         => [.. lineup.Strategies
             .Where(s => s.StrategyId.Length > 0)
             .OrderBy(s => s.Tags.Count == 0 ? TagOrder.Length : s.Tags.Min(t => Array.IndexOf(TagOrder, t)))
