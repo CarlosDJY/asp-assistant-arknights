@@ -10,6 +10,8 @@ namespace ASPAssistant.Core.Services;
 ///      则该转职装备对应的核心盟约视为该 slot 额外获得（追加进核心盟约列表）。
 ///   2. 「调和」盟约：拥有「调和」的干员可视为属于任意核心盟约。
 ///      实现：把每个「调和」slot 对当前阵容内出现过的每个核心盟约都+1（不影响附加盟约）。
+///   3. 挂件（整备区）：只给「整备区的【X】干员也可用于激活盟约」的盟约（<see cref="BenchCovenants"/>）计人数，
+///      和在场干员同名的挂件不重复计。
 /// </summary>
 public class CovenantCalculator
 {
@@ -18,6 +20,9 @@ public class CovenantCalculator
 
     /// <summary>「变形同构体」装备名。</summary>
     public const string ShapeshifterEquipment = "变形同构体";
+
+    /// <summary>整备区（挂件）的干员也算人数的盟约，见 covenant_effects.json 里「整备区的【X】干员也可用于激活盟约」。</summary>
+    public static readonly IReadOnlySet<string> BenchCovenants = new HashSet<string>(StringComparer.Ordinal) { "远见", "奇迹", "投资人" };
 
     private readonly Dictionary<string, Operator> _operatorByName;
     private readonly Dictionary<string, CovenantInfo> _covenantByName;
@@ -73,6 +78,17 @@ public class CovenantCalculator
                     else if (!slotCore.Contains(add)) Add(counts, add, 1);
             }
             perSlotCoreCovenants.Add(slotCore);
+        }
+
+        // 挂件：只给整备区也能激活的盟约计人数
+        var onField = lineup.Slots.Select(s => s.OperatorName).ToHashSet(StringComparer.Ordinal);
+        foreach (var slot in lineup.SupportSlots)
+        {
+            if (!onField.Add(slot.OperatorName) || !_operatorByName.TryGetValue(slot.OperatorName, out var op)) continue;
+            var covenants = op.CoreCovenants.Concat(op.AdditionalCovenants)
+                .Concat(EquipmentRules.Transformations(slot).Select(t => t.Covenant));
+            foreach (var c in covenants.Where(BenchCovenants.Contains).Distinct())
+                Add(counts, c, 1);
         }
 
         // 先累加非「调和」核心盟约（含变形同构体追加），同时统计阵容内出现过的核心盟约集合

@@ -67,13 +67,17 @@ public static class LineupTargets
 
     /// <summary>
     /// Each target with the late-game people still available: <paramref name="unavailable"/> operators are taken out
-    /// (their transformations go with them). A banned core covenant cannot be reached at all.
+    /// (their transformations go with them); 挂件 count for the 整备区 covenants. A banned core covenant cannot be reached at all.
     /// </summary>
     public static IReadOnlyList<TargetState> States(Lineup lineup, CovenantCalculator calculator,
         Func<string, bool> unavailable, IReadOnlySet<string> bannedCovenants)
     {
         var infos = calculator.AllCovenants.ToDictionary(c => c.Name, StringComparer.Ordinal);
-        var remaining = new Lineup { Slots = [.. lineup.Slots.Where(s => !unavailable(s.OperatorName))] };
+        var remaining = new Lineup
+        {
+            Slots = [.. lineup.Slots.Where(s => !unavailable(s.OperatorName))],
+            SupportSlots = [.. lineup.SupportSlots.Where(s => !unavailable(s.OperatorName))],
+        };
         var counts = calculator.Compute(remaining).ToDictionary(s => s.Name, s => s.Count, StringComparer.Ordinal);
         return [.. Of(lineup, calculator).Where(t => infos.ContainsKey(t.Name)).Select(t =>
         {

@@ -45,6 +45,31 @@ public class LineupTargetsTests
     }
 
     [Fact]
+    public void SupportOperatorsCountOnlyForBenchCovenants()
+    {
+        // 怒潮凛冬 on the field, 耶拉 as 挂件: 奇迹 counts 整备区 → 2; 耶拉's 谢拉格 does not
+        var lineup = Make("挂件", "塔露拉", "怒潮凛冬");
+        lineup.SupportSlots = [new() { OperatorName = "耶拉" }, new() { OperatorName = "怒潮凛冬" }];
+        var stats = Calc().Compute(lineup).ToDictionary(s => s.Name, s => s.Count);
+        stats["奇迹"].Should().Be(2);
+        stats["谢拉格"].Should().Be(0);
+        stats["乌萨斯"].Should().Be(2);
+
+        lineup.TargetCovenants = [new() { Name = "奇迹", Tier = 1 }];
+        LineupTargets.States(lineup, Calc(), _ => false, new HashSet<string>()).Single().Reached.Should().BeTrue();
+        LineupTargets.States(lineup, Calc(), n => n == "耶拉", new HashSet<string>()).Single().Reached.Should().BeFalse();
+    }
+
+    [Fact]
+    public void BenchCovenantsMatchTheEffectsData()
+    {
+        var text = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "TestData", "Regulation", "covenant_effects.json"));
+        var found = System.Text.RegularExpressions.Regex.Matches(text, "整备区的【(.+?)】干员也可用于激活盟约")
+            .Select(m => m.Groups[1].Value).ToHashSet();
+        found.Should().BeEquivalentTo(CovenantCalculator.BenchCovenants);
+    }
+
+    [Fact]
     public void BansDecideTheKind()
     {
         var calc = Calc();

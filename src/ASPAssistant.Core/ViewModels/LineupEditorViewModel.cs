@@ -120,7 +120,7 @@ public partial class LineupEditorViewModel : ObservableObject
         // Lineups saved before target covenants existed get them from their late-game slots.
         TargetCovenants = [.. source is null ? [] : source.TargetCovenants.Count > 0
             ? source.TargetCovenants.Select(t => t.Clone())
-            : LineupTargets.Derive(new Lineup { Slots = ExportPhase(LineupPhase.后期) }, calculator)];
+            : LineupTargets.Derive(LateLineup(), calculator)];
         _initialTargets = [.. TargetCovenants.Select(t => t.Clone())];
         RecommendedEquipment = [.. (source?.RecommendedEquipment ?? []).Distinct(StringComparer.Ordinal)];
         _initialRecommended = [.. RecommendedEquipment];
@@ -143,7 +143,7 @@ public partial class LineupEditorViewModel : ObservableObject
 
     /// <summary>Each target against the current late-game slots: 已满足 or how many people are missing.</summary>
     public IReadOnlyList<TargetState> TargetStates => TargetCovenants.Count == 0 ? []
-        : LineupTargets.States(new Lineup { Slots = ExportPhase(LineupPhase.后期), TargetCovenants = TargetCovenants },
+        : LineupTargets.States(LateLineup(TargetCovenants),
             _calculator, _ => false, new HashSet<string>());
 
     public IReadOnlyList<CovenantInfo> AllCovenants => _calculator.AllCovenants;
@@ -153,12 +153,23 @@ public partial class LineupEditorViewModel : ObservableObject
     {
         var slots = Slots.Select((s, i) => i == slotIndex ? new LineupSlot { OperatorName = operatorName } : s)
             .Where(s => s.OperatorName.Length > 0).ToList();
-        return _calculator.Compute(new Lineup { Slots = slots }).ToDictionary(s => s.Name, s => s.Count, StringComparer.Ordinal);
+        return _calculator.Compute(PhaseLineup(slots)).ToDictionary(s => s.Name, s => s.Count, StringComparer.Ordinal);
     }
 
-    /// <summary>People per covenant in the late-game slots.</summary>
+    /// <summary>后期 together with 挂件: 挂件 count toward the covenants that 整备区 operators also activate.</summary>
+    private Lineup LateLineup(List<TargetCovenant>? targets = null) => new()
+    {
+        Slots = ExportPhase(LineupPhase.后期), SupportSlots = ExportPhase(LineupPhase.挂件), TargetCovenants = targets ?? [],
+    };
+
+    /// <summary>The current phase as given by <paramref name="slots"/>; 后期 also counts 挂件 for the 整备区 covenants.</summary>
+    private Lineup PhaseLineup(List<LineupSlot> slots) => CurrentPhase == LineupPhase.后期
+        ? new Lineup { Slots = slots, SupportSlots = ExportPhase(LineupPhase.挂件) }
+        : new Lineup { Slots = slots };
+
+    /// <summary>People per covenant in the late-game slots (挂件 count for the 整备区 covenants).</summary>
     public IReadOnlyDictionary<string, int> ComputeLate()
-        => _calculator.Compute(new Lineup { Slots = ExportPhase(LineupPhase.后期) }).ToDictionary(s => s.Name, s => s.Count, StringComparer.Ordinal);
+        => _calculator.Compute(LateLineup()).ToDictionary(s => s.Name, s => s.Count, StringComparer.Ordinal);
 
     /// <summary>Whether a covenant has a second tier (core covenants and the 人数 ones).</summary>
     public bool HasSecondTier(string covenant)
@@ -181,7 +192,7 @@ public partial class LineupEditorViewModel : ObservableObject
 
     /// <summary>按后期配置填写: the late-game slots' active covenants become the targets.</summary>
     public void FillTargetsFromLate()
-        => TargetCovenants = LineupTargets.Derive(new Lineup { Slots = ExportPhase(LineupPhase.后期) }, _calculator);
+        => TargetCovenants = LineupTargets.Derive(LateLineup(), _calculator);
 
     private void SortTargets()
     {
@@ -483,7 +494,7 @@ public partial class LineupEditorViewModel : ObservableObject
 
     public void Recalculate()
     {
-        var allStats = _calculator.Compute(new Lineup { Slots = [.. Slots] });
+        var allStats = _calculator.Compute(PhaseLineup([.. Slots.Where(s => s.OperatorName.Length > 0)]));
         var visible = allStats.Where(s => s.Count > 0)
                               .OrderByDescending(s => s.Activated)
                               .ThenBy(s => s.BondType == "SEASON" ? 0 : 1)

@@ -215,6 +215,28 @@ public class LineupEditorViewModelTests
     }
 
     [Fact]
+    public void LatePhaseCountsSupportOperatorsForBenchCovenants()
+    {
+        Operator[] operators =
+        [
+            new() { Name = "锡人", CoreCovenants = ["炎"], AdditionalCovenants = ["投资人"] },
+            new() { Name = "山", CoreCovenants = ["炎"], AdditionalCovenants = ["投资人"] },
+        ];
+        var vm = new LineupEditorViewModel(new Lineup
+        {
+            Slots = [new() { OperatorName = "锡人" }], SupportSlots = [new() { OperatorName = "山" }],
+            TargetCovenants = [new() { Name = "投资人", Tier = 1 }],
+        }, operators, [], new CovenantCalculator(operators,
+            [new() { Name = "炎", BondType = "SEASON", ActivateCount = 2 }, new() { Name = "投资人", BondType = "REGULAR", ActivateCount = 2 }],
+            new Dictionary<string, string>()));
+
+        vm.ComputeLate()["投资人"].Should().Be(2);
+        vm.ComputeLate()["炎"].Should().Be(1, "挂件 only count for the covenants that 整备区 also activates");
+        vm.TargetStates.Single().Reached.Should().BeTrue();
+        vm.ActivatedCount.Should().Be(1);
+    }
+
+    [Fact]
     public void Phases_KeepIndependentSlotsEquipmentTagsAndCovenantCounts()
     {
         var vm = Create(Source());
