@@ -216,6 +216,8 @@ public partial class App : Application
         var lineupOperators = operators.Concat(diyOperators).ToList();
         var lineupCalculator = new CovenantCalculator(lineupOperators, covenantInfos, jobChangeEquipmentToCovenant);
         AppLogger.Info("App", $"Loaded {diyOperators.Count} 自选 operators");
+        // Decode the operator / equipment thumbnails in the background so the pickers open without a stall.
+        Converters.LocalPathToImageConverter.Prewarm(lineupOperators.Select(o => o.IconPath).Concat(equipment.Select(e => e.IconPath)));
         var trackingEntries = await _settingsManager.LoadTrackingEntriesAsync(covenantCalculator.EquipmentRules);
         AppLogger.Info("App", $"Loaded {trackingEntries.Count} tracking entries");
         var lineupStore = new LineupStore(Path.Combine(settingsDir, "lineups"), covenantCalculator.EquipmentRules);

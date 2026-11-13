@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Collections.Concurrent;
 using System.Globalization;
 using System.IO;
@@ -34,7 +35,30 @@ public sealed class LocalPathToImageConverter : IValueConverter
     public static BitmapImage? LoadCached(string? iconPath)
         => string.IsNullOrEmpty(iconPath) ? null : Cache.GetOrAdd(iconPath, Load);
 
-    private static BitmapImage? Load(string iconPath)
+    private static readonly ConcurrentDictionary<string, BitmapImage?> ThumbCache = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Cached, frozen icon decoded at <see cref="ThumbPixels"/> wide — for avatars (≤ 48 DIP), so a list of a few hundred
+    /// operators decodes small images. Safe to call from a background thread (see <see cref="Prewarm"/>).
+    /// </summary>
+    public static BitmapImage? LoadThumb(string? iconPath)
+        => string.IsNullOrEmpty(iconPath) ? null : ThumbCache.GetOrAdd(iconPath, p => Load(p, ThumbPixels));
+
+    private const int ThumbPixels = 96;
+
+    /// <summary>Decodes the given icons into the thumbnail cache on a background thread (startup), so pickers open warm.</summary>
+    public static void Prewarm(IEnumerable<string> iconPaths)
+    {
+        var paths = iconPaths.Where(p => !string.IsNullOrEmpty(p)).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        Task.Run(() =>
+        {
+            foreach (var p in paths) LoadThumb(p);
+        });
+    }
+
+    private static BitmapImage? Load(string iconPath) => Load(iconPath, 0);
+
+    private static BitmapImage? Load(string iconPath, int decodePixelWidth)
     {
         var fullPath = Path.Combine(AppContext.BaseDirectory, "data", iconPath);
         if (!File.Exists(fullPath))
@@ -46,6 +70,7 @@ public sealed class LocalPathToImageConverter : IValueConverter
             bmp.BeginInit();
             bmp.UriSource   = new Uri(fullPath, UriKind.Absolute);
             bmp.CacheOption = BitmapCacheOption.OnLoad;
+            if (decodePixelWidth > 0) bmp.DecodePixelWidth = decodePixelWidth;
             bmp.EndInit();
             bmp.Freeze();
             return bmp;

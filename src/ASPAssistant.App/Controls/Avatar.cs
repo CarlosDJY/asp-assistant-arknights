@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -77,7 +77,7 @@ public sealed class Avatar : Grid
 
     private void UpdateImage()
     {
-        var image = LocalPathToImageConverter.LoadCached(Source);
+        var image = LocalPathToImageConverter.LoadThumb(Source);
         _photo.Background = image is null ? null : new ImageBrush(image) { Stretch = Stretch.UniformToFill };
     }
 

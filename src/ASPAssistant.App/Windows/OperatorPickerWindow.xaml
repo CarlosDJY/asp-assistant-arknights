@@ -136,9 +136,11 @@
                     <Grid>
                         <ListBox x:Name="OperatorsList" ItemsSource="{Binding FilteredOperators}" Background="Transparent" BorderThickness="0"
                                  Foreground="{DynamicResource TextPrimaryBrush}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                 MouseLeftButtonUp="OnOperatorClick" PreviewKeyDown="OnOperatorKeyDown">
+                                 MouseLeftButtonUp="OnOperatorClick" PreviewKeyDown="OnOperatorKeyDown"
+                                 VirtualizingPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True">
                             <ListBox.ItemsPanel>
-                                <ItemsPanelTemplate><UniformGrid Columns="2" VerticalAlignment="Top" /></ItemsPanelTemplate>
+                                <!-- Only the rows in view get cards (54 tall + 6 margin) -->
+                                <ItemsPanelTemplate><controls:VirtualizingUniformGrid Columns="2" ItemHeight="60" /></ItemsPanelTemplate>
                             </ListBox.ItemsPanel>
                             <ListBox.ItemContainerStyle>
                                 <Style TargetType="ListBoxItem" BasedOn="{StaticResource ClickableListBoxItemBase}">
