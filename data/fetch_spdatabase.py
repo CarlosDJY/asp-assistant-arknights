@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Modified for ASP Assistant Regulation on 2026-11-10; see NOTICE.
+# Modified for ASP Assistant Regulation on 2026-11-13; see NOTICE.
 """
 SPDatabase 数据抓取工具
 从 PRTS 与游戏图鉴获取卫戍协议/盟约数据，输出干员、装备、盟约、首领与特训敌人 JSON。
@@ -242,6 +242,58 @@ def process_operators(
 
 
 # ── 装备处理 ──────────────────────────────────────────────────────────────────
+
+
+def process_diy_operators(char_table: dict, season_data: dict, bond_info_dict: dict) -> list[dict]:
+    """自选编队能选的干员：本赛季卡池里没有的 6★（可获得、非召唤物 / 装置）。
+
+    自选名额没有特质，只按干员所属阵营分配核心盟约：干员的 nationId / groupId / teamId（含 subPower）
+    命中本赛季核心盟约的 powerIdList（autoChessData.bondInfoDict）即属于该盟约，可以同时属于几个；
+    一个都不命中时为「协防干员」（constData.fallbackBondId）。
+    自选可放在第Ⅴ阶或第Ⅵ阶；这里记为 6 阶，isDiy 标出来源。
+    """
+    pool = set()
+    for shop in season_data.get("charShopChessDatas", {}).values():
+        for key in ("charId", "backupCharId"):
+            if shop.get(key):
+                pool.add(shop[key])
+    season_bonds = season_data.get("bondInfoDict", {})
+    core = []  # (盟约名, powerIdList)
+    for bond_id in season_bonds:
+        g = bond_info_dict.get(bond_id, {})
+        if g.get("bondType") == "SEASON" and g.get("powerIdList"):
+            core.append((g.get("name", bond_id), set(g["powerIdList"])))
+    fallback_id = season_data.get("constData", {}).get("fallbackBondId", "emptyShip")
+    fallback = bond_info_dict.get(fallback_id, {}).get("name") or season_bonds.get(fallback_id, {}).get("name") or "协防干员"
+
+    def powers(c: dict) -> set[str]:
+        out = {c.get("nationId"), c.get("groupId"), c.get("teamId")}
+        for p in [c.get("mainPower") or {}] + list(c.get("subPower") or []):
+            out |= {p.get("nationId"), p.get("groupId"), p.get("teamId")}
+        return {x for x in out if x}
+
+    operators = []
+    for char_id, c in char_table.items():
+        if not char_id.startswith("char_") or c.get("rarity") != "TIER_6":
+            continue
+        if c.get("profession") in ("TOKEN", "TRAP") or c.get("isNotObtainable") or char_id in pool:
+            continue
+        name = c.get("name", char_id)
+        mine = powers(c)
+        covenants = [n for n, ids in core if mine & ids] or [fallback]
+        operators.append({
+            "name": name,
+            "iconPath": f"icons/operators/{name}.png",
+            "_charId": char_id,
+            "tier": 6,
+            "isDiy": True,
+            "coreCovenants": covenants,
+            "additionalCovenants": [],
+            "normal": {"traits": []},
+            "elite": {"traits": []},
+        })
+    operators.sort(key=lambda o: o["name"])
+    return operators
 
 def process_equipment(season_data: dict) -> list[dict]:
     """处理装备数据，返回匹配 C# 模型的列表"""
@@ -824,6 +876,9 @@ def main():
         print(f"  重复干员 (已去重): {len(operators) - len(unique_operators)}")
     operators = unique_operators
     print(f"  干员数: {len(operators)}")
+    pool_names = {op["name"] for op in operators}
+    diy_operators = [o for o in process_diy_operators(char_table, season_data, bond_info_dict) if o["name"] not in pool_names]
+    print(f"  自选编队可选干员: {len(diy_operators)}")
 
     # 5. 处理装备
     print("处理装备数据...")
@@ -880,7 +935,7 @@ def main():
 
         print("下载干员图标...")
         dl_new, dl_skip, dl_fail = 0, 0, 0
-        for op in operators:
+        for op in operators + diy_operators:
             char_id = op.get("_charId", "")
             if not char_id:
                 dl_fail += 1
@@ -934,7 +989,7 @@ def main():
         print(f"  映射已保存: {avatar_map_path.name} ({avatar_map_path.stat().st_size / 1024:.1f} KB)")
 
     # 清理临时字段
-    for op in operators:
+    for op in operators + diy_operators:
         op.pop("_charId", None)
 
     # 10. 输出 JSON
@@ -943,6 +998,10 @@ def main():
 
     with open(operators_path, "w", encoding="utf-8") as f:
         json.dump({"operators": operators}, f, ensure_ascii=False, indent=2)
+
+    diy_path = data_dir / "diy_operators.json"
+    with open(diy_path, "w", encoding="utf-8") as f:
+        json.dump({"operators": diy_operators}, f, ensure_ascii=False, indent=2)
 
     with open(equipment_path, "w", encoding="utf-8") as f:
         json.dump(

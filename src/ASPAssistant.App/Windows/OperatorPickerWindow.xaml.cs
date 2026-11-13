@@ -40,6 +40,7 @@ public partial class OperatorPickerWindow : Window
     private readonly IReadOnlySet<string> _strategies;
     private readonly OperatorPickerContext? _context;
     private bool _onlyTargets;
+    private bool _onlyDiy;
     public string? Result { get; private set; }
 
     public OperatorPickerWindow(IEnumerable<Operator> operators, string current, IReadOnlySet<string> strategies, OperatorPickerContext? context = null)
@@ -71,6 +72,7 @@ public partial class OperatorPickerWindow : Window
             GoalPills.ItemsSource = context.Targets.Select(t => new GoalPill(t.Name, $"{t.Label} {t.Count}/{t.Needed}", t.Reached)).ToList();
         }
         if (context is null || context.Targets.All(t => t.Reached)) ScopeTargets.IsEnabled = false;
+        if (!list.Any(o => o.IsDiy)) ScopeDiy.Visibility = Visibility.Collapsed;
         _filters.FilteredOperators.CollectionChanged += (_, _) => UpdateCount();
         Loaded += (_, _) => { ApplyScope(); SearchBox.Focus(); };
         Closed += (_, _) => _effects = new();
@@ -121,6 +123,7 @@ public partial class OperatorPickerWindow : Window
     private void OnScopeChanged(object sender, SelectionChangedEventArgs e)
     {
         _onlyTargets = ScopeList.SelectedIndex == 1;
+        _onlyDiy = ScopeList.SelectedIndex == 2;
         if (IsLoaded) ApplyScope();
     }
 
@@ -128,7 +131,8 @@ public partial class OperatorPickerWindow : Window
     {
         var view = CollectionViewSource.GetDefaultView(OperatorsList.ItemsSource);
         if (view is null) return;
-        view.Filter = _onlyTargets ? o => _effects.TryGetValue(((Operator)o).Name, out var e) && e.HelpsTarget : null;
+        view.Filter = _onlyDiy ? o => ((Operator)o).IsDiy
+            : _onlyTargets ? o => _effects.TryGetValue(((Operator)o).Name, out var e) && e.HelpsTarget : null;
         UpdateCount();
     }
 

@@ -28,6 +28,9 @@ def initials(text: str) -> str:
 def main() -> None:
     names: set[str] = set()
     names |= {o["name"] for o in json.loads((DATA / "operators.json").read_text(encoding="utf-8"))["operators"]}
+    diy = DATA / "diy_operators.json"
+    if diy.exists():
+        names |= {o["name"] for o in json.loads(diy.read_text(encoding="utf-8"))["operators"]}
     names |= {e["name"] for e in json.loads((DATA / "equipment.json").read_text(encoding="utf-8"))["equipment"]}
     strategies = json.loads((DATA / "strategies.json").read_text(encoding="utf-8"))
     strategies = strategies["strategies"] if isinstance(strategies, dict) else strategies

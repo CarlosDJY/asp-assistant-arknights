@@ -211,6 +211,11 @@ public partial class App : Application
             + $"{jobChangeEquipmentToCovenant.Count} job-change equipment mappings");
 
         var covenantCalculator = new CovenantCalculator(operators, covenantInfos, jobChangeEquipmentToCovenant);
+        // 我的阵容 also knows the 自选编队 picks (6★ outside the pool); 图鉴 / 规划 / 追踪 keep to the pool.
+        var diyOperators = await dataStore.LoadDiyOperatorsAsync();
+        var lineupOperators = operators.Concat(diyOperators).ToList();
+        var lineupCalculator = new CovenantCalculator(lineupOperators, covenantInfos, jobChangeEquipmentToCovenant);
+        AppLogger.Info("App", $"Loaded {diyOperators.Count} 自选 operators");
         var trackingEntries = await _settingsManager.LoadTrackingEntriesAsync(covenantCalculator.EquipmentRules);
         AppLogger.Info("App", $"Loaded {trackingEntries.Count} tracking entries");
         var lineupStore = new LineupStore(Path.Combine(settingsDir, "lineups"), covenantCalculator.EquipmentRules);
@@ -249,7 +254,7 @@ public partial class App : Application
 
         var gameStateVm = new GameStateViewModel();
 
-        var lineupVm = new LineupViewModel(lineupStore, covenantCalculator);
+        var lineupVm = new LineupViewModel(lineupStore, lineupCalculator);
         lineupVm.LoadLineups(lineups);
         var lineupShareService = new LineupShareService(covenantCalculator.EquipmentRules, Path.Combine(settingsDir, "share-links"));
 
@@ -310,7 +315,7 @@ public partial class App : Application
             operatorVm, equipmentVm, trackingVm, gameStateVm, banVm, enemyVm,
             lineupVm, lineupShareService,
             operators, equipment, strategies, _settingsManager, gameTheme, sidePanelPosition,
-            new LineupPlanner(operators, covenantInfos), covenantInfos, hotkeys: hotkeys);
+            new LineupPlanner(operators, covenantInfos), covenantInfos, hotkeys: hotkeys, lineupOperators: lineupOperators);
         sidePanel.GameThemeChanged += theme => shopReader.Theme = theme;
         var overlay = _overlay = new OverlayWindow()
         {

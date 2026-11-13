@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-10; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Text.Json;
 using ASPAssistant.Core.Models;
 
@@ -28,6 +28,18 @@ public class JsonDataStore
         var wrapper = JsonSerializer.Deserialize<OperatorDataFile>(json, JsonOptions);
         var operators = wrapper?.Operators ?? [];
         await ApplyOperatorProfilesAsync(operators);
+        return operators;
+    }
+
+    /// <summary>自选编队能选的干员（data/diy_operators.json，fetch_spdatabase.py 生成）；没有文件时为空。</summary>
+    public async Task<List<Operator>> LoadDiyOperatorsAsync()
+    {
+        var path = Path.Combine(_dataDirectory, "diy_operators.json");
+        if (!File.Exists(path))
+            return [];
+        var wrapper = JsonSerializer.Deserialize<OperatorDataFile>(await File.ReadAllTextAsync(path), JsonOptions);
+        var operators = wrapper?.Operators ?? [];
+        foreach (var op in operators) op.IsDiy = true;
         return operators;
     }
 

@@ -1,0 +1,1063 @@
+{
+  "operators": [
+    {
+      "name": "丰川祥子",
+      "iconPath": "icons/operators/丰川祥子.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "予愿安洁莉娜",
+      "iconPath": "icons/operators/予愿安洁莉娜.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "叙拉古"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "令",
+      "iconPath": "icons/operators/令.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "伊内丝",
+      "iconPath": "icons/operators/伊内丝.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "伊芙利特",
+      "iconPath": "icons/operators/伊芙利特.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "信仰搅拌机",
+      "iconPath": "icons/operators/信仰搅拌机.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "假日威龙陈",
+      "iconPath": "icons/operators/假日威龙陈.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "傀影",
+      "iconPath": "icons/operators/傀影.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "凯尔希",
+      "iconPath": "icons/operators/凯尔希.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "凯尔希·思衡托",
+      "iconPath": "icons/operators/凯尔希·思衡托.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "刻俄柏",
+      "iconPath": "icons/operators/刻俄柏.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "号角",
+      "iconPath": "icons/operators/号角.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "司霆惊蛰",
+      "iconPath": "icons/operators/司霆惊蛰.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "国度",
+      "iconPath": "icons/operators/国度.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "乌萨斯"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "圣约送葬人",
+      "iconPath": "icons/operators/圣约送葬人.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "塑心",
+      "iconPath": "icons/operators/塑心.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "多萝西",
+      "iconPath": "icons/operators/多萝西.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "娜仁图亚",
+      "iconPath": "icons/operators/娜仁图亚.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "萨尔贡"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "娜斯提",
+      "iconPath": "icons/operators/娜斯提.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "嵯峨",
+      "iconPath": "icons/operators/嵯峨.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "左乐",
+      "iconPath": "icons/operators/左乐.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "年",
+      "iconPath": "icons/operators/年.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "弑君者",
+      "iconPath": "icons/operators/弑君者.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "叙拉古",
+        "乌萨斯"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "推进之王",
+      "iconPath": "icons/operators/推进之王.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "提丰",
+      "iconPath": "icons/operators/提丰.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "斩业星熊",
+      "iconPath": "icons/operators/斩业星熊.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "新约能天使",
+      "iconPath": "icons/operators/新约能天使.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "早露",
+      "iconPath": "icons/operators/早露.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "乌萨斯"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "星熊",
+      "iconPath": "icons/operators/星熊.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "望",
+      "iconPath": "icons/operators/望.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "林",
+      "iconPath": "icons/operators/林.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "止颂",
+      "iconPath": "icons/operators/止颂.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "莱塔尼亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "死芒",
+      "iconPath": "icons/operators/死芒.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "泥岩",
+      "iconPath": "icons/operators/泥岩.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "澄闪",
+      "iconPath": "icons/operators/澄闪.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "灰烬",
+      "iconPath": "icons/operators/灰烬.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "焰影苇草",
+      "iconPath": "icons/operators/焰影苇草.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "焰狐龙梓兰",
+      "iconPath": "icons/operators/焰狐龙梓兰.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "煌",
+      "iconPath": "icons/operators/煌.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎",
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "玛露西尔",
+      "iconPath": "icons/operators/玛露西尔.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "珊比",
+      "iconPath": "icons/operators/珊比.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "琳琅诗怀雅",
+      "iconPath": "icons/operators/琳琅诗怀雅.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "琴柳",
+      "iconPath": "icons/operators/琴柳.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "电弧",
+      "iconPath": "icons/operators/电弧.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "乌萨斯"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "百炼嘉维尔",
+      "iconPath": "icons/operators/百炼嘉维尔.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "萨尔贡"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "结城理",
+      "iconPath": "icons/operators/结城理.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "维什戴尔",
+      "iconPath": "icons/operators/维什戴尔.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "缄默德克萨斯",
+      "iconPath": "icons/operators/缄默德克萨斯.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎",
+        "叙拉古"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "缇缇",
+      "iconPath": "icons/operators/缇缇.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "萨尔贡"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "能天使",
+      "iconPath": "icons/operators/能天使.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "艾拉",
+      "iconPath": "icons/operators/艾拉.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "莫斯提马",
+      "iconPath": "icons/operators/莫斯提马.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "莱伊",
+      "iconPath": "icons/operators/莱伊.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "菲亚梅塔",
+      "iconPath": "icons/operators/菲亚梅塔.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "谬因",
+      "iconPath": "icons/operators/谬因.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "赤刃明霄陈",
+      "iconPath": "icons/operators/赤刃明霄陈.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "重岳",
+      "iconPath": "icons/operators/重岳.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "银灰",
+      "iconPath": "icons/operators/银灰.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "谢拉格"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "闪灵",
+      "iconPath": "icons/operators/闪灵.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "阿",
+      "iconPath": "icons/operators/阿.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "阿斯卡纶",
+      "iconPath": "icons/operators/阿斯卡纶.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "陈",
+      "iconPath": "icons/operators/陈.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "炎"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "风笛",
+      "iconPath": "icons/operators/风笛.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "维多利亚"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "麒麟R夜刀",
+      "iconPath": "icons/operators/麒麟R夜刀.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "麦哲伦",
+      "iconPath": "icons/operators/麦哲伦.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    },
+    {
+      "name": "黑",
+      "iconPath": "icons/operators/黑.png",
+      "tier": 6,
+      "isDiy": true,
+      "coreCovenants": [
+        "协防干员"
+      ],
+      "additionalCovenants": [],
+      "normal": {
+        "traits": []
+      },
+      "elite": {
+        "traits": []
+      }
+    }
+  ]
+}

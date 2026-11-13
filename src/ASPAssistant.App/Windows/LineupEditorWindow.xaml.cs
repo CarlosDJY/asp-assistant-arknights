@@ -264,8 +264,9 @@ public partial class LineupEditorWindow : Window
             var tier = new Border { Padding = new Thickness(4, 0, 4, 0), Margin = new Thickness(-3, 0, 0, -3), HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom };
             tier.SetResourceReference(Border.BackgroundProperty, "TitleBackgroundBrush");
             tier.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
-            var tierText = Text(Roman[op.Tier], 10, "TitleTextBrush", bold: true);
-            tierText.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
+            var tierText = Text(op.IsDiy ? "自选" : Roman[op.Tier], op.IsDiy ? 9 : 10, "TitleTextBrush", bold: true);
+            if (!op.IsDiy) tierText.SetResourceReference(TextBlock.FontFamilyProperty, "NumberFontFamily");
+            if (op.IsDiy) tier.ToolTip = "自选编队：第Ⅴ / Ⅵ阶";
             tier.Child = tierText;
             avatarBox.Children.Add(tier);
         }

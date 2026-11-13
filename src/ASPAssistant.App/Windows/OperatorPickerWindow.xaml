@@ -99,6 +99,7 @@
                         <ListBox x:Name="ScopeList" DockPanel.Dock="Right" Margin="8,0,0,0" Style="{StaticResource SegmentedListBox}" SelectionChanged="OnScopeChanged">
                             <ListBoxItem Content="全部" IsSelected="True" />
                             <ListBoxItem x:Name="ScopeTargets" Content="能补目标" />
+                            <ListBoxItem x:Name="ScopeDiy" Content="自选" ToolTip="自选编队能选的干员：卡池外的 6★，第Ⅴ / Ⅵ阶都能放，只有按阵营分配的核心盟约" />
                         </ListBox>
                         <TextBox x:Name="SearchBox" Style="{StaticResource PickerSearchBox}" Tag="名字或首字母，如 dh"
                                  Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}" ToolTip="搜索干员名称或拼音首字母" PreviewKeyDown="OnOperatorKeyDown" />
@@ -179,9 +180,19 @@
                                                 <StackPanel Orientation="Horizontal">
                                                     <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="Bold" TextTrimming="CharacterEllipsis"
                                                                Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                    <TextBlock Text="{Binding Tier, Converter={StaticResource TierToRoman}, StringFormat={}{0} 阶}" Margin="6,0,0,0"
-                                                               VerticalAlignment="Center" FontFamily="{DynamicResource NumberFontFamily}" FontWeight="Bold" FontSize="11"
-                                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                    <TextBlock Margin="6,0,0,0" VerticalAlignment="Center" FontFamily="{DynamicResource NumberFontFamily}" FontWeight="Bold" FontSize="11"
+                                                               Foreground="{DynamicResource TextSecondaryBrush}">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="{Binding Tier, Converter={StaticResource TierToRoman}, StringFormat={}{0} 阶}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsDiy}" Value="True">
+                                                                        <Setter Property="Text" Value="自选 · Ⅴ / Ⅵ 阶" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
                                                 </StackPanel>
                                             </DockPanel>
                                             <StackPanel Orientation="Horizontal" Margin="0,4,0,0" ClipToBounds="True">

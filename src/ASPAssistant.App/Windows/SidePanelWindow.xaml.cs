@@ -35,6 +35,8 @@ public partial class SidePanelWindow : Window
 
     private readonly LineupShareService _lineupShareService;
     private readonly IReadOnlyList<Operator> _allOperators;
+    /// <summary>The pool plus the 自选编队 picks: what 我的阵容 can hold.</summary>
+    private readonly IReadOnlyList<Operator> _lineupOperators;
     private readonly IReadOnlyList<Equipment> _allEquipment;
     private readonly IReadOnlyList<Strategy> _allStrategies;
     private readonly LineupPlanner _lineupPlanner;
@@ -95,8 +97,10 @@ public partial class SidePanelWindow : Window
         LineupPlanner? lineupPlanner = null,
         IReadOnlyList<CovenantInfo>? covenants = null,
         SidebarAppearance? appearance = null,
-        HotkeySettings? hotkeys = null)
+        HotkeySettings? hotkeys = null,
+        IReadOnlyList<Operator>? lineupOperators = null)
     {
+        _lineupOperators = lineupOperators ?? allOperators;
         _hotkeys = hotkeys ?? new HotkeySettings();
         _appearance = appearance ?? new SidebarAppearance();
         OperatorBrowseVm = operatorVm;
@@ -1092,7 +1096,7 @@ public partial class SidePanelWindow : Window
             LineupVm.SetRunInfo(null, null);
             return;
         }
-        var byName = _allOperators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First());
+        var byName = _lineupOperators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First());
         bool Unavailable(string name) => BanVm.IsBanned(name)
             || (byName.TryGetValue(name, out var op) && CovenantBanRules.IsExcluded(op, bannedCovenants));
         LineupVm.SetRunInfo(Unavailable, new HashSet<string>(bannedCovenants), [.. BanVm.BannedNames.OrderBy(n => n, StringComparer.Ordinal)]);
@@ -1199,7 +1203,7 @@ public partial class SidePanelWindow : Window
     private async void OpenEditor(Lineup? source)
     {
         var calc = LineupVm.Calculator;
-        var editorVm = new LineupEditorViewModel(source, _allOperators, _allEquipment, calc);
+        var editorVm = new LineupEditorViewModel(source, _lineupOperators, _allEquipment, calc);
         var window = new LineupEditorWindow(editorVm, _allStrategies) { Owner = this };
         await MinimizableDialog.ShowAsync(window, PanelContent);
         if (window.Result is null) return;

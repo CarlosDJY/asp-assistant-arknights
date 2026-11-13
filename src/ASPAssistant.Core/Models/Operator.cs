@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
 using System.Text.Json.Serialization;
 
 namespace ASPAssistant.Core.Models;
@@ -31,6 +32,10 @@ public class Operator
 
     [JsonPropertyName("tier")]
     public int Tier { get; set; }
+
+    /// <summary>自选编队能选的干员（卡池外的 6★）：只在「我的阵容」里出现，第Ⅴ / Ⅵ阶都能放；只有按阵营分配的核心盟约。</summary>
+    [JsonPropertyName("isDiy")]
+    public bool IsDiy { get; set; }
 
     [JsonPropertyName("requiredStrategyId")]
     public string RequiredStrategyId { get; set; } = "";
