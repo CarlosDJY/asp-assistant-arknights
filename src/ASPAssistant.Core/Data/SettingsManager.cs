@@ -188,6 +188,24 @@ public class SettingsManager
             JsonSerializer.Serialize(enabled));
     }
 
+    /// <summary>「不再提示」 on the fullscreen hint (off by default).</summary>
+    public async Task<bool> LoadFullscreenHintOffAsync()
+    {
+        var path = Path.Combine(_settingsDir, "fullscreen_hint_off");
+        return await Task.FromResult(File.Exists(path));
+    }
+
+    public async Task SaveFullscreenHintOffAsync(bool off)
+    {
+        var path = Path.Combine(_settingsDir, "fullscreen_hint_off");
+        if (off)
+        {
+            Directory.CreateDirectory(_settingsDir);
+            await File.WriteAllTextAsync(path, "1");
+        }
+        else if (File.Exists(path)) File.Delete(path);
+    }
+
     /// <summary>Global hotkeys; defaults when missing or unreadable.</summary>
     public async Task<HotkeySettings> LoadHotkeysAsync()
     {

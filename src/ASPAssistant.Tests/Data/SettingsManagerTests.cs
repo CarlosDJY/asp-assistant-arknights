@@ -33,6 +33,16 @@ public class SettingsManagerTests : IDisposable
         (await _manager.LoadHotkeysAsync()).Should().Be(new HotkeySettings());
     }
 
+    [Fact]
+    public async Task FullscreenHintOffIsRememberedAndCanBeCleared()
+    {
+        (await _manager.LoadFullscreenHintOffAsync()).Should().BeFalse();
+        await _manager.SaveFullscreenHintOffAsync(true);
+        (await _manager.LoadFullscreenHintOffAsync()).Should().BeTrue();
+        await _manager.SaveFullscreenHintOffAsync(false);
+        (await _manager.LoadFullscreenHintOffAsync()).Should().BeFalse();
+    }
+
     private readonly string _tempDir;
     private readonly SettingsManager _manager;
 

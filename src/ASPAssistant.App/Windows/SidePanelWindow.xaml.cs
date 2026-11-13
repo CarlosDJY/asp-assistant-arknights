@@ -78,6 +78,8 @@ public partial class SidePanelWindow : Window
     // 全屏状态追踪
     private bool _wasFullscreen;
     private bool _fullscreenBannerDismissed;
+    /// <summary>「不再提示」: the fullscreen hint never shows again (saved).</summary>
+    private bool _fullscreenHintOff;
 
     public SidePanelWindow(
         OperatorBrowseViewModel operatorVm,
@@ -160,6 +162,17 @@ public partial class SidePanelWindow : Window
 
         SizeChanged     += OnSizeChanged;
         StateChanged    += OnStateChanged;
+        PreviewMouseLeftButtonDown += ClosePopoversOnOutsideClick;
+        SizeChanged += (_, _) =>
+        {
+            if (UpdatePopover.IsVisible) AimArrow(UpdatePopArrow, UpdateChip);
+            if (FullscreenPopover.IsVisible) AimArrow(FullscreenPopArrow, FullscreenHintButton);
+        };
+        if ((object?)settingsManager is not null)
+            _ = Task.Run(settingsManager.LoadFullscreenHintOffAsync).ContinueWith(t =>
+            {
+                if (t.IsCompletedSuccessfully && t.Result) Dispatcher.Invoke(() => { _fullscreenHintOff = true; UpdateFullscreenBanner(false); });
+            });
         Loaded += (_, _) =>
         {
             if (!_positionSettings.FreeMovement || _positionSettings.Placement is not { } saved) return;
@@ -335,7 +348,7 @@ public partial class SidePanelWindow : Window
 
         if (_pendingUpdate is not null && (_downloadTask is { IsCompleted: false } || _isDownloadReady))
         {
-            UpdateBanner.Visibility = Visibility.Visible;
+            RefreshUpdateUi();
             UpdateStatusText.Text = _isDownloadReady
                 ? $"新版本 {_pendingUpdate.TagName} 已就绪，点击“立即重启”完成更新"
                 : $"正在下载新版本 {_pendingUpdate.TagName}…";
@@ -373,16 +386,10 @@ public partial class SidePanelWindow : Window
 
             _pendingUpdate = info;
             _isDownloadReady = false;
-            UpdateBannerText.Text = $"发现新版本 {info.TagName}";
             UpdateStatusText.Text = $"正在下载新版本 {info.TagName}…";
-            UpdateActionIcon.Text = "↑ ";
-            UpdateActionText.Text = "查看更新";
-            UpdateBannerProgress.Value = 0;
-            UpdateBannerProgress.Visibility = Visibility.Visible;
-            UpdateBannerPercent.Text = "0%";
-            UpdateBannerPercent.Visibility = Visibility.Visible;
-            UpdateBanner.Visibility = Visibility.Visible;
             _downloadTask = RunBackgroundDownloadAsync(info);
+            // First sight of a new version: open the bubble once so it is noticed.
+            ShowUpdatePopover();
         }
         finally
         {
@@ -396,9 +403,7 @@ public partial class SidePanelWindow : Window
     {
         _lastUpdateProgress = 0;
         _downloadError = null;
-        UpdateBannerProgress.Value = 0;
-        UpdateBannerPercent.Text = "0%";
-        UpdateBannerPercent.Visibility = Visibility.Visible;
+        RefreshUpdateUi();
         _openUpdateDialog?.ReportProgress(0);
         var progress = new Progress<double>(value =>
         {
@@ -406,8 +411,7 @@ public partial class SidePanelWindow : Window
             {
                 if (_downloadError is not null) return;
                 _lastUpdateProgress = value;
-                UpdateBannerProgress.Value = value * 100;
-                UpdateBannerPercent.Text = $"{(int)Math.Round(value * 100)}%";
+                RefreshUpdateUi();
                 _openUpdateDialog?.ReportProgress(value);
             });
         });
@@ -419,12 +423,8 @@ public partial class SidePanelWindow : Window
             _isDownloadReady = true;
             Dispatcher.Invoke(() =>
             {
-                UpdateBannerProgress.Visibility = Visibility.Collapsed;
-                UpdateBannerPercent.Text = "100%";
-                UpdateBannerPercent.Visibility = Visibility.Visible;
-                UpdateActionIcon.Text = "↻ ";
-                UpdateActionText.Text = "立即重启";
-                UpdateStatusText.Text = $"新版本 {info.TagName} 已就绪，点击“立即重启”完成更新（会自动关闭并重新打开）";
+                RefreshUpdateUi();
+                UpdateStatusText.Text = $"新版本 {info.TagName} 已就绪，点标题栏的“重启更新”完成更新（会自动关闭并重新打开）";
                 _openUpdateDialog?.ReportProgress(1.0);
             });
         }
@@ -435,12 +435,8 @@ public partial class SidePanelWindow : Window
             AppLogger.Warn("Update", $"Download or apply failed: {reason}");
             Dispatcher.Invoke(() =>
             {
-                UpdateBannerProgress.Visibility = Visibility.Collapsed;
-                UpdateBannerPercent.Visibility = Visibility.Collapsed;
-                UpdateBannerText.Text = $"下载失败（{reason}），点击重试";
-                UpdateActionIcon.Text = "↺ ";
-                UpdateActionText.Text = "重试";
-                UpdateStatusText.Text = $"下载失败：{reason}，可在更新横幅中重试";
+                RefreshUpdateUi();
+                UpdateStatusText.Text = $"下载失败：{reason}，点标题栏的更新图标重试";
                 _openUpdateDialog?.ReportFailure(reason);
             });
             _isDownloadReady = false;
@@ -479,17 +475,13 @@ public partial class SidePanelWindow : Window
         // task completes normally even when the banner needs a retry.
         if (_downloadTask is { IsCompleted: true })
         {
-            UpdateBannerText.Text = $"发现新版本 {_pendingUpdate.TagName}";
             UpdateStatusText.Text = $"正在下载新版本 {_pendingUpdate.TagName}…";
-            UpdateActionIcon.Text = "↑ ";
-            UpdateActionText.Text = "查看更新";
-            UpdateBannerProgress.Value = 0;
-            UpdateBannerProgress.Visibility = Visibility.Visible;
             _downloadTask = RunBackgroundDownloadAsync(_pendingUpdate);
             return;
         }
 
         // Download in progress — open notes dialog
+        UpdatePopover.Visibility = Visibility.Collapsed;
         var dialog = new UpdateDialog(_pendingUpdate)
         {
             Owner = this
@@ -511,7 +503,109 @@ public partial class SidePanelWindow : Window
         if (_pendingUpdate is null) return;
         if (_settingsManager is not null)
             await _settingsManager.SaveSkippedVersionAsync(_pendingUpdate.TagName);
-        UpdateBanner.Visibility = Visibility.Collapsed;
+        _updateSkipped = true;
+        RefreshUpdateUi();
+    }
+
+    // ---- Update chip + bubble (title bar) ----
+
+    private bool _updateSkipped;
+
+    /// <summary>Title-bar chip and bubble from the update state: downloading (ring + %), ready (重启更新), failed (重试).</summary>
+    private void RefreshUpdateUi()
+    {
+        var info = _pendingUpdate;
+        if (info is null || _updateSkipped)
+        {
+            UpdateChip.Visibility = Visibility.Collapsed;
+            UpdatePopover.Visibility = Visibility.Collapsed;
+            return;
+        }
+        UpdateChip.Visibility = Visibility.Visible;
+        var current = _updateService.CurrentVersion;
+        UpdatePopTitle.Text = $"发现新版本 {info.TagName}";
+        var percent = (int)Math.Round(_lastUpdateProgress * 100);
+        if (_isDownloadReady)
+        {
+            SetChip(solid: true, ring: false, "重启更新");
+            UpdateChip.ToolTip = $"新版本 {info.TagName} 已下载，点一下重启完成更新";
+            UpdatePopMeta.Text = $"当前 v{current.ToString(3)} · 已下载，重启后完成更新";
+            UpdatePopPrimary.Content = "重启更新";
+        }
+        else if (_downloadError is { } error)
+        {
+            SetChip(solid: false, ring: false, "更新失败");
+            UpdateChip.ToolTip = $"下载失败：{error}";
+            UpdatePopMeta.Text = $"下载失败：{error}";
+            UpdatePopPrimary.Content = "重试";
+        }
+        else
+        {
+            SetChip(solid: false, ring: true, $"{percent}%");
+            UpdateChip.ToolTip = $"正在下载新版本 {info.TagName}";
+            UpdatePopMeta.Text = $"当前 v{current.ToString(3)} · 正在后台下载 {percent}%";
+            UpdatePopPrimary.Content = "更新说明";
+            // Ring: dash length in stroke-thickness units (circumference of the 14px ring, 2px stroke).
+            var units = Math.PI * 12 / 2;
+            UpdateRingArc.StrokeDashArray = [Math.Max(0.01, units * _lastUpdateProgress), 100];
+        }
+    }
+
+    private void SetChip(bool solid, bool ring, string text)
+    {
+        UpdateChipText.Text = text;
+        UpdateRing.Visibility = ring ? Visibility.Visible : Visibility.Collapsed;
+        UpdateArrow.Visibility = ring ? Visibility.Collapsed : Visibility.Visible;
+        UpdateChip.SetResourceReference(BackgroundProperty, solid ? "AccentSolidBrush" : "TitleChipBrush");
+        UpdateChip.SetResourceReference(BorderBrushProperty, solid ? "AccentSolidBrush" : "TitleChipBorderBrush");
+        UpdateChip.SetResourceReference(ForegroundProperty, solid ? "OnAccentBrush" : _downloadError is null ? "TitleTextBrush" : "WarningBrush");
+        UpdateChipText.FontFamily = ring ? (System.Windows.Media.FontFamily)FindResource("NumberFontFamily") : FontFamily;
+    }
+
+    private void OnUpdateChipClick(object sender, RoutedEventArgs e)
+    {
+        if (_isDownloadReady) { OnBannerAction(sender, e); return; }
+        if (UpdatePopover.Visibility == Visibility.Visible) UpdatePopover.Visibility = Visibility.Collapsed;
+        else ShowUpdatePopover();
+    }
+
+    private void ShowUpdatePopover()
+    {
+        RefreshUpdateUi();
+        if (UpdateChip.Visibility != Visibility.Visible) return;
+        FullscreenPopover.Visibility = Visibility.Collapsed;
+        UpdatePopover.Visibility = Visibility.Visible;
+        AimArrow(UpdatePopArrow, UpdateChip);
+    }
+
+    /// <summary>Points a bubble's arrow at the title-bar button above it (the bubble sits 8px from the right edge).</summary>
+    private void AimArrow(FrameworkElement arrow, FrameworkElement target)
+    {
+        void Aim()
+        {
+            if (!target.IsVisible || ContentRoot.ActualWidth <= 0) return;
+            var center = target.TranslatePoint(new Point(target.ActualWidth / 2, 0), ContentRoot).X;
+            var right = ContentRoot.ActualWidth - center - 8 - arrow.Width / 2;
+            arrow.Margin = new Thickness(0, -5, Math.Max(6, right), 0);
+        }
+        Aim();
+        Dispatcher.BeginInvoke(Aim, System.Windows.Threading.DispatcherPriority.Loaded);
+    }
+
+    /// <summary>A click anywhere outside a bubble (and its button) closes it.</summary>
+    private void ClosePopoversOnOutsideClick(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is not DependencyObject source) return;
+        foreach (var (pop, button) in new (FrameworkElement, FrameworkElement)[] { (UpdatePopover, UpdateChip), (FullscreenPopover, FullscreenHintButton) })
+            if (pop.IsVisible && !IsInside(source, pop) && !IsInside(source, button))
+                pop.Visibility = Visibility.Collapsed;
+    }
+
+    private static bool IsInside(DependencyObject source, DependencyObject container)
+    {
+        for (var d = source; d is not null; d = d is System.Windows.Media.Visual or System.Windows.Media.Media3D.Visual3D ? System.Windows.Media.VisualTreeHelper.GetParent(d) : LogicalTreeHelper.GetParent(d))
+            if (ReferenceEquals(d, container)) return true;
+        return false;
     }
 
     public void SetGameMinimized(bool minimized)
@@ -614,18 +708,40 @@ public partial class SidePanelWindow : Window
         }
     }
 
+    /// <summary>Fullscreen game: an amber hint in the title bar; its bubble opens by itself once per session.</summary>
     private void UpdateFullscreenBanner(bool isFullscreen)
     {
-        if (isFullscreen && !_fullscreenBannerDismissed)
-            FullscreenBanner.Visibility = Visibility.Visible;
-        else
-            FullscreenBanner.Visibility = Visibility.Collapsed;
+        var show = isFullscreen && !_fullscreenHintOff;
+        FullscreenHintButton.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        if (!show) { FullscreenPopover.Visibility = Visibility.Collapsed; return; }
+        if (!_fullscreenBannerDismissed && UpdatePopover.Visibility != Visibility.Visible)
+        {
+            FullscreenPopover.Visibility = Visibility.Visible;
+            AimArrow(FullscreenPopArrow, FullscreenHintButton);
+        }
     }
 
-    private void OnDismissFullscreenBanner(object sender, RoutedEventArgs e)
+    private void OnFullscreenHintClick(object sender, RoutedEventArgs e)
+    {
+        if (FullscreenPopover.Visibility == Visibility.Visible) { FullscreenPopover.Visibility = Visibility.Collapsed; return; }
+        UpdatePopover.Visibility = Visibility.Collapsed;
+        FullscreenPopover.Visibility = Visibility.Visible;
+        AimArrow(FullscreenPopArrow, FullscreenHintButton);
+    }
+
+    private void OnFullscreenHintOk(object sender, RoutedEventArgs e)
     {
         _fullscreenBannerDismissed = true;
-        FullscreenBanner.Visibility = Visibility.Collapsed;
+        FullscreenPopover.Visibility = Visibility.Collapsed;
+    }
+
+    private async void OnFullscreenHintOff(object sender, RoutedEventArgs e)
+    {
+        _fullscreenBannerDismissed = _fullscreenHintOff = true;
+        FullscreenPopover.Visibility = Visibility.Collapsed;
+        FullscreenHintButton.Visibility = Visibility.Collapsed;
+        try { await _settingsManager.SaveFullscreenHintOffAsync(true); }
+        catch (Exception ex) { AppLogger.Warn("Settings", $"Saving the fullscreen hint setting failed: {ex.Message}"); }
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)

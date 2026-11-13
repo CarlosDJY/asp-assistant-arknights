@@ -24,6 +24,46 @@
                     MouseLeftButtonDown="OnTitleBarDrag">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,2,0">
+                        <!-- 全屏运行提示：琥珀色图标，点开看说明 -->
+                        <Button x:Name="FullscreenHintButton" Visibility="Collapsed" Click="OnFullscreenHintClick" Tag="{StaticResource IconEnemy}"
+                                Margin="0,0,4,0" AutomationProperties.Name="窗口模式提示" ToolTip="推荐在窗口模式下运行">
+                            <Button.Style>
+                                <Style TargetType="Button" BasedOn="{StaticResource TitleBarButton}">
+                                    <Setter Property="Foreground" Value="{DynamicResource WarningBrush}" />
+                                    <Setter Property="Background" Value="{DynamicResource WarningTintBrush}" />
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                        <!-- 更新：下载中是进度环 + 百分比，下载完成变成实心「重启更新」 -->
+                        <Button x:Name="UpdateChip" Visibility="Collapsed" Click="OnUpdateChipClick" Margin="0,0,4,0" Cursor="Hand"
+                                VerticalAlignment="Center" AutomationProperties.Name="更新">
+                            <Button.Template>
+                                <ControlTemplate TargetType="Button">
+                                    <Border x:Name="bg" Height="24" CornerRadius="12" Padding="8,0" BorderThickness="1"
+                                            Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}">
+                                        <ContentPresenter VerticalAlignment="Center" />
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter TargetName="bg" Property="Opacity" Value="0.88" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Button.Template>
+                            <StackPanel Orientation="Horizontal">
+                                <Grid x:Name="UpdateRing" Width="14" Height="14" Margin="0,0,5,0" VerticalAlignment="Center">
+                                    <Ellipse Stroke="{DynamicResource AccentBorderBrush}" StrokeThickness="2" />
+                                    <Ellipse x:Name="UpdateRingArc" Stroke="{DynamicResource AccentSolidBrush}" StrokeThickness="2"
+                                             StrokeDashArray="0 100" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
+                                        <Ellipse.RenderTransform><RotateTransform Angle="-90" /></Ellipse.RenderTransform>
+                                    </Ellipse>
+                                </Grid>
+                                <Path x:Name="UpdateArrow" Data="M 6 11 L 6 1 M 1.5 5.5 L 6 1 L 10.5 5.5" Width="12" Height="12" Margin="0,0,4,0"
+                                      Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}" StrokeThickness="2"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" VerticalAlignment="Center" Visibility="Collapsed" />
+                                <TextBlock x:Name="UpdateChipText" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </Button>
                         <Button x:Name="SettingsButton" Click="OnToggleSettings" Tag="{StaticResource IconSettings}"
                                 AutomationProperties.Name="设置" ToolTip="设置">
                             <Button.Style>
@@ -68,102 +108,51 @@
             </Border>
 
             <DockPanel x:Name="PanelContent">
-            <!-- Update notification banner (hidden until a new version is found) -->
-            <Border x:Name="UpdateBanner" DockPanel.Dock="Top"
-                    Background="{DynamicResource SuccessTintBrush}"
-                    BorderBrush="{DynamicResource SuccessBorderBrush}" BorderThickness="0,0,0,1"
-                    Visibility="Collapsed" Padding="10,5,10,4">
-                <StackPanel>
-                    <!-- Top row: text + buttons -->
-                    <DockPanel>
-                        <!-- Action button: "查看更新" or "立即重启" -->
-                        <Button x:Name="UpdateActionButton" DockPanel.Dock="Right"
-                                Click="OnBannerAction"
-                                Padding="8,3" FontSize="11" Cursor="Hand"
-                                BorderThickness="0" Background="{DynamicResource SuccessBrush}" Foreground="White">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="bg" Background="{TemplateBinding Background}"
-                                            CornerRadius="{DynamicResource RowCornerRadius}" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource SuccessHoverBrush}" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock x:Name="UpdateActionIcon" Text="↑ " FontWeight="Bold" />
-                                <TextBlock x:Name="UpdateActionText" Text="查看更新" />
-                            </StackPanel>
-                        </Button>
-                        <!-- Skip this version button -->
-                        <Button x:Name="SkipVersionButton" DockPanel.Dock="Right"
-                                Click="OnSkipVersion"
-                                Padding="6,3" FontSize="11" Cursor="Hand" Margin="0,0,6,0"
-                                BorderThickness="0" Background="Transparent" Foreground="{DynamicResource SuccessTextBrush}">
-                            <Button.Template>
-                                <ControlTemplate TargetType="Button">
-                                    <Border x:Name="bg" Background="{TemplateBinding Background}"
-                                            CornerRadius="{DynamicResource RowCornerRadius}" Padding="{TemplateBinding Padding}">
-                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsMouseOver" Value="True">
-                                            <Setter TargetName="bg" Property="Background" Value="{DynamicResource NeutralHoverBrush}" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Button.Template>
-                            <TextBlock Text="跳过该版本" />
-                        </Button>
-                        <TextBlock x:Name="UpdateBannerText"
-                                   Foreground="{DynamicResource SuccessTextBrush}" FontSize="11"
-                                   VerticalAlignment="Center" />
-                    </DockPanel>
-                    <!-- Download progress bar (visible during background download) -->
-                    <DockPanel Margin="0,4,0,0">
-                        <TextBlock x:Name="UpdateBannerPercent" DockPanel.Dock="Right"
-                                   Text="" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource SuccessTextBrush}" Visibility="Collapsed" />
-                        <ProgressBar x:Name="UpdateBannerProgress"
-                                     Height="2"
-                                     Minimum="0" Maximum="100" Value="0"
-                                     Visibility="Collapsed"
-                                     VerticalAlignment="Center"
-                                     Background="{DynamicResource NeutralStrongBrush}" Foreground="{DynamicResource SuccessBrush}"
-                                     BorderThickness="0" />
-                    </DockPanel>
-                </StackPanel>
-            </Border>
-
-            <!-- Fullscreen warning banner -->
-            <Border x:Name="FullscreenBanner" DockPanel.Dock="Top"
-                    Background="{DynamicResource WarningTintBrush}"
-                    BorderBrush="{DynamicResource WarningBrush}" BorderThickness="0,0,0,1"
-                    Visibility="Collapsed" Padding="10,6">
-                <DockPanel>
-                    <Button x:Name="FullscreenBannerClose" DockPanel.Dock="Right"
-                            Click="OnDismissFullscreenBanner"
-                            Width="20" Cursor="Hand"
-                            BorderThickness="0" Background="Transparent" Foreground="{DynamicResource WarningBrush}"
-                            FontSize="12" FontWeight="Bold" Content="✕"
-                            VerticalAlignment="Top" Margin="4,0,0,0"
-                            ToolTip="关闭提示" />
-                    <StackPanel>
-                        <TextBlock Text="推荐在窗口模式下运行"
-                                   Foreground="{DynamicResource WarningTextBrush}" FontSize="11" FontWeight="SemiBold" />
-                        <TextBlock Text="（全屏下如有遮挡可拖动右下角调节窗口）"
-                                   Foreground="{DynamicResource WarningMutedBrush}" FontSize="10"
-                                   TextWrapping="Wrap" Margin="0,2,0,0" />
-                    </StackPanel>
-                </DockPanel>
-            </Border>
-
             <!-- Tab content + visible resize grip overlay -->
-            <Grid>
+            <Grid x:Name="ContentRoot">
+                <!-- 更新气泡：贴窗口右侧，小箭头对准标题栏里的更新胶囊 -->
+                <Grid x:Name="UpdatePopover" Panel.ZIndex="50" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,8,0"
+                      MaxWidth="236" Visibility="Collapsed">
+                    <Border Padding="12,10" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}"
+                            Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                        <Border.Effect><DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Opacity="0.18" /></Border.Effect>
+                        <StackPanel>
+                            <TextBlock x:Name="UpdatePopTitle" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                            <TextBlock x:Name="UpdatePopMeta" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <UniformGrid Columns="2" Margin="0,10,0,0">
+                                <Button x:Name="UpdatePopPrimary" Margin="0,0,3,0" Tag="accent" Style="{StaticResource SmallActionButton}" Click="OnBannerAction" />
+                                <Button Content="跳过该版本" Margin="3,0,0,0" Style="{StaticResource SmallActionButton}" Click="OnSkipVersion" />
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="UpdatePopArrow" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,40,0"
+                            BorderThickness="1,1,0,0" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform><RotateTransform Angle="45" /></Border.RenderTransform>
+                    </Border>
+                </Grid>
+                <!-- 全屏提示气泡 -->
+                <Grid x:Name="FullscreenPopover" Panel.ZIndex="50" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,6,8,0"
+                      MaxWidth="220" Visibility="Collapsed">
+                    <Border Padding="12,10" BorderThickness="1" CornerRadius="{DynamicResource CardCornerRadius}"
+                            Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                        <Border.Effect><DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Opacity="0.18" /></Border.Effect>
+                        <StackPanel>
+                            <TextBlock Text="推荐在窗口模式下运行" FontSize="13" FontWeight="Bold" Foreground="{DynamicResource WarningTextBrush}" />
+                            <TextBlock Text="全屏下有遮挡时，拖动侧栏右下角调整大小" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                            <UniformGrid Columns="2" Margin="0,10,0,0">
+                                <Button Content="知道了" Margin="0,0,3,0" Style="{StaticResource SmallActionButton}" Click="OnFullscreenHintOk" />
+                                <Button Content="不再提示" Margin="3,0,0,0" Style="{StaticResource SmallActionButton}" Click="OnFullscreenHintOff" />
+                            </UniformGrid>
+                        </StackPanel>
+                    </Border>
+                    <Border x:Name="FullscreenPopArrow" Width="10" Height="10" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-5,40,0"
+                            BorderThickness="1,1,0,0" Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                            RenderTransformOrigin="0.5,0.5">
+                        <Border.RenderTransform><RotateTransform Angle="45" /></Border.RenderTransform>
+                    </Border>
+                </Grid>
                 <TabControl x:Name="MainTabs" Style="{StaticResource DarkTabControl}" SelectionChanged="OnMainTabChanged">
                     <!-- 图鉴: operators and equipment behind one segment -->
                     <TabItem x:Name="CodexTab" Header="图鉴" Tag="{StaticResource IconCodex}" HorizontalContentAlignment="Stretch">
