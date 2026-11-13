@@ -1320,10 +1320,11 @@ public partial class DeployView : UserControl
         var strategies = _operators.Values.Select(o => o.RequiredStrategyId).Where(s => s.Length > 0).ToHashSet();
         var dlg = new OperatorPickerWindow(_operators.Values, "", strategies) { Owner = Window.GetWindow(this) };
         if (dlg.ShowDialog() != true || dlg.Result is not { Length: > 0 } name) return;
+        // 手动添加的一律放进「其他」，扩展池里的也是：扩展池按阶折叠，加进去会被折起来，看着像没加上。
         bool tracked = _tracking?.TrackedOperators.Any(t => t.Name == name) == true;
-        bool extension = Groups().Any(g => g.Kind == DeployPoolGroupKind.Extension && g.Items.Any(i => i.Name == name));
-        if (!tracked && !extension && !_state.Extra.Contains(name)) _state.Extra.Add(name);
+        if (!tracked && !_state.Extra.Contains(name)) _state.Extra.Add(name);
         _state.SetOwned(name, true);
+        _bouncePool = name;
         SaveState();
         RefreshPool();
         ScheduleReplan();
