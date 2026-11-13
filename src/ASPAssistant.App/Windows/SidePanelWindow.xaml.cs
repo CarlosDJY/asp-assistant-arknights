@@ -184,6 +184,7 @@ public partial class SidePanelWindow : Window
         RunBanView.DataContext = operatorVm;
         EnemyView.RecognitionRequested += () => EnemyRecognitionRequested?.Invoke();
         LineupView.DataContext = lineupVm;
+        Views.LineupCardItem.AllStrategies = allStrategies;
         WireLineupView();
 
         OperatorView.IsTrackedCheck = trackingVm.IsTracked;

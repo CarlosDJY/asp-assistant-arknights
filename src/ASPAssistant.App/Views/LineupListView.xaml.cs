@@ -110,7 +110,6 @@ public partial class LineupListView : UserControl
             RecommendMeta.Text = usable > 0 ? $"{usable} 套能直接用" : "没有能直接用的，可以修补";
             RecommendMore.Content = _showAllRecommendations ? "收起" : $"全部 {_vm.Recommendations.Count} 套";
             RecommendMore.Visibility = _vm.Recommendations.Count > RecommendShown ? Visibility.Visible : Visibility.Collapsed;
-            BannedAvatars.ItemsSource = _vm.RunBannedNames.Select(n => new LineupAvatarItem(n, false)).ToList();
             BannedCovenantsList.ItemsSource = _vm.RunBannedCovenants.ToList();
             BannedStrip.Visibility = _vm.RunBannedNames.Count + _vm.RunBannedCovenants.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
         }
@@ -186,6 +185,14 @@ public sealed record LineupAvatarItem(string Name, bool IsBanned)
     public string ToolTip => IsBanned ? $"{Name}（本局被禁）" : Name;
 }
 
+/// <summary>A lineup's strategy on a 本局推荐 card; tag 核心 / 优选 / 次选 when set.</summary>
+public sealed record LineupStrategyItem(string Name, string? IconPath, string TagText, string? Description)
+{
+    public bool HasTag => TagText.Length > 0;
+    public bool IsSecondary => TagText == "次选";
+    public string ToolTip => Description is { Length: > 0 } d ? $"{Name}\n{d}" : Name;
+}
+
 /// <summary>A target covenant pill. Tone: ok / warn / bad / accent (core, no run) / neutral.</summary>
 public sealed record LineupTargetPill(string Text, string Tone, string? ToolTip);
 
@@ -211,8 +218,27 @@ public sealed class LineupCardItem
     public bool HasNote => Note.Length > 0;
     public bool CanRepair => Recommendation is { Kind: RecommendationKind.NeedsRepair };
     public bool IsBest { get; init; }
+    public IReadOnlyList<LineupStrategyItem> Strategies { get; init; } = [];
+    public bool HasStrategies => Strategies.Count > 0;
     /// <summary>Share / delete live on the full list; 本局推荐 keeps to 修补 / 追踪 / 编辑.</summary>
     public bool ShowManage { get; init; }
+
+    /// <summary>Strategy names / icons for the cards (set by the side panel).</summary>
+    public static IReadOnlyList<Strategy> AllStrategies { get; set; } = [];
+
+    private static readonly StrategyTag[] TagOrder = [StrategyTag.阵容核心, StrategyTag.优选, StrategyTag.次选];
+
+    private static IReadOnlyList<LineupStrategyItem> StrategiesOf(Lineup lineup)
+        => [.. lineup.Strategies
+            .Where(s => s.StrategyId.Length > 0)
+            .OrderBy(s => s.Tags.Count == 0 ? TagOrder.Length : s.Tags.Min(t => Array.IndexOf(TagOrder, t)))
+            .Select(s =>
+            {
+                var strategy = AllStrategies.FirstOrDefault(x => x.Id == s.StrategyId);
+                var tag = TagOrder.FirstOrDefault(s.Tags.Contains);
+                var text = s.Tags.Count == 0 ? "" : tag == StrategyTag.阵容核心 ? "核心" : tag.ToString();
+                return new LineupStrategyItem(strategy?.Name ?? s.StrategyId, strategy?.IconPath, text, strategy?.Description);
+            })];
 
     public static LineupCardItem From(Lineup lineup, LineupRecommendation? rec, LineupViewModel vm, bool isRecommendation, bool isBest)
     {
@@ -239,6 +265,7 @@ public sealed class LineupCardItem
                 .Select(s => new LineupAvatarItem(s.OperatorName, banned.Contains(s.OperatorName)))],
             IsBest = isBest,
             ShowManage = !isRecommendation,
+            Strategies = isRecommendation ? StrategiesOf(lineup) : [],
         };
     }
 }
