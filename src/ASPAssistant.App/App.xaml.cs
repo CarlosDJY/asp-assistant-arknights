@@ -491,6 +491,9 @@ public partial class App : Application
         var deploy = sidePanel.TrackingView.DeployPage;
         deploy.Initialize(operators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First()), covenantInfos,
             boardData, trackingVm, _settingsManager, deployState, deployState.ShowInGame);
+        var routeStore = Core.Data.EnemyRouteStore.Load(dataDir);
+        string? bossEnemyId = null;
+        string? lastRouteLog = null;
         void ApplyBoard(BoardMatch? match)
         {
             sidePanel.SetBoardStatus(match?.Map.Name, match?.Camera == Core.Models.BoardCamera.Expanded);
@@ -501,15 +504,40 @@ public partial class App : Application
         // 画的是站位页正在规划的地图：手动选了地图（纠正识别）时用手动的那张。所有地图的格子几何相同，投影只看镜头。
         void DrawBoard(BoardMatch? match)
         {
-            bool draw = deploy.ShowInGame && match is not null;
+            bool draw = (deploy.ShowInGame || showBoard) && match is not null;
             overlay.UpdateBoard(draw ? deploy.CurrentMap ?? match!.Map : null,
                 draw ? boardData?.Cameras[match!.Camera] : null, showCells: false);
+            RefreshRoutes(match);
         }
         deploy.PlanChanged += plan =>
         {
             overlay.UpdatePlacements(plan);
             DrawBoard(_ocrScanner.CurrentBoard);
         };
+
+        // 本回合敌人路线: in 休整期, the level this round plays (round + mode from the HUD, the boss from the information
+        // screen) drawn on the board. The setting「游戏内显示敌人路线」switches it.
+        void RefreshRoutes(BoardMatch? match)
+        {
+            Core.Models.RoundRoutes? routes = null;
+            string? why = null;
+            var economy = trackingVm.Economy;
+            var mapId = match is null ? null : (deploy.CurrentMap ?? match.Map).Id;
+            if (!showBoard || routeStore is null || mapId is null) why = null;
+            else if (economy?.Round is not { } round) why = "还没读到回合";
+            else if (!economy.IsPreparation) why = $"第 {round} 回合 · 战斗中";
+            else
+            {
+                routes = routeStore.Find(mapId, round, economy.Mode, bossEnemyId, out var reason);
+                why = routes is null ? $"第 {round} 回合 · {reason}"
+                    : $"第 {round} 回合 · " + string.Join(" · ", new[] { (routes.Walking, "地面"), (routes.Flying, "飞行") }
+                        .Where(x => x.Item1 > 0).Select(x => $"{x.Item2} {x.Item1}"));
+            }
+            overlay.UpdateRoutes(routes);
+            sidePanel.SetRouteStatus(why);
+            var log = $"map={mapId ?? "-"} round={economy?.Round?.ToString() ?? "-"} prep={economy?.IsPreparation} mode={economy?.Mode ?? "-"} boss={bossEnemyId ?? "-"} → {(routes is null ? why ?? "off" : $"{routes.Level} {routes.Routes.Count} route(s)")}";
+            if (log != lastRouteLog) { lastRouteLog = log; Core.AppLogger.Info("Routes", log); }
+        }
         deploy.ShowInGameChanged += enabled =>
         {
             deployState.ShowInGame = enabled;
@@ -527,6 +555,8 @@ public partial class App : Application
         void UpdateEnemyPage(Core.Models.EnemyResult result)
         {
             var bossInfo   = bossDataService.Lookup(result.BossName);
+            if (bossInfo?.EnemyId is { Length: > 0 } bossId)
+                Dispatcher.Invoke(() => { bossEnemyId = bossId; RefreshRoutes(_ocrScanner.CurrentBoard); });
             var typeEntries = result.EnemyTypes
                 .Select(t => enemyTypeDataService.LookupByTypeName(t.Split('·').Last()))
                 .ToList();
@@ -650,6 +680,7 @@ public partial class App : Application
             // The opening info screen starts a new run: the previous run's terminal level no longer applies.
             _ocrScanner.ResetTerminalLevel();
             _ocrScanner.ResetEconomy();
+            Dispatcher.Invoke(() => bossEnemyId = null);
             Dispatcher.Invoke(() => { trackingVm.ResetTerminalLevel(); _sidePanel.PlannerVm.CurrentTerminalLevel = 0; });
             await _settingsManager!.SaveTerminalLevelAsync(0);
             await RecordInformationAsync();
@@ -658,6 +689,7 @@ public partial class App : Application
         {
             trackingVm.Economy = economy;
             if (economy?.Mode is { } mode) enemyVm.CurrentMode = mode;
+            RefreshRoutes(_ocrScanner.CurrentBoard);
         });
         _ocrScanner.TerminalLevelChanged += level =>
         {

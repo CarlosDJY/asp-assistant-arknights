@@ -33,6 +33,12 @@ EconomyReader in StrongholdAssistant (https://github.com/LBEILC/StrongholdAssist
 Apache License 2.0). Four full-frame shop test images (shop-*-ui100-2000x1125.png,
 shop-closure-round1-1600x1024.png) come from that project's test data.
 
+Enemy routes per round (data/garrison_routes.json) are converted by
+data/build_garrison_routes.py from StrongholdAssistant's data/garrison_routes.json
+(https://github.com/LBEILC/StrongholdAssistant, Apache License 2.0), which that
+project generates from Kengxxiao/ArknightsGameData (act3autochess V3_1). The
+lookup in EnemyRouteStore adapts its BoardRouteStore.
+
 MaaFramework and other third-party dependencies retain their own licenses.
 Game data, character names and artwork retain the rights and attribution of
 their respective owners; the software license does not relicense these assets.

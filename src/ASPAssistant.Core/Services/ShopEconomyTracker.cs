@@ -43,7 +43,7 @@ public sealed class ShopEconomyTracker
     }
 
     private readonly Field<int> _round = new(), _money = new(), _cost = new();
-    private readonly Field<bool> _maxed = new();
+    private readonly Field<bool> _maxed = new(), _preparation = new();
     private readonly Field<string> _mode = new();
 
     public ShopEconomy? Current { get; private set; }
@@ -68,6 +68,10 @@ public sealed class ShopEconomyTracker
         changed |= _maxed.Observe(read.UpgradeMaxed, levelSeen);
         changed |= _cost.Observe(read.UpgradeCost ?? 0, read.UpgradeCost is not null);
         changed |= _mode.Observe(read.Mode, read.Mode is not null);
+        // 休整期 / 战斗: only frames whose HUD was read (the round sits in the same band) count, two alike to flip.
+        bool prepChanged = _preparation.Observe(read.IsPreparation, read.Round is not null);
+        changed |= prepChanged && Current is not null;
+        bool preparation = _preparation.HasValue ? _preparation.Value : read.IsPreparation;
         if (!changed) return false;
         Current = new ShopEconomy(
             _round.HasValue ? _round.Value : null,
@@ -75,14 +79,14 @@ public sealed class ShopEconomyTracker
             _maxed is { HasValue: true, Value: true } || !_cost.HasValue ? null : _cost.Value,
             _maxed is { HasValue: true, Value: true },
             _mode.HasValue ? _mode.Value : null,
-            read.IsPreparation);
+            preparation);
         return true;
     }
 
     /// <summary>New game: forget everything.</summary>
     public void Reset()
     {
-        _round.Clear(); _money.Clear(); _cost.Clear(); _maxed.Clear(); _mode.Clear();
+        _round.Clear(); _money.Clear(); _cost.Clear(); _maxed.Clear(); _mode.Clear(); _preparation.Clear();
         Current = null;
     }
 }

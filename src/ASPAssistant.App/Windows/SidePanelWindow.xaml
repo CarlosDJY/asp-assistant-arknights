@@ -343,14 +343,14 @@
                                                 <TextBlock Text="开启后追踪新阵容会追加；关闭时替换当前列表" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             </StackPanel>
                                         </DockPanel>
-                                        <!-- Deployment grid overlay: retired (the placement labels are enough); kept hidden for its handlers. -->
-                                        <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" Visibility="Collapsed" />
-                                        <DockPanel Visibility="Collapsed">
+                                        <!-- In-game enemy routes for this round (the switch used to draw the deployment grid). -->
+                                        <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" />
+                                        <DockPanel>
                                             <CheckBox x:Name="BoardOverlayToggle" DockPanel.Dock="Right" Style="{StaticResource SwitchToggle}" VerticalAlignment="Center"
-                                                      AutomationProperties.Name="游戏内显示部署格" />
+                                                      AutomationProperties.Name="游戏内显示敌人路线" />
                                             <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
-                                                <TextBlock Text="游戏内显示部署格" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
-                                                <TextBlock x:Name="BoardStatusText" Text="站位页开启“游戏内显示”时，同时标出地面 / 特殊地面 / 高台和敌人路线" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                                <TextBlock Text="游戏内显示敌人路线" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                <TextBlock x:Name="BoardStatusText" Text="休整期在棋盘上画出本回合敌人怎么走" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             </StackPanel>
                                         </DockPanel>
                                         <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" />

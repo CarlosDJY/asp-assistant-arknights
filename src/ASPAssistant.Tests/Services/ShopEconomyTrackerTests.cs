@@ -21,6 +21,22 @@ public class ShopEconomyTrackerTests
     }
 
     [Fact]
+    public void PreparationFlipsAfterTwoHudReads()
+    {
+        var t = new ShopEconomyTracker();
+        t.Observe(Read(3, 7)); t.Observe(Read(3, 7));
+        t.Current!.IsPreparation.Should().BeTrue();
+        var battle = new ShopEconomy(3, 7, null, false, null, false);
+        t.Observe(battle).Should().BeFalse();
+        t.Observe(battle).Should().BeTrue();
+        t.Current!.IsPreparation.Should().BeFalse();
+        // No HUD read (round missing): keeps the state.
+        t.Observe(new ShopEconomy(null, null, null, false, null, true)).Should().BeFalse();
+        t.Observe(new ShopEconomy(null, null, null, false, null, true)).Should().BeFalse();
+        t.Current!.IsPreparation.Should().BeFalse();
+    }
+
+    [Fact]
     public void OneOffMisreadIsIgnored()
     {
         var t = new ShopEconomyTracker();

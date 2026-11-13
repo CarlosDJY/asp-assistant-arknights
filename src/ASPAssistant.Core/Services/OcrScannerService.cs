@@ -196,7 +196,8 @@ public class OcrScannerService : IDisposable
             if (!ReferenceEquals(connection, _getConnection?.Invoke())) return;
             PublishShopItems(rawItems);
             await ReadTerminalLevelAsync(screenshot, imgWidth, imgHeight);
-            if (rawItems.Count > 0) await ReadEconomyAsync(screenshot, imgWidth, imgHeight);
+            // The board on screen also needs the round (本回合敌人路线), even with the shop folded.
+            if (rawItems.Count > 0 || _board.Current is not null) await ReadEconomyAsync(screenshot, imgWidth, imgHeight);
         }
         catch (Exception ex)
         {
@@ -226,7 +227,7 @@ public class OcrScannerService : IDisposable
         }
     }
 
-    /// <summary>Only while shop cards are visible: the HUD reads cost several OCR calls.</summary>
+    /// <summary>Only while shop cards or the board are visible: the HUD reads cost several OCR calls.</summary>
     private async Task ReadEconomyAsync(byte[] screenshot, int width, int height)
     {
         if (EconomyReader is null || DateTime.UtcNow < _nextEconomyRead) return;

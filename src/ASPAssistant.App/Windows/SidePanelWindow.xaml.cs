@@ -1055,11 +1055,28 @@ public partial class SidePanelWindow : Window
         BoardOverlayToggle.Unchecked += OnBoardOverlayChanged;
     }
 
-    /// <summary>Shows what the board recognizer currently sees under the overlay toggle.</summary>
-    public void SetBoardStatus(string? mapName, bool shopOpen) =>
-        BoardStatusText.Text = mapName is null
-            ? "站位页开启“游戏内显示”时，同时标出地面 / 特殊地面 / 高台和敌人路线"
-            : $"当前地图：{mapName} · 商店{(shopOpen ? "展开" : "收起")}";
+    private (string? Map, bool ShopOpen, string? Routes) _boardStatus;
+
+    /// <summary>Shows what the board recognizer currently sees under the route toggle.</summary>
+    public void SetBoardStatus(string? mapName, bool shopOpen)
+    {
+        _boardStatus = (mapName, shopOpen, _boardStatus.Routes);
+        ShowBoardStatus();
+    }
+
+    /// <summary>This round's routes as drawn (第 5 回合 · 地面 14 · 飞行 18), or why none are drawn; null = nothing to say.</summary>
+    public void SetRouteStatus(string? text)
+    {
+        _boardStatus = _boardStatus with { Routes = text };
+        ShowBoardStatus();
+    }
+
+    private void ShowBoardStatus()
+    {
+        var (map, open, routes) = _boardStatus;
+        BoardStatusText.Text = map is null ? "休整期在棋盘上画出本回合敌人怎么走"
+            : $"{map} · 商店{(open ? "展开" : "收起")}" + (routes is null ? "" : $" · {routes}");
+    }
 
     private async void OnBoardOverlayChanged(object sender, RoutedEventArgs e)
     {

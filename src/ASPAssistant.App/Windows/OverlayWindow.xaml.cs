@@ -104,6 +104,108 @@ public partial class OverlayWindow : Window
         DrawBoard();
     }
 
+    private RoundRoutes? _routes;
+
+    /// <summary>This round's enemy routes on the recognised board (null hides them). Drawn under the placements.</summary>
+    public void UpdateRoutes(RoundRoutes? routes)
+    {
+        _routes = routes;
+        DrawBoard();
+    }
+
+    // Walk / fly / boss: a bright core line over a dark under-stroke so it reads on any map colour.
+    private static readonly Color WalkColor = Color.FromRgb(0xFF, 0x5A, 0x4E);
+    private static readonly Color FlyColor = Color.FromRgb(0xC7, 0x9B, 0xFF);
+    private static readonly Color BossColor = Color.FromRgb(0xF3, 0xB3, 0x22);
+    private static readonly SolidColorBrush RouteUnder = Freeze(new SolidColorBrush(Color.FromArgb(0x99, 0x0A, 0x06, 0x08)));
+    // Walk and fly are nudged apart so a shared corridor still shows both (unit: cells). Kept inside the cell's middle
+    // band: the board reader samples each cell at (.32, .72) and (.72, .32) on the captured screen, overlay included.
+    private static readonly Vector WalkShift = new(-.04, -.04), FlyShift = new(.06, .06), BossShift = new(0, 0);
+
+    private void DrawRoutes(Func<double, double, Point> at, double w)
+    {
+        if (_routes is not { } routes) return;
+        double core = Math.Clamp(w / 640, 2, 3.5), under = core * 2;
+        double font = Math.Clamp(w / 120, 10, 14);
+        // Identical paths of the same kind are one line with the counts added up.
+        var lines = routes.Routes
+            .GroupBy(r => (r.Flying, r.Boss, Key: string.Join("|", r.Segments.Select(seg => string.Join(";", seg.Select(p => $"{p.Col},{p.Row}"))))))
+            .Select(g => (Route: g.First(), Count: g.Sum(r => r.Count), Approx: g.All(r => r.Approx)))
+            .OrderBy(l => l.Route.Boss).ThenBy(l => l.Route.Flying)   // walk first, boss on top
+            .ToList();
+        var badgesAt = new Dictionary<(double, double), int>();
+        foreach (var (route, count, approx) in lines)
+        {
+            var color = route.Boss ? BossColor : route.Flying ? FlyColor : WalkColor;
+            var brush = Freeze(new SolidColorBrush(color));
+            var shift = route.Boss ? BossShift : route.Flying ? FlyShift : WalkShift;
+            Point P(RoutePoint p) => at(p.Col + shift.X, p.Row + shift.Y);
+            foreach (var seg in route.Segments.Where(s => s.Count >= 2))
+            {
+                var points = new PointCollection(seg.Select(P));
+                _boardLayer.Children.Add(new Polyline { Points = points, Stroke = RouteUnder, StrokeThickness = under, StrokeLineJoin = PenLineJoin.Round, StrokeEndLineCap = PenLineCap.Round, StrokeStartLineCap = PenLineCap.Round, IsHitTestVisible = false });
+                _boardLayer.Children.Add(new Polyline
+                {
+                    Points = points, Stroke = brush, StrokeThickness = core, Opacity = approx ? 0.6 : 0.9,
+                    StrokeDashArray = route.Flying ? [2.2, 1.4] : null,
+                    StrokeLineJoin = PenLineJoin.Round, StrokeEndLineCap = PenLineCap.Round, StrokeStartLineCap = PenLineCap.Round,
+                    IsHitTestVisible = false,
+                });
+            }
+            // Arrow head where the path ends.
+            if (route.Segments.LastOrDefault(s => s.Count >= 2) is { } last)
+            {
+                var end = P(last[^1]);
+                var dir = end - P(last[^2]);
+                if (dir.Length > 0)
+                {
+                    dir.Normalize();
+                    var normal = new Vector(-dir.Y, dir.X);
+                    double size = core * 2.6;
+                    _boardLayer.Children.Add(new Polygon
+                    {
+                        Points = [end + dir * size * 0.4, end - dir * size * 1.2 + normal * size, end - dir * size * 1.2 - normal * size],
+                        Fill = brush, Stroke = RouteUnder, StrokeThickness = 1, IsHitTestVisible = false,
+                    });
+                }
+            }
+            // How many come this way, at the spawn; several groups from one spawn stack downwards.
+            if (route.Segments.FirstOrDefault(s => s.Count > 0) is { } first)
+            {
+                var key = (first[0].Col, first[0].Row);
+                int stacked = badgesAt.GetValueOrDefault(key);
+                badgesAt[key] = stacked + 1;
+                var badge = new Border
+                {
+                    Background = LabelBackground, BorderBrush = brush, BorderThickness = new Thickness(1.5),
+                    CornerRadius = new CornerRadius(4), Padding = new Thickness(5, 0, 5, 0), IsHitTestVisible = false,
+                    Child = new TextBlock
+                    {
+                        Text = (route.Boss ? "首领 " : route.Flying ? "飞 " : "") + $"×{count}",
+                        Foreground = brush, FontSize = font, FontWeight = FontWeights.Bold,
+                    },
+                };
+                badge.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+                // Right of the spawn: spawns sit in column 7, the last one the board reader samples.
+                var anchor = at(first[0].Col + 0.6, first[0].Row - 0.35);
+                Canvas.SetLeft(badge, anchor.X);
+                Canvas.SetTop(badge, anchor.Y + stacked * (badge.DesiredSize.Height + 2));
+                _boardLayer.Children.Add(badge);
+            }
+        }
+        // Where the boss stands.
+        var gold = Freeze(new SolidColorBrush(BossColor));
+        foreach (var spot in routes.BossSpots)
+        {
+            var c = at(spot.Col, spot.Row);
+            double r = Math.Clamp(w / 90, 8, 18);
+            var ring = new System.Windows.Shapes.Ellipse { Width = r * 2, Height = r * 2, Stroke = gold, StrokeThickness = core * 1.2, IsHitTestVisible = false };
+            Canvas.SetLeft(ring, c.X - r);
+            Canvas.SetTop(ring, c.Y - r);
+            _boardLayer.Children.Add(ring);
+        }
+    }
+
     private static readonly SolidColorBrush LabelBackground = Freeze(new SolidColorBrush(Color.FromArgb(0xD9, 0x0A, 0x0C, 0x10)));
     private static readonly SolidColorBrush PlaceDamageBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xFF, 0x5A, 0x5A)));
     private static readonly SolidColorBrush PlaceTankBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x4C, 0x8D, 0xFF)));
@@ -115,13 +217,23 @@ public partial class OverlayWindow : Window
     private static readonly SolidColorBrush ChipTitle = Freeze(new SolidColorBrush(Color.FromRgb(0x6F, 0xE0, 0xD3)));
     private static readonly SolidColorBrush ChipMeta = Freeze(new SolidColorBrush(Color.FromRgb(0x93, 0xA1, 0xA6)));
 
-    /// <summary>Bottom-left chip naming the plan on the board (map, people on the field).</summary>
-    private void DrawPlanChip(PlacementPlan plan, double w, double h)
+    /// <summary>Bottom-left chip: the plan on the board (map, people on the field) and this round's enemies.</summary>
+    private void DrawChip(GarrisonMap map, PlacementPlan? plan, RoundRoutes? routes, double w, double h)
     {
+        if (plan is null && routes is null) return;
         double size = Math.Clamp(w / 120, 10, 14);
         var row = new StackPanel { Orientation = Orientation.Horizontal };
-        row.Children.Add(new TextBlock { Text = $"站位 · {plan.Map.Name}", Foreground = ChipTitle, FontSize = size, FontWeight = FontWeights.Bold });
-        row.Children.Add(new TextBlock { Text = $"{plan.Placed.Count} 人", Foreground = ChipMeta, FontSize = size, Margin = new Thickness(size * 0.7, 0, 0, 0) });
+        void Part(string title, string meta)
+        {
+            if (row.Children.Count > 0)
+                row.Children.Add(new Border { Width = 1, Height = size, Background = ChipBorder, Margin = new Thickness(size * 0.7, 0, size * 0.7, 0), VerticalAlignment = VerticalAlignment.Center });
+            row.Children.Add(new TextBlock { Text = title, Foreground = ChipTitle, FontSize = size, FontWeight = FontWeights.Bold });
+            if (meta.Length > 0) row.Children.Add(new TextBlock { Text = meta, Foreground = ChipMeta, FontSize = size, Margin = new Thickness(size * 0.7, 0, 0, 0) });
+        }
+        if (plan is not null) Part($"站位 · {map.Name}", $"{plan.Placed.Count} 人");
+        if (routes is not null)
+            Part($"第 {routes.Round} 回合", string.Join(" · ", new[] { (routes.Walking, "地面"), (routes.Flying, "飞行") }
+                .Where(x => x.Item1 > 0).Select(x => $"{x.Item2} {x.Item1}")));
         var chip = new Border
         {
             Background = ChipBackground,
@@ -141,8 +253,9 @@ public partial class OverlayWindow : Window
 
     private void DrawPlacements(GarrisonMap map, Func<double, double, Point> at, double w, double h)
     {
-        if (_placements is not { } plan || plan.Map.Id != map.Id) return;
-        DrawPlanChip(plan, w, h);
+        var shownPlan = _placements is { } p0 && p0.Map.Id == map.Id ? p0 : null;
+        DrawChip(map, shownPlan, _routes?.MapId == map.Id ? _routes : null, w, h);
+        if (shownPlan is not { } plan) return;
         foreach (var p in plan.Placed)
         {
             var brush = p.Role switch
@@ -203,6 +316,8 @@ public partial class OverlayWindow : Window
             : plan is null ? $"board {map.Id}, no plan"
             : plan.Map.Id != map.Id ? $"board {map.Id}, plan is for {plan.Map.Id} (not drawn)"
             : $"board {map.Id}, {plan.Placed.Count} placement(s) drawn at {ActualWidth:F0}x{ActualHeight:F0}";
+        if (map is not null && _routes is { } routes)
+            state += routes.MapId == map.Id ? $"; routes round {routes.Round} ({routes.Level}): {routes.Routes.Count}" : $"; routes are for {routes.MapId} (not drawn)";
         if (state == _lastBoardLog) return;
         _lastBoardLog = state;
         AppLogger.Info("Overlay", state);
@@ -292,6 +407,7 @@ public partial class OverlayWindow : Window
                 });
             }
         }
+        if (_routes?.MapId == map.Id) DrawRoutes(At, w);
         DrawPlacements(map, At, w, h);
         LogBoardState(map);
     }
