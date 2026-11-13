@@ -158,6 +158,8 @@
             <ListBoxItem Content="购买清单" />
             <ListBoxItem Content="站位" />
         </ListBox>
+        <!-- 购买清单 and 站位 share the space below the switch (both fill it) -->
+        <Grid>
         <views:DeployView x:Name="DeployPage" Visibility="Collapsed" />
     <Grid x:Name="ShoppingPage">
         <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -394,5 +396,6 @@
         <controls:EmptyState x:Name="EmptyState" Visibility="Collapsed" Icon="{StaticResource IconTracking}" Title="还没有追踪目标"
                              Hint="在干员、装备页点 ☆，或在阵容、规划页点“追踪”，商店刷出目标时就会提示。" />
     </Grid>
+        </Grid>
     </DockPanel>
 </UserControl>
