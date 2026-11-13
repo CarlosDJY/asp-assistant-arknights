@@ -110,9 +110,39 @@ public partial class OverlayWindow : Window
     private static readonly SolidColorBrush PlaceSupportBrush = Freeze(new SolidColorBrush(Color.FromRgb(0x2E, 0xCC, 0x71)));
     private static readonly SolidColorBrush PlaceStackerBrush = Freeze(new SolidColorBrush(Color.FromRgb(0xC7, 0x7D, 0xFF)));
 
-    private void DrawPlacements(GarrisonMap map, Func<double, double, Point> at, double w)
+    private static readonly SolidColorBrush ChipBackground = Freeze(new SolidColorBrush(Color.FromArgb(0xE0, 0x08, 0x0B, 0x0D)));
+    private static readonly SolidColorBrush ChipBorder = Freeze(new SolidColorBrush(Color.FromRgb(0x24, 0x38, 0x3A)));
+    private static readonly SolidColorBrush ChipTitle = Freeze(new SolidColorBrush(Color.FromRgb(0x6F, 0xE0, 0xD3)));
+    private static readonly SolidColorBrush ChipMeta = Freeze(new SolidColorBrush(Color.FromRgb(0x93, 0xA1, 0xA6)));
+
+    /// <summary>Bottom-left chip naming the plan on the board (map, people on the field).</summary>
+    private void DrawPlanChip(PlacementPlan plan, double w, double h)
+    {
+        double size = Math.Clamp(w / 120, 10, 14);
+        var row = new StackPanel { Orientation = Orientation.Horizontal };
+        row.Children.Add(new TextBlock { Text = $"站位 · {plan.Map.Name}", Foreground = ChipTitle, FontSize = size, FontWeight = FontWeights.Bold });
+        row.Children.Add(new TextBlock { Text = $"{plan.Placed.Count} 人", Foreground = ChipMeta, FontSize = size, Margin = new Thickness(size * 0.7, 0, 0, 0) });
+        var chip = new Border
+        {
+            Background = ChipBackground,
+            BorderBrush = ChipBorder,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(6),
+            Padding = new Thickness(size * 0.8, size * 0.45, size * 0.8, size * 0.45),
+            IsHitTestVisible = false,
+            Child = row,
+        };
+        chip.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double margin = Math.Clamp(w / 90, 10, 20);
+        Canvas.SetLeft(chip, margin);
+        Canvas.SetTop(chip, h - margin - chip.DesiredSize.Height);
+        _boardLayer.Children.Add(chip);
+    }
+
+    private void DrawPlacements(GarrisonMap map, Func<double, double, Point> at, double w, double h)
     {
         if (_placements is not { } plan || plan.Map.Id != map.Id) return;
+        DrawPlanChip(plan, w, h);
         foreach (var p in plan.Placed)
         {
             var brush = p.Role switch
@@ -262,7 +292,7 @@ public partial class OverlayWindow : Window
                 });
             }
         }
-        DrawPlacements(map, At, w);
+        DrawPlacements(map, At, w, h);
         LogBoardState(map);
     }
 

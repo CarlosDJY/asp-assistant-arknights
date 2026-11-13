@@ -116,7 +116,8 @@ public partial class DeployView : UserControl
 
     private GarrisonMap? _lastSeen;
 
-    private GarrisonMap? CurrentMap =>
+    /// <summary>The map being planned: the one picked by hand, else the recognised (or last recognised) one.</summary>
+    public GarrisonMap? CurrentMap =>
         _state.ManualMap is { } id && _board?.Find(id) is { } manual ? manual : _recognized?.Map ?? _lastSeen;
 
     private void OnMapChanged()

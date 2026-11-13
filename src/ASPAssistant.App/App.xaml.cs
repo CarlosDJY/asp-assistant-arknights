@@ -495,12 +495,21 @@ public partial class App : Application
         {
             sidePanel.SetBoardStatus(match?.Map.Name, match?.Camera == Core.Models.BoardCamera.Expanded);
             deploy.SetRecognizedBoard(match);
-            // 站位页的“游戏内显示”是总开关；设置里的“游戏内显示部署格”只管要不要同时画格子和路线。
-            bool draw = deploy.ShowInGame;
-            overlay.UpdateBoard(draw ? match?.Map : null,
-                draw && match is not null ? boardData?.Cameras[match.Camera] : null, showCells: false);   // no grid, only the plan
+            DrawBoard(match);
         }
-        deploy.PlanChanged += plan => overlay.UpdatePlacements(plan);
+        // 站位页的“游戏内显示”是总开关；游戏里只画站位，不画格子和路线（设置里的“游戏内显示部署格”已隐藏）。
+        // 画的是站位页正在规划的地图：手动选了地图（纠正识别）时用手动的那张。所有地图的格子几何相同，投影只看镜头。
+        void DrawBoard(BoardMatch? match)
+        {
+            bool draw = deploy.ShowInGame && match is not null;
+            overlay.UpdateBoard(draw ? deploy.CurrentMap ?? match!.Map : null,
+                draw ? boardData?.Cameras[match!.Camera] : null, showCells: false);
+        }
+        deploy.PlanChanged += plan =>
+        {
+            overlay.UpdatePlacements(plan);
+            DrawBoard(_ocrScanner.CurrentBoard);
+        };
         deploy.ShowInGameChanged += enabled =>
         {
             deployState.ShowInGame = enabled;
