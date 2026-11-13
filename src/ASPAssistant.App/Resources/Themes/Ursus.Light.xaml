@@ -9,7 +9,7 @@
     <SolidColorBrush x:Key="SectionBackgroundBrush" Color="#FFE6DECF" />
     <SolidColorBrush x:Key="CardHoverBrush" Color="#FFE9E2D4" />
     <SolidColorBrush x:Key="SummaryBackgroundBrush" Color="#E6F2EDE3" />
-    <SolidColorBrush x:Key="ToastBackgroundBrush" Color="#F01C1B19" />
+    <SolidColorBrush x:Key="ToastBackgroundBrush" Color="#FAF7F3EA" />
     <SolidColorBrush x:Key="MaskCardBackgroundBrush" Color="#F2F2EDE3" />
     <SolidColorBrush x:Key="AccentFaintBrush" Color="#0A24211D" />
     <SolidColorBrush x:Key="AccentSubtleBrush" Color="#0D24211D" />
