@@ -148,6 +148,15 @@ public partial class TrackingViewModel : ObservableObject
                 TrackedOperators[TrackedOperators.IndexOf(existing)] = entry;
         }
         RefreshEquipmentRequirements();
+        // 推荐装备 belongs to no operator: tracked by hand (kept when operators change) as 候选.
+        foreach (var name in lineup.RecommendedEquipment.Where(n => n.Length > 0).Distinct(StringComparer.Ordinal))
+        {
+            var existing = TrackedEquipment.FirstOrDefault(e => e.Name == name);
+            if (existing is null)
+                TrackedEquipment.Add(new TrackingEntry { Name = name, Type = TrackingType.Equipment, IsManual = true, EquipmentKind = TrackedEquipmentKind.Candidate });
+            else if (existing.IsAcquired)
+                AddTracking(name, TrackingType.Equipment);
+        }
         return (TrackedOperators.Count(e => !e.IsAcquired && !previousOperators.Contains(e.Name)), TrackedEquipment.Count(e => !e.IsAcquired && !previousEquipment.Contains(e.Name)));
     }
 

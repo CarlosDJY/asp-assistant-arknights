@@ -36,6 +36,21 @@ public class EditorPanelsTests
     }
 
     [Fact]
+    public void RecommendedEquipmentRoundTripsAndResets()
+    {
+        var calc = new CovenantCalculator(Ops, [new() { Name = "乌萨斯", BondType = "SEASON", ActivateCount = 3 }], new Dictionary<string, string>());
+        var vm = new LineupEditorViewModel(new Lineup { Name = "x", RecommendedEquipment = ["盟约之币", "投机骰子", "盟约之币"] }, Ops, [], calc);
+        vm.RecommendedEquipment.Should().Equal("盟约之币", "投机骰子");
+
+        vm.SetRecommendedEquipment(["精打细算玩偶", "", "投机骰子"]);
+        vm.RemoveRecommendedEquipment("投机骰子");
+        vm.ToLineup().RecommendedEquipment.Should().Equal("精打细算玩偶");
+
+        vm.Reset();
+        vm.ToLineup().RecommendedEquipment.Should().Equal("盟约之币", "投机骰子");
+    }
+
+    [Fact]
     public void CopySlotToAnotherPhase()
     {
         var vm = Create();

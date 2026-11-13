@@ -198,6 +198,25 @@ public class TrackingViewModelTests
     }
 
     [Fact]
+    public void TrackLineup_TracksRecommendedEquipmentAsManualCandidates()
+    {
+        var vm = new TrackingViewModel();
+        vm.TrackLineup(new Lineup
+        {
+            Slots = [new() { OperatorName = "角峰", Equipments = ["不屈弹射器"] }],
+            RecommendedEquipment = ["盟约之币", "不屈弹射器"]
+        }).Should().Be((1, 2));
+
+        var coin = vm.TrackedEquipment.Single(e => e.Name == "盟约之币");
+        coin.IsManual.Should().BeTrue();
+        coin.EquipmentKind.Should().Be(TrackedEquipmentKind.Candidate);
+        vm.TrackedEquipment.Single(e => e.Name == "不屈弹射器").IsManual.Should().BeFalse("an operator already wants it");
+
+        vm.ToggleAcquired("角峰");
+        vm.TrackedEquipment.Should().Contain(e => e.Name == "盟约之币", "it belongs to no operator");
+    }
+
+    [Fact]
     public void TrackLineup_MarksOperatorsOutsideLateAsTransition()
     {
         var vm = new TrackingViewModel();

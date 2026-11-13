@@ -101,6 +101,10 @@ public class Lineup
     [JsonPropertyName("supportSlots")]
     public List<LineupSlot> SupportSlots { get; set; } = [];
 
+    /// <summary>推荐装备：整套阵容一份的清单（含经济类消耗品），不属于某个干员；追踪阵容时一并追踪。</summary>
+    [JsonPropertyName("recommendedEquipment")]
+    public List<string> RecommendedEquipment { get; set; } = [];
+
     [JsonPropertyName("strategies")]
     public List<LineupStrategySlot> Strategies { get; set; } = [];
 

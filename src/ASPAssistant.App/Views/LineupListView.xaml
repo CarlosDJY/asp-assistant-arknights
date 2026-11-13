@@ -211,7 +211,7 @@
                                         Visibility="{Binding CanRepair, Converter={StaticResource BoolToVis}}"
                                         ToolTip="在规划里固定没被禁的干员，只给被禁的位置找替补" />
                                 <Button x:Name="track" Content="追踪" Style="{StaticResource CardPrimaryAction}" Click="OnTrackLineup"
-                                        ToolTip="把这套阵容的干员加入追踪" />
+                                        ToolTip="把这套阵容的干员和推荐装备加入追踪" />
                                 <Button Content="编辑" Style="{StaticResource CardAction}" Click="OnEditLineup" />
                                 <Button Content="分享" Style="{StaticResource CardAction}" Click="OnShareLineup"
                                         Visibility="{Binding ShowManage, Converter={StaticResource BoolToVis}}" />

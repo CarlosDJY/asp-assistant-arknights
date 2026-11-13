@@ -170,8 +170,14 @@
                                         <Setter TargetName="check" Property="Background" Value="{DynamicResource AccentSolidBrush}" />
                                         <Setter TargetName="check" Property="BorderBrush" Value="{DynamicResource AccentSolidBrush}" />
                                         <Setter TargetName="tick" Property="Visibility" Value="Visible" />
-                                        <Setter TargetName="star" Property="Visibility" Value="Visible" />
                                     </DataTrigger>
+                                    <MultiDataTrigger>
+                                        <MultiDataTrigger.Conditions>
+                                            <Condition Binding="{Binding IsChecked}" Value="True" />
+                                            <Condition Binding="{Binding AllowPriority}" Value="True" />
+                                        </MultiDataTrigger.Conditions>
+                                        <Setter TargetName="star" Property="Visibility" Value="Visible" />
+                                    </MultiDataTrigger>
                                     <DataTrigger Binding="{Binding IsPriority}" Value="True">
                                         <Setter TargetName="star" Property="Foreground" Value="{DynamicResource EliteBrush}" />
                                         <Setter TargetName="star" Property="Background" Value="{DynamicResource EliteTintBrush}" />

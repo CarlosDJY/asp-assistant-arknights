@@ -122,6 +122,8 @@ public partial class LineupEditorViewModel : ObservableObject
             ? source.TargetCovenants.Select(t => t.Clone())
             : LineupTargets.Derive(new Lineup { Slots = ExportPhase(LineupPhase.后期) }, calculator)];
         _initialTargets = [.. TargetCovenants.Select(t => t.Clone())];
+        RecommendedEquipment = [.. (source?.RecommendedEquipment ?? []).Distinct(StringComparer.Ordinal)];
+        _initialRecommended = [.. RecommendedEquipment];
         SelectPhase(_initialPhase);
     }
 
@@ -129,6 +131,15 @@ public partial class LineupEditorViewModel : ObservableObject
 
     /// <summary>What this lineup is built to reach (core first); 本局推荐 and the 筛选 work from these.</summary>
     public List<TargetCovenant> TargetCovenants { get; private set; }
+
+    /// <summary>推荐装备 for the whole lineup (not tied to an operator), in the order picked.</summary>
+    public List<string> RecommendedEquipment { get; private set; }
+    private readonly List<string> _initialRecommended;
+
+    public void SetRecommendedEquipment(IEnumerable<string> names)
+        => RecommendedEquipment = [.. names.Where(n => n.Length > 0).Distinct(StringComparer.Ordinal)];
+
+    public void RemoveRecommendedEquipment(string name) => RecommendedEquipment.Remove(name);
 
     /// <summary>Each target against the current late-game slots: 已满足 or how many people are missing.</summary>
     public IReadOnlyList<TargetState> TargetStates => TargetCovenants.Count == 0 ? []
@@ -406,6 +417,7 @@ public partial class LineupEditorViewModel : ObservableObject
         foreach (var (phase, slots) in _initialSlots)
             _phaseSlots[phase] = new ObservableCollection<LineupSlot>(slots.Select(CloneSlot));
         TargetCovenants = [.. _initialTargets.Select(t => t.Clone())];
+        RecommendedEquipment = [.. _initialRecommended];
         SelectPhase(_initialPhase);
     }
 
@@ -495,6 +507,7 @@ public partial class LineupEditorViewModel : ObservableObject
         Strategies = [.. StrategySlots.Where(s => s.StrategyId.Length > 0)
             .Select(s => new LineupStrategySlot { StrategyId = s.StrategyId, Tags = [.. s.Tags] })],
         TargetCovenants = [.. TargetCovenants.Select(t => t.Clone())],
+        RecommendedEquipment = [.. RecommendedEquipment],
         UpdatedAt = DateTime.UtcNow,
     };
 

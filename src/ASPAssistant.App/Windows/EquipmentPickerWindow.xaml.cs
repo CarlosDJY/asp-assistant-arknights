@@ -25,6 +25,8 @@ public sealed class EquipmentPickRow(Equipment equipment, string? jobCovenant, b
         + (HasJob ? $"\n{JobText}" : "") + $"\n普通：{Equipment.Normal.EffectDescription}"
         + (Equipment.Elite.EffectDescription.Length > 0 ? $"\n精锐：{Equipment.Elite.EffectDescription}" : "");
     public bool CandidateMode { get; } = candidateMode;
+    /// <summary>★ 优先 is offered (候选装备 only; 推荐装备 has no priority).</summary>
+    public bool AllowPriority { get; init; } = true;
 
     private bool _isChecked, _isPriority, _isSelected;
     public bool IsChecked { get => _isChecked; set { _isChecked = value; if (!value) _isPriority = false; Notify(); Notify(nameof(IsPriority)); Notify(nameof(IsActive)); Notify(nameof(PickedText)); } }
@@ -60,13 +62,14 @@ public partial class EquipmentPickerWindow : Window
     /// <summary>Candidate mode result (null = cancelled), in the order picked.</summary>
     public IReadOnlyList<CandidateEquipment>? Candidates { get; private set; }
 
-    private EquipmentPickerWindow(IEnumerable<Equipment> equipment, LineupEquipmentService rules, bool candidateMode, IEnumerable<string> hidden)
+    private EquipmentPickerWindow(IEnumerable<Equipment> equipment, LineupEquipmentService rules, bool candidateMode, IEnumerable<string> hidden,
+        bool allowPriority = true)
     {
         _candidateMode = candidateMode;
         InitializeComponent();
         var hide = hidden.ToHashSet(StringComparer.Ordinal);
         _rows = [.. equipment.Where(e => !hide.Contains(e.Name)).OrderBy(e => e.Tier).ThenBy(e => e.Name, StringComparer.CurrentCulture)
-            .Select(e => new EquipmentPickRow(e, rules.EquipmentToCovenant.TryGetValue(e.Name, out var c) ? c : e.Type == EquipmentType.JobChange && e.JobChangeCovenant.Length > 0 ? e.JobChangeCovenant : null, candidateMode))];
+            .Select(e => new EquipmentPickRow(e, rules.EquipmentToCovenant.TryGetValue(e.Name, out var c) ? c : e.Type == EquipmentType.JobChange && e.JobChangeCovenant.Length > 0 ? e.JobChangeCovenant : null, candidateMode) { AllowPriority = allowPriority })];
         ItemsList.ItemsSource = _shown;
         PickedList.ItemsSource = _picked;
         foreach (var t in new[] { "全部" }.Concat(Enumerable.Range(1, 6).Select(i => $"T{i}")))
@@ -112,6 +115,25 @@ public partial class EquipmentPickerWindow : Window
             {
                 row.IsChecked = true;
                 row.IsPriority = c.IsPriority;
+                _picked.Add(row);
+            }
+        ApplyFilter();
+        UpdateConfirm();
+    }
+
+    /// <summary>推荐装备 of the whole lineup: tick any number, no ★. Result in <see cref="Candidates"/> (names only matter).</summary>
+    public EquipmentPickerWindow(IEnumerable<Equipment> equipment, LineupEquipmentService rules, IEnumerable<string> current)
+        : this(equipment, rules, candidateMode: true, [], allowPriority: false)
+    {
+        TitleText.Text = "推荐装备";
+        TitleMeta.Text = "整套阵容";
+        PickedBar.Visibility = Visibility.Visible;
+        ClearButton.Content = "全部取消";
+        HintText.Text = "单击勾选，可以一次选多件";
+        foreach (var name in current)
+            if (_rows.FirstOrDefault(r => r.Name == name) is { } row)
+            {
+                row.IsChecked = true;
                 _picked.Add(row);
             }
         ApplyFilter();

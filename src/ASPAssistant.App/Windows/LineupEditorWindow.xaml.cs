@@ -79,6 +79,7 @@ public partial class LineupEditorWindow : Window
         TitleMeta.Text = _vm.Name;
         BuildCards();
         RefreshTargets();
+        RefreshRecommended();
         RefreshSidePanel();
     }
 
@@ -742,6 +743,50 @@ public partial class LineupEditorWindow : Window
         };
         add.Click += (_, _) => PickTarget();
         TargetChips.Children.Add(add);
+    }
+
+    /// <summary>推荐装备 icons (click to edit the list, right-click to remove one) and ＋.</summary>
+    private void RefreshRecommended()
+    {
+        RecommendedChips.Children.Clear();
+        foreach (var name in _vm.RecommendedEquipment)
+        {
+            var box = new Grid { Width = 28, Height = 28 };
+            var frame = new Border { BorderThickness = new Thickness(1) };
+            frame.SetResourceReference(Border.CornerRadiusProperty, "DotCornerRadius");
+            frame.SetResourceReference(Border.BorderBrushProperty, "BorderBrush");
+            box.Children.Add(frame);
+            var equipment = _vm.AllEquipment.FirstOrDefault(e => e.Name == name);
+            box.Children.Add(new Controls.Avatar { Width = 22, Height = 22, Small = true, Text = name, Source = equipment?.IconPath });
+            var chip = new Button { Content = box, Style = (Style)FindResource("ClickableButtonBase"), Background = Brushes.Transparent,
+                BorderThickness = new Thickness(0), Padding = new Thickness(0), Margin = new Thickness(0, 0, 4, 4),
+                ToolTip = equipment is null ? name : $"{name} · T{equipment.Tier}\n{equipment.Normal.EffectDescription}" };
+            chip.Template = BareButton();
+            chip.Click += (_, _) => PickRecommended();
+            var menu = new ContextMenu();
+            var remove = new MenuItem { Header = "移除" };
+            remove.Click += (_, _) => { _vm.RemoveRecommendedEquipment(name); RefreshRecommended(); };
+            menu.Items.Add(remove);
+            chip.ContextMenu = menu;
+            RecommendedChips.Children.Add(chip);
+        }
+        var add = new Button
+        {
+            Content = _vm.RecommendedEquipment.Count == 0 ? "＋ 推荐装备" : "＋", Style = (Style)FindResource("CandidateChip"),
+            Tag = "add", Height = 28, MinWidth = 28, Margin = new Thickness(0, 0, 4, 4),
+            ToolTip = "整套阵容推荐的装备（含经济类道具），不属于某个干员；追踪阵容时一起追踪"
+        };
+        System.Windows.Automation.AutomationProperties.SetName(add, "添加推荐装备");
+        add.Click += (_, _) => PickRecommended();
+        RecommendedChips.Children.Add(add);
+    }
+
+    private void PickRecommended()
+    {
+        var dlg = new EquipmentPickerWindow(_vm.AllEquipment, _vm.EquipmentRules, _vm.RecommendedEquipment) { Owner = this };
+        if (dlg.ShowDialog() != true || dlg.Candidates is null) return;
+        _vm.SetRecommendedEquipment(dlg.Candidates.Select(c => c.Name));
+        RefreshRecommended();
     }
 
     private UIElement TargetChip(TargetState state)
