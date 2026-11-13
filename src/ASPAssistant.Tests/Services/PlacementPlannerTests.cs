@@ -136,7 +136,8 @@ public class PlacementPlannerTests
         crates.Find("塞雷娅")!.Notes.Should().Contain(n => n.StartsWith("复制身前"));
         foreach (var id in new[] { "palace" })
         {
-            var plan = planner.Plan(board.Find(id)!, VictoriaPool.Select(n => new PlacementCandidate(n, false)).ToList(), Fast(2));
+            // 宫殿左列有高台后，Fast 的搜索量容易停在「塞雷娅复制维娜」的局部最优；默认搜索量能找到杰西卡这条线
+            var plan = planner.Plan(board.Find(id)!, VictoriaPool.Select(n => new PlacementCandidate(n, false)).ToList(), new PlacementOptions());
             var saria = plan.Find("塞雷娅");
             var jessica = plan.Find("涤火杰西卡");
             saria.Should().NotBeNull(id);

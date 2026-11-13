@@ -251,9 +251,9 @@
    "id": "palace",
    "name": "宫殿",
    "cells": [
-    "XXXGGGGGXSXX",
-    "XXXGGGGGXXXX",
-    "XXXGGGGGXXXX",
+    "XXHGGGGGXSXX",
+    "XXHGGGGGXXXX",
+    "XXHGGGGGXXXX",
     "XDGGGGGXGSXX",
     "XXXXXXXXXXXX"
    ],
