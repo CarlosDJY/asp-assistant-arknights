@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-14; see NOTICE.
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using ASPAssistant.Core.Models;
@@ -7,7 +7,7 @@ using ASPAssistant.Core.Services;
 namespace ASPAssistant.Core.ViewModels;
 
 /// <summary>
-/// 阵容编辑会话的临时 view-model：固定持有 9 个槽位，未填的槽位 OperatorName 为空。
+/// 阵容编辑会话的临时 view-model：通常持有 9 个槽位，未填的槽位 OperatorName 为空；导入的候选完整保留，保存前限制人数。
 /// 带森蚺“暴躁铁皮”策略时，每个阶段的 9 个槽位里有一个是铁皮（占 1 人口，单独显示）。
 /// 所有修改后调用 <see cref="Recalculate"/> 刷新激活盟约统计。
 /// </summary>
@@ -51,12 +51,13 @@ public partial class LineupEditorViewModel : ObservableObject
                 }
             foreach (var (phase, slots) in _phaseSlots)
                 if (slots.Count(s => s.OperatorName.Length > 0) > MaxSlots)
-                    return $"{phase}超过 {MaxSlots} 人（暴躁铁皮也占 1 人口），请移除一名干员";
+                    return $"{phase}超过 {MaxSlots} 人（暴躁铁皮也占 1 人口），请筛选至 {MaxSlots} 人以内再保存";
             return "";
         }
     }
 
     public string LineupId { get; }
+    public string? SourceUrl { get; }
 
     [ObservableProperty]
     private string _name = "新阵容";
@@ -86,6 +87,7 @@ public partial class LineupEditorViewModel : ObservableObject
         AllEquipment = [.. equipment];
 
         LineupId = source?.Id ?? Guid.NewGuid().ToString("N");
+        SourceUrl = source?.SourceUrl;
         if (!string.IsNullOrWhiteSpace(source?.Name))
             _name = source!.Name;
 
@@ -102,7 +104,7 @@ public partial class LineupEditorViewModel : ObservableObject
             // 暴躁铁皮 takes one of the 9 places; it is kept last and shown on its own card.
             var list = sourceSlots.ToList();
             var mech = list.FirstOrDefault(IsMech);
-            var slots = new ObservableCollection<LineupSlot>(list.Where(s => !IsMech(s)).Take(MaxSlots - (mech is null ? 0 : 1)).Select(CloneSlot));
+            var slots = new ObservableCollection<LineupSlot>(list.Where(s => !IsMech(s)).Select(CloneSlot));
             while (slots.Count < MaxSlots - (mech is null ? 0 : 1))
                 slots.Add(new LineupSlot());
             if (mech is not null) slots.Add(CloneSlot(mech));
@@ -247,7 +249,8 @@ public partial class LineupEditorViewModel : ObservableObject
 
         if (string.IsNullOrEmpty(operatorName))
         {
-            Slots[slotIndex] = new LineupSlot();
+            if (Slots.Count > MaxSlots) Slots.RemoveAt(slotIndex);
+            else Slots[slotIndex] = new LineupSlot();
         }
         else
         {
@@ -510,6 +513,7 @@ public partial class LineupEditorViewModel : ObservableObject
     public Lineup ToLineup() => new()
     {
         Id = LineupId,
+        SourceUrl = SourceUrl,
         Name = string.IsNullOrWhiteSpace(Name) ? "未命名阵容" : Name.Trim(),
         Slots = ExportPhase(LineupPhase.后期),
         EarlySlots = ExportPhase(LineupPhase.前期),

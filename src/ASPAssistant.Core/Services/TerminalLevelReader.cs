@@ -62,8 +62,9 @@ public sealed class TerminalLevelReader(IOcrEngine ocr, Func<byte[], int, int, i
         if (button is not { } found) return null;
         if (found.Text.Contains("满级", StringComparison.Ordinal)) return MaxLevel;
 
-        int x0 = found.CenterX - (int)(60 * s), y0 = (int)(870 * s);
-        int w = (int)(120 * s), h = (int)(95 * s);
+        // Closure's dark strokes sit above their fading reflections; include the full glyph at window scale.
+        int x0 = found.CenterX - (int)((theme == GameShopTheme.Closure ? 80 : 60) * s), y0 = (int)((theme == GameShopTheme.Closure ? 845 : 870) * s);
+        int w = (int)((theme == GameShopTheme.Closure ? 160 : 120) * s), h = (int)((theme == GameShopTheme.Closure ? 110 : 95) * s);
         if (x0 < 0 || x0 + w > width) return null;
 
         var luma = _cropLuma(png, x0, y0, w, h);
@@ -125,7 +126,7 @@ public static class RomanNumeralShape
         for (int i = 0; i < strokes.Count; i++)
         {
             var c = strokes[i];
-            if (c.TopWidth > 1.7 * c.BottomWidth && c.TopWidth > 0.3 * c.Height)
+            if (c.TopWidth > 1.7 * c.BottomWidth && c.TopWidth > 0.65 * c.Height)
             {
                 result.Append('V');
                 continue;
@@ -181,7 +182,9 @@ public static class RomanNumeralShape
                 minY = Math.Min(minY, y); maxY = Math.Max(maxY, y);
             }
             int ch = maxY - minY + 1, cw = maxX - minX + 1;
-            if (ch < 0.18 * h || cw > 0.7 * w || minX == 0 || maxX == w - 1) continue;
+            // The LEVEL capsule can share the crop, but is much wider than a numeral stroke.
+            if (cw > 2 * ch) continue;
+            if (ch < (int)(0.18 * h) || cw > 0.7 * w || minX == 0 || maxX == w - 1) continue;
             if (pts.Count < 0.75 * ch) continue;
             int band = Math.Max(1, (int)(ch * 0.25));
             var (topWidth, topCenter) = RowStats(pts, w, minY, minY + band);

@@ -88,6 +88,11 @@ public class Lineup
     [JsonPropertyName("name")]
     public string Name { get; set; } = "";
 
+    /// <summary>导入来源（森空岛攻略详情链接）；手动建的阵容为 null。</summary>
+    [JsonPropertyName("sourceUrl")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? SourceUrl { get; set; }
+
     /// <summary>后期阵容（最多 9 个），用于列表预览；追踪包含四个阶段，同名干员优先使用后期配置。</summary>
     [JsonPropertyName("slots")]
     public List<LineupSlot> Slots { get; set; } = [];

@@ -1,4 +1,4 @@
-// Added for ASP Assistant Arknights on 2026-11-14; see NOTICE.
+// Added for ASP Assistant Arknights on 2026-11-14; see NOTICE. Modified 2026-11-14.
 // Lookup adapted from LBEILC/StrongholdAssistant BoardRouteStore.cs (Apache-2.0).
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -70,6 +70,13 @@ public sealed class EnemyRouteStore
             return null;
         }
         return new RoundRoutes(mapId, round, level, bossEnemyId, data.Routes, data.BossSpots);
+    }
+
+    /// <summary>How many rounds the mode has (the multiplayer table when the mode is not read yet).</summary>
+    public int RoundCount(string? modeName)
+    {
+        string id = modeName is not null && _data.Modes.TryGetValue(Normalize(modeName), out var m) ? m.Id : "mode_multi_normal";
+        return _data.Battles.TryGetValue(id, out var rounds) && rounds.Count > 0 ? rounds.Keys.Select(int.Parse).Max() : 15;
     }
 
     private static string Normalize(string modeName) => modeName.Replace(" ", "", StringComparison.Ordinal);

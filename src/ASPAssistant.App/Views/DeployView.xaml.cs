@@ -1,4 +1,4 @@
-// Added for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+// Added for ASP Assistant Arknights on 2026-11-12; modified 2026-11-14; see NOTICE.
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Windows;
@@ -66,6 +66,7 @@ public partial class DeployView : UserControl
         _replanTimer.Tick += (_, _) => { _replanTimer.Stop(); _ = ReplanAsync(); };
         ModeList.SelectedIndex = 1;
         FieldCountList.SelectedIndex = 0;
+        FlyingList.SelectedIndex = 0;
         IsVisibleChanged += (_, _) => { if (IsVisible && _ready && _plan is null) ScheduleReplan(); };
     }
 
@@ -74,7 +75,126 @@ public partial class DeployView : UserControl
     public event Action<bool>? ShowInGameChanged;
 
     public bool ShowInGame => InGameToggle.IsChecked == true;
+
+    /// <summary>
+    /// The round to plan for on a map: its real routes (null when unknown, with why), the round number and how many
+    /// rounds the mode has. Set by the app from the shop HUD and the information screen.
+    /// </summary>
+    public Func<string, (RoundRoutes? Routes, int? Round, int TotalRounds, string? Why)>? RoundProvider { get; set; }
+    /// <summary>
+    /// The real enemy streams a round may bring (this run's 3 enemy types from the information screen, the HUD's
+    /// mode and the boss), from garrison_spawns.json; null without the data. Set by the app.
+    /// </summary>
+    public Func<int, IReadOnlyList<ASPAssistant.Core.Data.RoundStream>?>? StreamProvider { get; set; }
+    /// <summary>
+    /// Flying paths for a map when this round's routes are unknown: a round of that map that has flyers. Set by the app.
+    /// </summary>
+    public Func<string, RoundRoutes?>? FlyingRoutesProvider { get; set; }
+    /// <summary>This run's covenant layers as read in game (empty until a battle shows them). Set by the app.</summary>
+    public Func<IReadOnlyDictionary<string, int>>? LayersProvider { get; set; }
+    private string? _roundKey;
+    /// <summary>The round whose real enemies stand in while the round is not read yet (mid-run).</summary>
+    private const int AssumedRound = 8;
+    /// <summary>The player's 有飞行 / 无飞行 for this round (null: decided from this run's enemy types).</summary>
+    private bool? _flyingOverride;
+
+    /// <summary>Round, mode or boss changed: replan when the round's routes for the current map are different.</summary>
+    public void RoundContextChanged()
+    {
+        if (!_ready) return;
+        var key = RoundKey();
+        if (key == _roundKey) return;
+        _roundKey = key;
+        _flyingOverride = null;   // a new round: back to deciding from the run's enemy types
+        ScheduleReplan();
+    }
+
+    private (RoundRoutes? Routes, int? Round, int TotalRounds, string? Why) RoundContext()
+    {
+        var ctx = CurrentMap is { } map && RoundProvider is { } provider ? provider(map.Id) : (null, null, 15, null);
+        // A round set by hand holds until the game reads a different one.
+        if (_roundFix is { } fix)
+        {
+            if (fix.ReadThen != ctx.Round) _roundFix = null;
+            else ctx.Round = fix.Value;
+        }
+        return ctx;
+    }
+
+    /// <summary>The round set by hand, with the round the game had read then.</summary>
+    private (int Value, int? ReadThen)? _roundFix;
+    private bool _editingRound;
+
+    /// <summary>The round chip at the start of the layer row: 第 N 回合 (or 回合未读); click to set it by hand.</summary>
+    private void AddRoundChip()
+    {
+        var (_, round, total, _) = RoundContext();
+        bool byHand = _roundFix is not null;
+        if (_editingRound)
+        {
+            var box = new TextBox
+            {
+                Text = round?.ToString() ?? "", Width = 34, FontSize = 10.5, Padding = new Thickness(2, 0, 2, 0),
+                Margin = new Thickness(0, 0, 6, 3), VerticalContentAlignment = VerticalAlignment.Center,
+                Background = (Brush)FindResource("InputBackgroundBrush"), Foreground = (Brush)FindResource("TextPrimaryBrush"),
+                BorderBrush = (Brush)FindResource("AccentSolidBrush"), CaretBrush = (Brush)FindResource("TextPrimaryBrush"),
+            };
+            var pair = new StackPanel { Orientation = Orientation.Horizontal };
+            var label = Text("第 ", 10.5, "TextPrimaryBrush", bold: true);
+            label.VerticalAlignment = VerticalAlignment.Center;
+            pair.Children.Add(label);
+            pair.Children.Add(box);
+            bool done = false;
+            void Commit()
+            {
+                if (done) return;
+                done = true;
+                _editingRound = false;
+                int? read = CurrentMap is { } m && RoundProvider is { } p ? p(m.Id).Round : null;
+                if (int.TryParse(box.Text.Trim(), out int r) && r >= 1 && r <= total) _roundFix = r == read ? null : (r, read);
+                else if (box.Text.Trim().Length == 0) _roundFix = null;
+                ShowRoundBasis();
+                RoundContextChanged();
+            }
+            box.KeyDown += (_, e) =>
+            {
+                if (e.Key == Key.Enter) Commit();
+                else if (e.Key == Key.Escape) { done = true; _editingRound = false; ShowRoundBasis(); }
+            };
+            box.LostKeyboardFocus += (_, _) => Commit();
+            LayerRow.Children.Add(pair);
+            Dispatcher.BeginInvoke(() => { box.Focus(); box.SelectAll(); }, System.Windows.Threading.DispatcherPriority.Input);
+            return;
+        }
+        var tb = new TextBlock
+        {
+            Text = round is int n ? $"第 {n} 回合" : $"回合未读（按第 {AssumedRound} 回合）", FontSize = 10.5, FontWeight = FontWeights.Bold,
+            VerticalAlignment = VerticalAlignment.Center,
+            Foreground = (Brush)FindResource(byHand ? "EliteBrush" : round is null ? "TextSecondaryBrush" : "TextPrimaryBrush"),
+        };
+        var chip = new Border
+        {
+            CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(0, 0, 6, 3),
+            Background = (Brush)FindResource("SectionBackgroundBrush"), Cursor = Cursors.Hand, Child = tb,
+            ToolTip = byHand ? "回合已手动设置（点一下再改，清空恢复读取值；游戏读到新回合会覆盖）" : "点一下手动设置回合",
+        };
+        chip.MouseLeftButtonUp += (_, e) => { e.Handled = true; _editingRound = true; ShowRoundBasis(); };
+        LayerRow.Children.Add(chip);
+    }
+
+    private string RoundKey()
+    {
+        var (routes, round, _, why) = RoundContext();
+        var streams = Streams(round ?? AssumedRound);
+        // The run's types and the mode's buff (first enemy's HP) change the streams without changing the routes.
+        string spawn = streams is null ? "-"
+            : string.Join(",", streams.Select(s => s.Type).Distinct()) + "|" + streams.Sum(s => s.Spawns.Count)
+              + "|" + streams.Select(s => s.Spawns.FirstOrDefault()?.Profile.Hp ?? 0).FirstOrDefault().ToString("0");
+        return $"{CurrentMap?.Id}|{round}|{routes?.Level}|{why}|{spawn}";
+    }
     public PlacementPlan? CurrentPlan => _plan;
+    /// <summary>转职 items and the covenant each gives (变形同构体 + the item). Set by the app before <see cref="Initialize"/>.</summary>
+    public IReadOnlyDictionary<string, string> JobChangeCovenants { get; set; } = new Dictionary<string, string>();
 
     public void Initialize(IReadOnlyDictionary<string, Operator> operators, IEnumerable<CovenantInfo> covenants,
         GarrisonBoardData? board, TrackingViewModel tracking, SettingsManager settings, DeployPoolState state, bool showInGame)
@@ -89,6 +209,7 @@ public partial class DeployView : UserControl
         _suppressSelection = true;
         ModeList.SelectedIndex = (int)state.Mode;
         FieldCountList.SelectedIndex = state.FieldCount >= 9 ? 1 : 0;
+        FlyingList.SelectedIndex = state.ExpectFlying ? 0 : 1;
         _suppressSelection = false;
         tracking.PropertyChanged += OnTrackingPropertyChanged;
         HookTracking();
@@ -157,7 +278,8 @@ public partial class DeployView : UserControl
     /// <summary>Owned operators; a duplicated operator gives one candidate per copy (keys 冻河, 冻河#2…).</summary>
     private List<PlacementCandidate> Candidates() =>
         [.. _state.Owned.Distinct().Where(_operators.ContainsKey)
-            .SelectMany(n => Enumerable.Range(0, _state.CountOf(n)).Select(k => new PlacementCandidate(n, _state.IsElite(n), k)))];
+            .SelectMany(n => Enumerable.Range(0, _state.CountOf(n)).Select(k => new PlacementCandidate(n, _state.IsElite(n), k)))
+            .Select(c => _state.Transforms.TryGetValue(c.Key, out var t) && t.Count > 0 ? c with { Transforms = [.. t] } : c)];
 
     private static string NameOf(string key) => PlacementKeys.NameOf(key);
     /// <summary>Display name of a key: 冻河#2 → 冻河②.</summary>
@@ -182,12 +304,190 @@ public partial class DeployView : UserControl
         _replanTimer.Start();
     }
 
-    private PlacementOptions Options() => new()
+    private PlacementOptions Options()
     {
-        FieldCount = _state.FieldCount,
-        Mode = _state.Mode,
-        Pins = new Dictionary<string, PlacementPin>(_pins),
-    };
+        var (routes, round, total, _) = RoundContext();
+        // Round not read yet: plan against a mid-run round's real enemies rather than a made-up stream.
+        var streams = Streams(round ?? AssumedRound);
+        bool flying = _flyingOverride ?? (streams is { Count: > 0 } ? streams.Any(s => s.Flying) : _state.ExpectFlying);
+        // The player said whether this round flies: keep only the streams that match (none match: the generic stream).
+        if (_flyingOverride is bool chosen && streams is not null)
+        {
+            var matching = streams.Where(s => s.Flying == chosen).ToList();
+            streams = matching.Count > 0 ? matching : null;
+        }
+        // No routes for this round yet but flyers expected: a round of this map that has flyers gives their paths.
+        if (routes is null && flying && CurrentMap is { } m && FlyingRoutesProvider?.Invoke(m.Id) is { } flyRoutes)
+            routes = flyRoutes;
+        // Flyers need flying paths: without any, plan against the ground streams alone (their shares rescaled).
+        if (streams is not null && (routes is null || routes.Flying == 0) && streams.Any(s => s.Flying))
+        {
+            var ground = streams.Where(s => !s.Flying).ToList();
+            double sum = ground.Sum(s => s.Weight);
+            streams = ground.Count > 0 && sum > 0 ? [.. ground.Select(s => s with { Weight = s.Weight / sum })] : null;
+        }
+        return new()
+        {
+            FieldCount = _state.FieldCount,
+            Mode = _state.Mode,
+            Pins = new Dictionary<string, PlacementPin>(_pins),
+            FieldPins = _state.FieldPins.ToHashSet(),
+            BenchPins = _state.BenchPins.ToHashSet(),
+            TransformableCovenants = JobChangeCovenants.Values.ToHashSet(),
+            Routes = routes,
+            ExpectFlying = flying,
+            Round = round,
+            TotalRounds = total,
+            Streams = streams,
+            // The layers read from the battle screen's badge strip (the last battle's; empty before the first).
+            CovenantLayers = CurrentLayers(),
+        };
+    }
+
+    /// <summary>The line under the toolbar: what the plan is based on and how much stacking counts this round.</summary>
+    private void ShowRoundBasis()
+    {
+        var (routes, round, _, why) = RoundContext();
+        string text = _plan?.Basis ?? (routes is null ? "地图默认路线" : "");
+        if (routes is null && why is not null) text += $"（{(round is int r ? $"第 {r} 回合：" : "")}{why}）";
+        if (round is null && Streams(AssumedRound) is { Count: > 0 }) text += $" · 按第 {AssumedRound} 回合的真实出怪估算";
+        if (_plan is { } p) text += $" · 叠层权重 ×{p.StackWeight:0.##}";
+        var layers = LayersProvider?.Invoke();
+        text += layers is { Count: > 0 }
+            ? " · 层数 " + string.Join(" ", layers.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key}{kv.Value}"))
+            : " · 层数未读到（战斗中会读取顶部盟约栏）";
+        // The line itself stays short; the full basis is in its tooltip.
+        _basisTip = ShortBasis(routes, round, layers) + "\n" + text;
+        RefreshLayerRow();
+        bool byStreams = Streams(round) is { Count: > 0 };
+        FlyingList.IsEnabled = true;
+        FlyingList.ToolTip = (_flyingOverride is not null ? "已手动指定这回合是否飞行波次（换回合后恢复自动）。"
+                : byStreams ? "自动：按本局敌人类型判断。点选可手动指定这回合是飞行波次还是地面波次。"
+                : "点选这回合是否飞行波次。")
+            + (routes is null ? "还没读到本回合路线时，有飞行按这张图常见的飞行路线规划。" : "");
+        if (_plan is { } fp)
+        {
+            _suppressSelection = true;
+            FlyingList.SelectedIndex = fp.Flying ? 0 : 1;
+            _suppressSelection = false;
+        }
+    }
+
+    private string _basisTip = "";
+    /// <summary>Layers set by hand, with what the game had read for that covenant then (a newer read replaces them).</summary>
+    private readonly Dictionary<string, (int Value, int? ReadThen)> _layerFixes = [];
+    private string? _editingLayer;
+
+    /// <summary>The covenants' layers the plan uses: read in battle, corrected by hand where the player did.</summary>
+    private Dictionary<string, int> CurrentLayers()
+    {
+        var read = LayersProvider?.Invoke() ?? new Dictionary<string, int>();
+        var layers = new Dictionary<string, int>(read);
+        foreach (var (cov, fix) in _layerFixes.ToList())
+        {
+            int? now = read.TryGetValue(cov, out var v) ? v : null;
+            if (now != fix.ReadThen) { _layerFixes.Remove(cov); continue; }   // the game read a newer value
+            layers[cov] = fix.Value;
+        }
+        return layers;
+    }
+
+    /// <summary>
+    /// The layer row next to 有飞行 / 无飞行: each covenant the plan activates (and any other with layers) as "炎 46";
+    /// click one to type the right number. Hand-set values are marked and last until the game reads a new value.
+    /// </summary>
+    private void RefreshLayerRow()
+    {
+        LayerRow.Children.Clear();
+        LayerRow.ToolTip = _basisTip + "\n点回合或层数可以手动修正（游戏读到新的会覆盖）";
+        AddRoundChip();
+        var layers = CurrentLayers();
+        var shown = (_plan?.ActiveCovenants ?? []).Concat(layers.Where(kv => kv.Value > 0).Select(kv => kv.Key))
+            .Distinct().OrderByDescending(c => layers.GetValueOrDefault(c)).ThenBy(c => c, StringComparer.Ordinal).ToList();
+        if (shown.Count == 0)
+        {
+            LayerRow.Children.Add(Text("层数未读（战斗中读取顶部盟约栏）", 10.5, "TextSecondaryBrush"));
+            return;
+        }
+        foreach (var cov in shown)
+        {
+            bool fixedByHand = _layerFixes.ContainsKey(cov);
+            if (_editingLayer == cov)
+            {
+                var box = new TextBox
+                {
+                    Text = layers.TryGetValue(cov, out var cur) ? cur.ToString() : "", Width = 42, FontSize = 10.5, Padding = new Thickness(2, 0, 2, 0),
+                    Margin = new Thickness(0, 0, 4, 3), VerticalContentAlignment = VerticalAlignment.Center,
+                    Background = (Brush)FindResource("InputBackgroundBrush"), Foreground = (Brush)FindResource("TextPrimaryBrush"),
+                    BorderBrush = (Brush)FindResource("AccentSolidBrush"), CaretBrush = (Brush)FindResource("TextPrimaryBrush"),
+                };
+                var label = Text(cov + " ", 10.5, "TextPrimaryBrush", bold: true);
+                label.VerticalAlignment = VerticalAlignment.Center;
+                var pair = new StackPanel { Orientation = Orientation.Horizontal };
+                pair.Children.Add(label);
+                pair.Children.Add(box);
+                bool done = false;
+                void Commit()
+                {
+                    if (done) return;
+                    done = true;
+                    _editingLayer = null;
+                    var read = LayersProvider?.Invoke();
+                    int? readNow = read is not null && read.TryGetValue(cov, out var rv) ? rv : null;
+                    if (int.TryParse(box.Text.Trim(), out int value) && value >= 0) _layerFixes[cov] = (Math.Min(value, 9999), readNow);
+                    else if (box.Text.Trim().Length == 0) _layerFixes.Remove(cov);
+                    RefreshLayerRow();
+                    ScheduleReplan();
+                }
+                box.KeyDown += (_, e) =>
+                {
+                    if (e.Key == Key.Enter) Commit();
+                    else if (e.Key == Key.Escape) { done = true; _editingLayer = null; RefreshLayerRow(); }
+                };
+                box.LostKeyboardFocus += (_, _) => Commit();
+                LayerRow.Children.Add(pair);
+                Dispatcher.BeginInvoke(() => { box.Focus(); box.SelectAll(); }, System.Windows.Threading.DispatcherPriority.Input);
+                continue;
+            }
+            string value2 = layers.TryGetValue(cov, out var n) ? n.ToString() : "–";
+            var tb = new TextBlock { FontSize = 10.5, VerticalAlignment = VerticalAlignment.Center };
+            tb.Inlines.Add(new System.Windows.Documents.Run(cov + " ") { Foreground = (Brush)FindResource("TextSecondaryBrush") });
+            tb.Inlines.Add(new System.Windows.Documents.Run(value2)
+            {
+                FontWeight = FontWeights.Bold,
+                Foreground = (Brush)FindResource(fixedByHand ? "EliteBrush" : "TextPrimaryBrush"),
+            });
+            var chip = new Border
+            {
+                CornerRadius = new CornerRadius(3), Padding = new Thickness(5, 1, 5, 1), Margin = new Thickness(0, 0, 4, 3),
+                Background = (Brush)FindResource("SectionBackgroundBrush"), Cursor = Cursors.Hand, Child = tb,
+                ToolTip = fixedByHand ? $"{cov} 层数已手动改为 {value2}（点一下再改，清空恢复读取值）" : $"点一下手动修正{cov}的层数",
+            };
+            string c = cov;
+            chip.MouseLeftButtonUp += (_, e) => { e.Handled = true; _editingLayer = c; RefreshLayerRow(); };
+            LayerRow.Children.Add(chip);
+        }
+    }
+
+    /// <summary>The basis in a few words: 第 8 回合路线 · 本局 3 类敌人 · 叠层 ×2.5 · 层数未读.</summary>
+    private string ShortBasis(RoundRoutes? routes, int? round, IReadOnlyDictionary<string, int>? layers)
+    {
+        var parts = new List<string> { routes is not null && round is int r ? $"第 {r} 回合路线" : "默认路线" };
+        var streams = Streams(round ?? (Streams(AssumedRound) is { Count: > 0 } ? AssumedRound : null));
+        if (streams is { Count: > 0 })
+        {
+            var types = streams.Select(s => s.Type).Distinct().ToList();
+            parts.Add(types.SequenceEqual(["BOSS"]) ? "首领关"
+                : types.Count >= ASPAssistant.Core.Data.GarrisonSpawnStore.TypeNames.Count ? "9 类敌人平均" : $"本局 {types.Count} 类敌人");
+            if (round is null) parts.Add($"按第 {AssumedRound} 回合");
+        }
+        if (_plan is { } p) parts.Add($"叠层 ×{p.StackWeight:0.##}");
+        parts.Add(layers is { Count: > 0 } ? "层数已读" : "层数未读");
+        return string.Join(" · ", parts);
+    }
+
+    private IReadOnlyList<ASPAssistant.Core.Data.RoundStream>? Streams(int? round) =>
+        round is int r && StreamProvider is { } provider ? provider(r) : null;
 
     private async Task ReplanAsync()
     {
@@ -203,6 +503,13 @@ public partial class DeployView : UserControl
             return;
         }
         foreach (var key in _pins.Keys.Where(k => !pool.Any(c => c.Key == k)).ToList()) _pins.Remove(key);
+        _state.FieldPins.RemoveAll(k => !pool.Any(c => c.Key == k));
+        _state.BenchPins.RemoveAll(k => !pool.Any(c => c.Key == k));
+        foreach (var key in _state.Transforms.Keys.Where(k => !pool.Any(c => c.Key == k)).ToList()) _state.Transforms.Remove(key);
+        // One 转职 per operator (暴躁铁皮 up to five): older saves may hold more.
+        foreach (var (key, list) in _state.Transforms)
+            while (list.Count > (NameOf(key) == LineupEquipmentService.MechName ? 5 : 1)) list.RemoveAt(0);
+        _roundKey = RoundKey();
         var cts = _planCts = new CancellationTokenSource();
         var options = Options();
         SetStatus("正在计算站位…");
@@ -235,7 +542,8 @@ public partial class DeployView : UserControl
     private void Reevaluate()
     {
         if (_planner is null || CurrentMap is not { } map) return;
-        _plan = _planner.Evaluate(map, Candidates(), _working, Options());
+        // The same tougher / easier copy as the plan, so a dragged placement is judged on the same streams.
+        _plan = _planner.Evaluate(map, Candidates(), _working, Options() with { StreamFactor = _plan?.StreamFactor });
         RefreshAll();
         PublishPlan();
     }
@@ -272,6 +580,7 @@ public partial class DeployView : UserControl
         }
         MainPanel.Visibility = page == Page.Main ? Visibility.Visible : Visibility.Collapsed;
         PoolPanel.Visibility = page == Page.Pool ? Visibility.Visible : Visibility.Collapsed;
+        ShowRoundBasis();
         NoMapPanel.Visibility = page == Page.NoMap ? Visibility.Visible : Visibility.Collapsed;
         if (page == Page.Pool) { RefreshPool(); return; }
         if (page == Page.NoMap) { RefreshNoMap(); return; }
@@ -371,18 +680,21 @@ public partial class DeployView : UserControl
             Place(rect, CellX(map, cell.Col) + 1, T + cell.Row * S + 1);
         }
 
-        for (int k = 0; k < map.Routes.Count; k++)
+        // The lanes the plan defends: this round's real walking paths (thicker = more enemies), else the fixed routes.
+        var lanes = _plan is { Lanes.Count: > 0 } lp && lp.Map.Id == map.Id
+            ? lp.Lanes.Select(l => (Cells: l.Cells, Thickness: 1.0 + 2.4 * l.Share)).ToList()
+            : map.Routes.Select((r, k) => (Cells: r, Thickness: k == map.Routes.Count - 1 ? 2.6 : 1.4)).ToList();
+        foreach (var (cells, thickness) in lanes)
         {
-            var route = map.Routes[k];
             var pl = new Polyline
             {
                 Stroke = (Brush)FindResource("DangerBrush"),
-                StrokeThickness = k == map.Routes.Count - 1 ? 2.6 : 1.4,
+                StrokeThickness = thickness,
                 StrokeDashArray = [3, 2],
                 Opacity = 0.75,
                 IsHitTestVisible = false,
             };
-            foreach (var c in route) pl.Points.Add(new Point(CellX(map, c.Col) + S / 2, T + c.Row * S + S / 2));
+            foreach (var c in cells) pl.Points.Add(new Point(CellX(map, c.Col) + S / 2, T + c.Row * S + S / 2));
             BoardCanvas.Children.Add(pl);
         }
 
@@ -575,23 +887,396 @@ public partial class DeployView : UserControl
 
     private void RefreshBench()
     {
+        RefreshTransforms();
         BenchRow.Children.Clear();
         var bench = _plan?.Bench ?? [];
         BenchRow.Visibility = bench.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        var stripe = (Brush)FindResource("TextSecondaryBrush");
         foreach (var b in bench)
         {
-            var row = new DockPanel { Margin = new Thickness(0, 2, 6, 2) };
-            row.Children.Add(new Avatar { Width = 18, Height = 18, Text = b.Name, Source = _operators.GetValueOrDefault(NameOf(b.Name))?.IconPath, Small = true, Opacity = 0.9 });
-            row.Children.Add(Text(Display(b.Name), 11, "TextPrimaryBrush", margin: new Thickness(6, 0, 4, 0)));
-            if (b.Note.Length > 0)
-                row.Children.Add(new Border
-                {
-                    CornerRadius = new CornerRadius(3), Padding = new Thickness(4, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center,
-                    Background = (Brush)FindResource("EliteTintBrush"), ToolTip = b.Note,
-                    Child = new TextBlock { Text = ShortNote(b.Note), FontSize = 9, Foreground = (Brush)FindResource("EliteBrush"), TextTrimming = TextTrimming.CharacterEllipsis },
-                });
-            BenchRow.Children.Add(row);
+            string key = b.Name;
+            bool pinned = _state.BenchPins.Contains(key);
+            var card = OperatorCard(key, stripe, b.Note.Length > 0 ? ShortNote(b.Note) : "整备", stripe,
+                (b.Note.Length > 0 ? b.Note + "\n" : "") + "拖到上面的在场干员上和他交换", pinned,
+                pinned ? "已固定在整备区，点一下取消" : "固定在整备区（不会上场）",
+                () => ToggleBenchPin(key), onBench: true);
+            BenchRow.Children.Add(card);
         }
+    }
+
+    // ── Field / bench cards, pins and swapping ─────────────────────────────
+
+    private IReadOnlyList<string> TransformsOf(string key) =>
+        _state.Transforms.TryGetValue(key, out var t) ? t : [];
+
+    /// <summary>
+    /// Gives <paramref name="key"/> a (new) 转职 into <paramref name="covenant"/> and replans. One 转职 per operator: a new
+    /// one replaces the old (暴躁铁皮 carries up to five). Any number of operators can hold the same 转职.
+    /// </summary>
+    private void AddTransform(string key, string covenant)
+    {
+        if (!_state.Transforms.TryGetValue(key, out var list)) _state.Transforms[key] = list = [];
+        if (list.Contains(covenant)) return;
+        int capacity = NameOf(key) == LineupEquipmentService.MechName ? 5 : 1;
+        while (list.Count >= capacity) list.RemoveAt(0);
+        list.Add(covenant);
+        SaveState();
+        _ = ReplanAsync();
+    }
+
+    /// <summary>Takes a 转职 off (the item sold with or taken from its holder) and replans.</summary>
+    private void RemoveTransform(string key, string covenant)
+    {
+        if (!_state.Transforms.TryGetValue(key, out var list) || !list.Remove(covenant)) return;
+        if (list.Count == 0) _state.Transforms.Remove(key);
+        SaveState();
+        _ = ReplanAsync();
+    }
+
+    /// <summary>
+    /// The lineup's own 转职 (a tracked operator carrying 变形同构体 + a 转职 item) that an owned operator does not hold
+    /// yet: (operator key, covenant).
+    /// </summary>
+    private List<(string Key, string Covenant)> LineupTransforms()
+    {
+        var list = new List<(string, string)>();
+        foreach (var e in _tracking?.TrackedOperators ?? [])
+        {
+            if (!e.Equipments.Contains(LineupEquipmentService.Shapeshifter) || !_state.IsOwned(e.Name)) continue;
+            foreach (var item in e.Equipments.Where(JobChangeCovenants.ContainsKey).Distinct())
+            {
+                string cov = JobChangeCovenants[item];
+                if (!TransformsOf(e.Name).Contains(cov)) list.Add((e.Name, cov));
+            }
+        }
+        return list;
+    }
+
+    /// <summary>A small 转职 tag (the cards in the 转职 row and the ones held on operator cards).</summary>
+    private Border TransformTag(string text, string tip) => new()
+    {
+        CornerRadius = new CornerRadius(3),
+        Background = (Brush)FindResource("EliteTintBrush"),
+        BorderBrush = (Brush)FindResource("EliteBrush"), BorderThickness = new Thickness(1),
+        Padding = new Thickness(4, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center, Cursor = Cursors.Hand, ToolTip = tip,
+        Child = new TextBlock { Text = text, FontSize = 9, Foreground = (Brush)FindResource("EliteBrush") },
+    };
+
+    /// <summary>
+    /// The 转职 row: small cards (炎转职, 奥术转职…) for the covenants worth a 转职 now: the plan's covenants one operator
+    /// short, and the lineup's own 转职. Drag one onto an operator card to give it that 转职 (a new one, bought for it).
+    /// </summary>
+    private void RefreshTransforms()
+    {
+        TransformRow.Children.Clear();
+        var why = new Dictionary<string, List<string>>();
+        void Want(string cov, string reason)
+        {
+            if (!why.TryGetValue(cov, out var list)) why[cov] = list = [];
+            if (!list.Contains(reason)) list.Add(reason);
+        }
+        foreach (var h in _plan?.TransformHints ?? [])
+            Want(h.Covenant, $"现在 {h.Have}/{h.Need}，差 1 人激活（建议挂在 {Display(h.Holder)} 身上）");
+        foreach (var (key, cov) in LineupTransforms())
+            Want(cov, $"追踪的阵容里 {Display(key)} 挂了{cov}转职");
+        foreach (var (cov, reasons) in why)
+        {
+            var tag = TransformTag(cov + "转职", string.Join("\n", reasons) + "\n拖到干员身上挂上（相当于给他新买一个；每人一个，会替换原来的，暴躁铁皮除外）");
+            tag.Margin = new Thickness(0, 0, 5, 5);
+            tag.Padding = new Thickness(8, 3, 8, 3);
+            ((TextBlock)tag.Child).FontSize = 11;
+            ((TextBlock)tag.Child).FontWeight = FontWeights.Bold;
+            Point? start = null;
+            tag.PreviewMouseLeftButtonDown += (_, e) => start = e.GetPosition(this);
+            tag.PreviewMouseMove += (_, e) =>
+            {
+                if (e.LeftButton != MouseButtonState.Pressed || start is not { } s0) return;
+                var now = e.GetPosition(this);
+                if (Math.Abs(now.X - s0.X) < 5 && Math.Abs(now.Y - s0.Y) < 5) return;
+                start = null;
+                DragDrop.DoDragDrop(tag, new DataObject(DragFormat, "transform:" + cov), DragDropEffects.Copy);
+            };
+            TransformRow.Children.Add(tag);
+        }
+        TransformPanel.Visibility = TransformRow.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private const string DragFormat = "aspa-deploy-key";
+    private Point? _cardDragStart;
+
+    /// <summary>
+    /// One operator card (the on-field list and the 整备区 use the same one): avatar, name, covenants, a tag, and a pin
+    /// that keeps the operator where it is listed. Cards can be dragged: a 整备区 card onto an on-field one swaps them.
+    /// </summary>
+    private Border OperatorCard(string key, Brush stripe, string tag, Brush tagBrush, string tooltip, bool pinned,
+        string pinTip, Action togglePin, bool onBench, string? stats = null)
+    {
+        string name = NameOf(key);
+        var card = new Border
+        {
+            Background = (Brush)FindResource("CardBackgroundBrush"),
+            BorderBrush = (Brush)FindResource("LineBrush"),
+            BorderThickness = new Thickness(1),
+            CornerRadius = (CornerRadius)FindResource("RowCornerRadius"),
+            Margin = new Thickness(0, 0, 4, 4),
+            Height = 40,
+            Cursor = Cursors.Hand,
+            ClipToBounds = true,
+            AllowDrop = true,
+            Tag = key,
+            Opacity = onBench ? 0.92 : 1,
+        };
+        // Hover: the operator's detail card, with this round's place, fight shares and reasons on top (built on open).
+        var tip = new ToolTip
+        {
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Left,
+            Background = Brushes.Transparent, BorderThickness = new Thickness(0), Padding = new Thickness(0),
+            HasDropShadow = false, MaxHeight = 700,
+        };
+        card.ToolTip = tip;
+        ToolTipService.SetInitialShowDelay(card, 300);
+        ToolTipService.SetBetweenShowDelay(card, 0);
+        ToolTipService.SetShowDuration(card, 60000);
+        HoverToolTipBehavior.Attach(card, tip);
+        card.ToolTipOpening += (_, _) => tip.Content = DetailTip(key, tooltip, onBench);
+        tip.Closed += (_, _) => tip.Content = null;
+        var grid = new Grid();
+        grid.Children.Add(new Rectangle { Width = 3, Fill = stripe, HorizontalAlignment = HorizontalAlignment.Left });
+        var dock = new DockPanel { Margin = new Thickness(9, 0, 4, 0) };
+        var opData = _operators.GetValueOrDefault(name);
+        dock.Children.Add(new Avatar { Width = 24, Height = 24, Text = name, Source = opData?.IconPath, Small = true, VerticalAlignment = VerticalAlignment.Center });
+        // The pin: filled when the operator is kept where it is listed.
+        var pinDot = new Ellipse
+        {
+            Width = 9, Height = 9, StrokeThickness = 1.4,
+            Fill = pinned ? PinBrush : Brushes.Transparent,
+            Stroke = pinned ? PinBrush : (Brush)FindResource("TextSecondaryBrush"),
+            Opacity = pinned ? 1 : 0.55,
+        };
+        var pinButton = new Border
+        {
+            Width = 20, Height = 28, Background = Brushes.Transparent, Cursor = Cursors.Hand, ToolTip = pinTip,
+            VerticalAlignment = VerticalAlignment.Center, Child = pinDot,
+        };
+        pinButton.MouseLeftButtonDown += (_, e) => e.Handled = true;
+        pinButton.MouseLeftButtonUp += (_, e) => { e.Handled = true; togglePin(); };
+        DockPanel.SetDock(pinButton, Dock.Right);
+        dock.Children.Add(pinButton);
+        var tagBox = new Border
+        {
+            Background = Tint(tagBrush, 0.14), CornerRadius = new CornerRadius(3), Padding = new Thickness(4, 0, 4, 0),
+            VerticalAlignment = VerticalAlignment.Center, MaxWidth = 64,
+            Child = new TextBlock { Text = tag, FontSize = 9, Foreground = tagBrush, TextTrimming = TextTrimming.CharacterEllipsis },
+        };
+        DockPanel.SetDock(tagBox, Dock.Right);
+        dock.Children.Add(tagBox);
+        var body = new StackPanel { Margin = new Thickness(6, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center };
+        var nameRow = new StackPanel { Orientation = Orientation.Horizontal };
+        nameRow.Children.Add(Text(Display(key) + (_state.IsElite(name) ? " · 精" : ""), 11, "TextPrimaryBrush", bold: true));
+        foreach (var cov in TransformsOf(key))
+        {
+            string c = cov;
+            var held = TransformTag(c + "转职 ×", "点一下取下这个转职（卖掉或摘掉）");
+            held.Margin = new Thickness(4, 0, 0, 0);
+            held.MouseLeftButtonDown += (_, e) => e.Handled = true;
+            held.MouseLeftButtonUp += (_, e) => { e.Handled = true; RemoveTransform(key, c); };
+            nameRow.Children.Add(held);
+        }
+        body.Children.Add(nameRow);
+        if (opData is not null)
+            body.Children.Add(Text(string.Join(" · ", opData.CoreCovenants.Concat(opData.AdditionalCovenants)), 9.5, "TextSecondaryBrush"));
+        dock.Children.Add(body);
+        grid.Children.Add(dock);
+        card.Child = grid;
+
+        // Dragging: start once the mouse has moved a few pixels with the button down.
+        card.PreviewMouseLeftButtonDown += (_, e) => _cardDragStart = e.GetPosition(this);
+        card.PreviewMouseMove += (_, e) =>
+        {
+            if (e.LeftButton != MouseButtonState.Pressed || _cardDragStart is not { } start) return;
+            var now = e.GetPosition(this);
+            if (Math.Abs(now.X - start.X) < 6 && Math.Abs(now.Y - start.Y) < 6) return;
+            _cardDragStart = null;
+            card.Opacity = 0.5;
+            DragDrop.DoDragDrop(card, new DataObject(DragFormat, (onBench ? "bench:" : "field:") + key), DragDropEffects.Move);
+            card.Opacity = onBench ? 0.92 : 1;
+        };
+        card.MouseLeftButtonUp += (_, _) => _cardDragStart = null;
+        // A 转职 card dropped on any operator card gives it that 转职; a 整备区 card dropped on an on-field one swaps them.
+        bool Accepts(DragEventArgs e) => DraggedFrom(e) is ("transform", _) || !onBench && DraggedFrom(e) is ("bench", _);
+        card.DragEnter += (_, e) => { if (Accepts(e)) card.BorderBrush = PinBrush; };
+        card.DragLeave += (_, _) => card.BorderBrush = (Brush)FindResource("LineBrush");
+        card.DragOver += (_, e) => { e.Effects = Accepts(e) ? DragDropEffects.Copy | DragDropEffects.Move : DragDropEffects.None; e.Handled = true; };
+        card.Drop += (_, e) =>
+        {
+            card.BorderBrush = (Brush)FindResource("LineBrush");
+            switch (DraggedFrom(e))
+            {
+                case ("transform", { } cov): e.Handled = true; AddTransform(key, cov); break;
+                case ("bench", { } up) when !onBench: e.Handled = true; Swap(up, key); break;
+            }
+        };
+        return card;
+    }
+
+    /// <summary>
+    /// The hover card of an operator: this round (where it stands, its share of the fight's damage dealt / taken /
+    /// healing as bars, its 转职, the reasons for its spot), then the operator's own detail card.
+    /// </summary>
+    private Border DetailTip(string key, string reasons, bool onBench)
+    {
+        var stack = new StackPanel();
+        var round = new StackPanel();
+        var placed = _plan?.Find(key);
+        string where = placed is not null ? $"在场 · {placed.CellCode} 朝{PlacementCells.FacingText(placed.Facing)}" : "整备区";
+        var title = Text($"{Display(key)} · {where}", 12, "TextPrimaryBrush", bold: true);
+        title.Margin = new Thickness(0, 0, 0, 4);
+        round.Children.Add(title);
+        if (!onBench && _plan?.Shares.TryGetValue(key, out var share) == true && share is not null)
+        {
+            void Bar(string label, double value, string brush)
+            {
+                var row = new DockPanel { Margin = new Thickness(0, 1, 0, 1) };
+                row.Children.Add(Text(label, 10.5, "TextSecondaryBrush", width: 34));
+                var pct = Text($"{value:P0}", 10.5, "TextPrimaryBrush", bold: true, width: 40);
+                pct.TextAlignment = TextAlignment.Right;
+                DockPanel.SetDock(pct, Dock.Right);
+                row.Children.Add(pct);
+                var track = new Grid { Height = 6, VerticalAlignment = VerticalAlignment.Center, Width = 180, HorizontalAlignment = HorizontalAlignment.Left };
+                track.Children.Add(new Border { Background = (Brush)FindResource("SectionBackgroundBrush"), CornerRadius = new CornerRadius(3) });
+                track.Children.Add(new Border
+                {
+                    Background = (Brush)FindResource(brush), CornerRadius = new CornerRadius(3),
+                    Width = Math.Max(0, Math.Min(1, value)) * 180, HorizontalAlignment = HorizontalAlignment.Left,
+                });
+                row.Children.Add(track);
+                round.Children.Add(row);
+            }
+            Bar("输出", share.Damage, "DangerBrush");
+            Bar("承伤", share.Taken, "AccentBrush");
+            Bar("治疗", share.Healing, "SuccessTextBrush");
+            var hint = Text("占全队的比例（模拟战斗，按本回合可能的敌人加权）", 9.5, "TextSecondaryBrush");
+            hint.Margin = new Thickness(0, 2, 0, 0);
+            round.Children.Add(hint);
+        }
+        if (TransformsOf(key) is { Count: > 0 } held)
+        {
+            var t = Text("转职：" + string.Join("、", held), 10.5, "EliteBrush", bold: true);
+            t.Margin = new Thickness(0, 4, 0, 0);
+            round.Children.Add(t);
+        }
+        foreach (var line in reasons.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var r = Text("· " + line, 10.5, "TextPrimaryBrush");
+            r.TextWrapping = TextWrapping.Wrap;
+            r.MaxWidth = 330;
+            r.Margin = new Thickness(0, 2, 0, 0);
+            round.Children.Add(r);
+        }
+        stack.Children.Add(new Border
+        {
+            Background = (Brush)FindResource("CardBackgroundBrush"), CornerRadius = (CornerRadius)FindResource("RowCornerRadius"),
+            BorderBrush = (Brush)FindResource("LineBrush"), BorderThickness = new Thickness(1),
+            Padding = new Thickness(9, 7, 9, 7), Margin = new Thickness(0, 0, 0, 6), Child = round,
+        });
+        if (_operators.GetValueOrDefault(NameOf(key)) is { } op)
+            stack.Children.Add(new ContentControl { Content = op, ContentTemplate = (DataTemplate)FindResource("OperatorDetailsTemplate") });
+        return new Border
+        {
+            Background = (Brush)FindResource("PanelBackgroundBrush"), CornerRadius = (CornerRadius)FindResource("CardCornerRadius"),
+            BorderBrush = (Brush)FindResource("BorderBrush"), BorderThickness = new Thickness(1), Padding = new Thickness(6),
+            Child = new ScrollViewer { VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Content = stack },
+        };
+    }
+
+    /// <summary>"输出 23% · 承伤 40% · 治疗 60%" from the simulated fight (parts under 1 % left out; null: no fight).</summary>
+    private string? ShareText(string key)
+    {
+        if (_plan?.Shares.TryGetValue(key, out var s) != true || s is null) return null;
+        var parts = new List<string> { $"输出 {s.Damage:P0}" };
+        if (s.Taken >= 0.01) parts.Add($"承伤 {s.Taken:P0}");
+        if (s.Healing >= 0.01) parts.Add($"治疗 {s.Healing:P0}");
+        return string.Join(" · ", parts);
+    }
+
+    private static (string From, string Key)? DraggedFrom(DragEventArgs e) =>
+        e.Data.GetData(DragFormat) is string s && s.IndexOf(':') is int i and > 0 ? (s[..i], s[(i + 1)..]) : null;
+
+    /// <summary>
+    /// A 整备区 operator dragged onto an on-field one: it goes on (kept on the field) and the other comes off (kept in
+    /// the 整备区), then the plan is recomputed around them.
+    /// </summary>
+    private void Swap(string up, string down)
+    {
+        _pins.Remove(down);
+        _state.FieldPins.Remove(down);
+        _state.BenchPins.Remove(up);
+        if (!_state.FieldPins.Contains(up)) _state.FieldPins.Add(up);
+        if (!_state.BenchPins.Contains(down)) _state.BenchPins.Add(down);
+        SaveState();
+        _ = ReplanAsync();
+    }
+
+    /// <summary>
+    /// Keeps an on-field operator on the field, or lets it go again (its cell pin included); letting go replans, since
+    /// the plan may now do better without it.
+    /// </summary>
+    private void ToggleFieldPin(string key)
+    {
+        bool released = _state.FieldPins.Remove(key) | _pins.Remove(key);
+        if (!released)
+        {
+            _state.FieldPins.Add(key);
+            _state.BenchPins.Remove(key);
+        }
+        SaveState();
+        if (released) _ = ReplanAsync(); else RefreshAll();
+    }
+
+    /// <summary>Keeps a 整备区 operator off the field, or lets the plan use it again (which replans).</summary>
+    private void ToggleBenchPin(string key)
+    {
+        bool released = _state.BenchPins.Remove(key);
+        if (!released)
+        {
+            _state.BenchPins.Add(key);
+            _state.FieldPins.Remove(key);
+        }
+        SaveState();
+        if (released) _ = ReplanAsync(); else RefreshAll();
+    }
+
+    private void OnFieldAreaDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = DraggedFrom(e) is ("bench", _) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    /// <summary>A 整备区 operator dropped on the on-field list (not on a card): it goes on, the plan picks who comes off.</summary>
+    private void OnFieldAreaDrop(object sender, DragEventArgs e)
+    {
+        if (DraggedFrom(e) is not ("bench", { } up)) return;
+        _state.BenchPins.Remove(up);
+        if (!_state.FieldPins.Contains(up)) _state.FieldPins.Add(up);
+        SaveState();
+        _ = ReplanAsync();
+    }
+
+    private void OnBenchAreaDragOver(object sender, DragEventArgs e)
+    {
+        e.Effects = DraggedFrom(e) is ("field", _) ? DragDropEffects.Move : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    /// <summary>An on-field operator dropped on the 整备区: it comes off (kept there), the plan picks who goes on.</summary>
+    private void OnBenchAreaDrop(object sender, DragEventArgs e)
+    {
+        if (DraggedFrom(e) is not ("field", { } down)) return;
+        _pins.Remove(down);
+        _state.FieldPins.Remove(down);
+        if (!_state.BenchPins.Contains(down)) _state.BenchPins.Add(down);
+        SaveState();
+        _ = ReplanAsync();
     }
 
     private static string ShortNote(string note) =>
@@ -611,7 +1296,9 @@ public partial class DeployView : UserControl
         OperatorGrid.Children.Clear();
         bool show = _plan is not null && _selected is null;
         PlanPanel.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-        ChecksBorder.Visibility = _plan is null ? Visibility.Collapsed : Visibility.Visible;
+        // Under the board only the stacking forecast; the rest of the checks stay in the plan (cards, tooltips).
+        var shownChecks = _plan?.Checks.Where(c => c.Detail?.StartsWith("预计每回合叠层") == true).ToList() ?? [];
+        ChecksBorder.Visibility = shownChecks.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         BenchCard.Visibility = _selected is null ? Visibility.Visible : Visibility.Collapsed;
         if (_plan is null)
         {
@@ -619,12 +1306,12 @@ public partial class DeployView : UserControl
                 SetStatus(Candidates().Count == 0 ? "干员池里还没有已拥有的干员：点下方“干员池 ›”，把手上的干员点亮。" : null);
             return;
         }
-        foreach (var c in _plan.Checks)
+        foreach (var c in shownChecks)
         {
             // Hard requirements: ✓ / ✗. Hints (e.g. 蓝箭头): neutral, never red.
             (string sign, string fg, string? bg, string? border) = c.IsHint ? ("i", "TextSecondaryBrush", (string?)null, (string?)"BorderBrush")
                 : c.Ok ? ("✓", "SuccessTextBrush", "SectionBackgroundBrush", null) : ("✗", "DangerBrush", "DangerTintBrush", null);
-            var tb = new TextBlock { FontSize = 10, Foreground = (Brush)FindResource(c.Ok || c.IsHint ? "TextSecondaryBrush" : "DangerBrush") };
+            var tb = new TextBlock { FontSize = 10, TextWrapping = TextWrapping.Wrap, Foreground = (Brush)FindResource(c.Ok || c.IsHint ? "TextSecondaryBrush" : "DangerBrush") };
             tb.Inlines.Add(new System.Windows.Documents.Run(sign + " ") { FontWeight = FontWeights.Black, Foreground = (Brush)FindResource(fg) });
             tb.Inlines.Add(new System.Windows.Documents.Run(c.Text));
             ChecksRow.Children.Add(new Border
@@ -633,7 +1320,7 @@ public partial class DeployView : UserControl
                 Background = bg is null ? Brushes.Transparent : (Brush)FindResource(bg),
                 BorderBrush = border is null ? Brushes.Transparent : (Brush)FindResource(border), BorderThickness = new Thickness(border is null ? 0 : 1),
                 Child = tb,
-                ToolTip = c.IsHint ? "提示，不是硬要求" : null,
+                ToolTip = c.Detail ?? (c.IsHint ? "提示，不是硬要求" : null),
             });
         }
         if (!show) return;
@@ -641,45 +1328,12 @@ public partial class DeployView : UserControl
         foreach (var p in _plan.Placed)
         {
             var brush = RoleBrush(p.Role);
-            var card = new Border
-            {
-                Background = (Brush)FindResource("CardBackgroundBrush"),
-                BorderBrush = (Brush)FindResource("LineBrush"),
-                BorderThickness = new Thickness(1),
-                CornerRadius = (CornerRadius)FindResource("RowCornerRadius"),
-                Margin = new Thickness(0, 0, 4, 4),
-                Height = 40,
-                Cursor = Cursors.Hand,
-                ClipToBounds = true,
-                ToolTip = string.Join("\n", p.Notes.DefaultIfEmpty("点开看站位理由")),
-            };
-            var grid = new Grid();
-            grid.Children.Add(new Rectangle { Width = 3, Fill = brush, HorizontalAlignment = HorizontalAlignment.Left });
-            var dock = new DockPanel { Margin = new Thickness(9, 0, 6, 0) };
-            var opData = _operators.GetValueOrDefault(p.Name);
-            dock.Children.Add(new Avatar { Width = 24, Height = 24, Text = p.Name, Source = opData?.IconPath, Small = true, VerticalAlignment = VerticalAlignment.Center });
-            var tag = new Border
-            {
-                Background = Tint(brush, 0.14), CornerRadius = new CornerRadius(3), Padding = new Thickness(4, 0, 4, 0),
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = PlacementRoleText.Of(p.Role), FontSize = 9, Foreground = brush },
-            };
-            DockPanel.SetDock(tag, Dock.Right);
-            dock.Children.Add(tag);
-            if (_pins.ContainsKey(p.Key))
-            {
-                var pin = new Ellipse { Width = 6, Height = 6, Fill = PinBrush, Margin = new Thickness(0, 0, 5, 0), VerticalAlignment = VerticalAlignment.Center, ToolTip = "已固定" };
-                DockPanel.SetDock(pin, Dock.Right);
-                dock.Children.Add(pin);
-            }
-            var body = new StackPanel { Margin = new Thickness(6, 0, 4, 0), VerticalAlignment = VerticalAlignment.Center };
-            body.Children.Add(Text(Display(p.Key) + (_state.IsElite(p.Name) ? " · 精" : ""), 11, "TextPrimaryBrush", bold: true));
-            if (opData is not null)
-                body.Children.Add(Text(string.Join(" · ", opData.CoreCovenants.Concat(opData.AdditionalCovenants)), 9.5, "TextSecondaryBrush"));
-            dock.Children.Add(body);
-            grid.Children.Add(dock);
-            card.Child = grid;
             string key = p.Key;
+            bool cellPinned = _pins.ContainsKey(key), pinned = cellPinned || _state.FieldPins.Contains(key);
+            var card = OperatorCard(key, brush, PlacementRoleText.Of(p.Role), brush,
+                string.Join("\n", p.Notes.DefaultIfEmpty("点开看站位理由")), pinned,
+                cellPinned ? "已固定位置，点一下取消" : pinned ? "已固定在场，点一下取消" : "固定在场（位置仍由规划决定）",
+                () => ToggleFieldPin(key), onBench: false, stats: ShareText(key));
             card.MouseLeftButtonUp += (_, _) => Select(key);
             OperatorGrid.Children.Add(card);
             if (animateCards) RiseIn(card, OperatorGrid.Children.Count);
@@ -797,6 +1451,21 @@ public partial class DeployView : UserControl
         if (_pins.ContainsKey(sel) && !moved) B("取消固定", (_, _) => { _pins.Remove(sel); _ = ReplanAsync(); });
         else B("固定在这里", (_, _) => PinSelected(), accent: true);
         B("换朝向", (_, _) => RotateSelected());
+        var transformButton = B("挂转职 ▾", (_, _) => { });
+        transformButton.ToolTip = "给这名干员挂一个新的转职（变形同构体 + 转职装备），会替换他原来的转职（暴躁铁皮最多 5 个）；转职跟着他上下场";
+        transformButton.Click += (_, _) =>
+        {
+            var have = _operators.GetValueOrDefault(NameOf(sel)) is { } od ? od.CoreCovenants.Concat(od.AdditionalCovenants).Concat(TransformsOf(sel)).ToHashSet() : [];
+            var menu = new ContextMenu { PlacementTarget = transformButton };
+            foreach (var cov in JobChangeCovenants.Values.Distinct().Where(c => !have.Contains(c)).OrderBy(c => c, StringComparer.Ordinal))
+            {
+                var item = new MenuItem { Header = cov };
+                string c = cov;
+                item.Click += (_, _) => AddTransform(sel, c);
+                menu.Items.Add(item);
+            }
+            menu.IsOpen = menu.Items.Count > 0;
+        };
         if (_dirty) B("撤销", (_, _) => Undo());
         B("返回", (_, _) => Select(null));
         DetailBody.Children.Add(buttons);
@@ -933,6 +1602,15 @@ public partial class DeployView : UserControl
     {
         if (_suppressSelection || !_ready || ModeList.SelectedIndex < 0) return;
         _state.Mode = (PlacementMode)ModeList.SelectedIndex;
+        SaveState();
+        ScheduleReplan();
+    }
+
+    private void OnFlyingChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_suppressSelection || !_ready || FlyingList.SelectedIndex < 0) return;
+        _state.ExpectFlying = FlyingList.SelectedIndex == 0;
+        _flyingOverride = _state.ExpectFlying;
         SaveState();
         ScheduleReplan();
     }
@@ -1320,6 +1998,9 @@ public partial class DeployView : UserControl
     {
         _state.ClearPool();
         _pins.Clear();
+        _state.FieldPins.Clear();
+        _state.BenchPins.Clear();
+        _state.Transforms.Clear();
         SaveState();
         RefreshPool();
         ScheduleReplan();

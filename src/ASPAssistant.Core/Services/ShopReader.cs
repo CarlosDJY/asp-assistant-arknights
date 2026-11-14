@@ -159,9 +159,11 @@ public sealed class ShopReader(IOcrEngine engine, IReadOnlyList<string> catalogN
                 - (t.Box.Y + t.Box.H / 2.0 < 170 ? 60 : 200), t.Box.W, t.Box.H) } : t).ToList();
         foreach (var item in MatchNames(mapped, width, height, canvasTop, _names))
         {
+            // The two OCR passes can leave a few pixels between boxes for the same label.
             if (items.Any(i => i.Name == item.Name
                 && Math.Max(i.OcrRegion.X, item.OcrRegion.X)
-                    < Math.Min(i.OcrRegion.X + i.OcrRegion.Width, item.OcrRegion.X + item.OcrRegion.Width)))
+                    < Math.Min(i.OcrRegion.X + i.OcrRegion.Width, item.OcrRegion.X + item.OcrRegion.Width)
+                        + height * .005 / width))
                 continue;
             items.Add(item);
         }

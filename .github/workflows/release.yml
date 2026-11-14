@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   build:
@@ -18,8 +19,19 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
+      - name: Look up verified tests
+        id: reuse
+        continue-on-error: true
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $env:GITHUB_SHA = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve release commit' }
+          ./.github/scripts/Resolve-ReleaseTestReuse.ps1
       - name: Run tests
-        run: dotnet test src/ASPAssistant.Tests/ASPAssistant.Tests.csproj -c Release
+        if: steps.reuse.outcome != 'success' || steps.reuse.outputs.reuse != 'true'
+        run: dotnet test src/ASPAssistant.Tests/ASPAssistant.Tests.csproj -c Release --filter "Category!=LocalScreenshot"
       - name: Extract version
         shell: pwsh
         run: |
@@ -63,8 +75,8 @@ jobs:
             }
           }
           Compress-Archive -Path publish/win-x64/* `
-            -DestinationPath "publish/ASPAssistant-${{ github.ref_name }}-win-x64.zip"
-          $zip = "publish/ASPAssistant-${{ github.ref_name }}-win-x64.zip"
+            -DestinationPath "publish/hongxue-stronghold-companion-${{ github.ref_name }}-win-x64.zip"
+          $zip = "publish/hongxue-stronghold-companion-${{ github.ref_name }}-win-x64.zip"
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           "$hash  $([IO.Path]::GetFileName($zip))" | Set-Content -LiteralPath "publish/SHA256SUMS.txt" -Encoding ascii
       - name: Verify package
@@ -77,7 +89,7 @@ jobs:
 
           $tag = $env:PACKAGE_TAG
           $expected = $tag.TrimStart('v')
-          $zip = "publish/ASPAssistant-$tag-win-x64.zip"
+          $zip = "publish/hongxue-stronghold-companion-$tag-win-x64.zip"
           $zipInfo = Get-Item -LiteralPath $zip
           $hash = (Get-FileHash -LiteralPath $zip -Algorithm SHA256).Hash.ToLowerInvariant()
           $checksum = Get-Content -LiteralPath 'publish/SHA256SUMS.txt' -Raw
@@ -172,10 +184,10 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ASP Assistant · Arknights ${{ github.ref_name }}
+          name: 鸿雪·卫戍助手 ${{ github.ref_name }}
           body_path: RELEASE_NOTES.md
           files: |
-            publish/ASPAssistant-${{ github.ref_name }}-win-x64.zip
+            publish/hongxue-stronghold-companion-${{ github.ref_name }}-win-x64.zip
             publish/SHA256SUMS.txt
             publish/PACKAGE-MANIFEST.txt
           fail_on_unmatched_files: true

@@ -167,6 +167,29 @@ public class SettingsManager
         }
     }
 
+    public async Task<bool> LoadAutomaticGameThemeAsync()
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<bool>(await File.ReadAllTextAsync(Path.Combine(_settingsDir, "game-theme-auto.json")));
+        }
+        catch (IOException ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            return false;
+        }
+        catch (JsonException)
+        {
+            AppLogger.Warn("Settings", "模式主题自动识别配置无法解析，按关闭处理");
+            return false;
+        }
+    }
+
+    public async Task SaveAutomaticGameThemeAsync(bool automatic)
+    {
+        Directory.CreateDirectory(_settingsDir);
+        await File.WriteAllTextAsync(Path.Combine(_settingsDir, "game-theme-auto.json"), JsonSerializer.Serialize(automatic));
+    }
+
     public async Task SaveGameShopThemeAsync(GameShopTheme theme)
     {
         Directory.CreateDirectory(_settingsDir);
@@ -234,6 +257,22 @@ public class SettingsManager
     {
         Directory.CreateDirectory(_settingsDir);
         await File.WriteAllTextAsync(Path.Combine(_settingsDir, "board-overlay.json"), JsonSerializer.Serialize(enabled));
+    }
+
+    /// <summary>Opacity of what is drawn on the game's board (routes, placements): 0.1–1, default 1.</summary>
+    public async Task<double> LoadBoardOverlayOpacityAsync()
+    {
+        var path = Path.Combine(_settingsDir, "board-overlay-opacity.json");
+        if (!File.Exists(path)) return 1.0;
+        try { return Math.Clamp(JsonSerializer.Deserialize<double>(await File.ReadAllTextAsync(path)), 0.1, 1.0); }
+        catch (JsonException) { return 1.0; }
+    }
+
+    public async Task SaveBoardOverlayOpacityAsync(double opacity)
+    {
+        Directory.CreateDirectory(_settingsDir);
+        await File.WriteAllTextAsync(Path.Combine(_settingsDir, "board-overlay-opacity.json"),
+            JsonSerializer.Serialize(Math.Round(Math.Clamp(opacity, 0.1, 1.0), 2)));
     }
 
     public async Task<DeployPoolState> LoadDeployPoolAsync()

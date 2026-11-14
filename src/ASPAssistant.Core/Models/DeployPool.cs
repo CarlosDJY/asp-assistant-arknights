@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Regulation on 2026-11-14; see NOTICE.
 using System.Text.Json.Serialization;
 
 namespace ASPAssistant.Core.Models;
@@ -16,10 +17,20 @@ public sealed class DeployPoolState
     [JsonPropertyName("extra")] public List<string> Extra { get; set; } = [];
     [JsonPropertyName("fieldCount")] public int FieldCount { get; set; } = 8;
     [JsonPropertyName("mode")] public PlacementMode Mode { get; set; } = PlacementMode.Balanced;
+    /// <summary>Plan for flying enemies this round (the player switches it off for rounds without them).</summary>
+    [JsonPropertyName("expectFlying")] public bool ExpectFlying { get; set; } = true;
     /// <summary>Map picked by hand (null = follow recognition).</summary>
     [JsonPropertyName("manualMap")] public string? ManualMap { get; set; }
     /// <summary>Draw the plan on the game window (off until the player turns it on).</summary>
     [JsonPropertyName("showInGame")] public bool ShowInGame { get; set; }
+    /// <summary>Operators (placement keys) kept on the field / in the 整备区 by the player, whatever the plan prefers.</summary>
+    [JsonPropertyName("fieldPins")] public List<string> FieldPins { get; set; } = [];
+    [JsonPropertyName("benchPins")] public List<string> BenchPins { get; set; } = [];
+    /// <summary>
+    /// 转职 held, by operator key: the covenants it carries through 变形同构体 + a 转职 item. A 转职 stays with its
+    /// holder (benched with it, gone when it is sold); giving another operator one means a new 转职.
+    /// </summary>
+    [JsonPropertyName("transforms")] public Dictionary<string, List<string>> Transforms { get; set; } = [];
 
     public bool IsOwned(string name) => Owned.Contains(name);
     public bool IsElite(string name) => Elite.Contains(name);
@@ -72,8 +83,8 @@ public sealed record DeployPoolGroup(DeployPoolGroupKind Kind, string Title, str
 public static class DeployPoolBuilder
 {
     /// <summary>
-    /// 最终 / 过渡 come from the tracking; 扩展池 = untracked operators sharing a covenant with the 大成 operators
-    /// (so the player rarely needs to search); 其他 = added by hand.
+    /// 最终 / 过渡 come from the tracking; 扩展池 = every other operator (the ones sharing covenants with the 大成
+    /// operators first within each tier), so the player never needs to search; 其他 = added by hand.
     /// </summary>
     public static IReadOnlyList<DeployPoolGroup> Build(IEnumerable<TrackingEntry> tracked,
         IReadOnlyDictionary<string, Operator> operators, DeployPoolState state)
@@ -97,8 +108,7 @@ public static class DeployPoolBuilder
             .SelectMany(o => o!.CoreCovenants.Concat(o.AdditionalCovenants)).ToHashSet();
         var extra = state.Extra.Where(n => !trackedNames.Contains(n)).ToHashSet();
         var extension = operators.Values
-            .Where(o => !trackedNames.Contains(o.Name) && !extra.Contains(o.Name)
-                        && o.CoreCovenants.Concat(o.AdditionalCovenants).Any(finalCovenants.Contains))
+            .Where(o => !trackedNames.Contains(o.Name) && !extra.Contains(o.Name))
             // By tier (the UI splits them into one band per tier), then the ones sharing more covenants first.
             .OrderBy(o => o.Tier)
             .ThenByDescending(o => o.CoreCovenants.Concat(o.AdditionalCovenants).Count(finalCovenants.Contains))
@@ -115,7 +125,9 @@ public static class DeployPoolBuilder
         if (transitions.Count > 0) groups.Add(new(DeployPoolGroupKind.Transition, "过渡", "按阶段 · 不会被移除", transitions));
         if (extension.Count > 0)
             groups.Add(new(DeployPoolGroupKind.Extension, "扩展池",
-                "没追踪，但有" + string.Join("、", finalCovenants.Take(3)) + (finalCovenants.Count > 3 ? " 等" : "") + "盟约", extension));
+                finalCovenants.Count > 0
+                    ? "其余全部干员 · 同阶内有" + string.Join("、", finalCovenants.Take(3)) + (finalCovenants.Count > 3 ? " 等" : "") + "盟约的排前"
+                    : "其余全部干员", extension));
         if (others.Count > 0) groups.Add(new(DeployPoolGroupKind.Other, "其他", "手动添加 · 卖掉可删除", others));
         return groups;
     }

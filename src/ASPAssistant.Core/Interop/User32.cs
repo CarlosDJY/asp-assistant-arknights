@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-13; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-14; see NOTICE.
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using System.Text;
@@ -150,6 +150,10 @@ public static class User32
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetCursorPos(out POINT lpPoint);
 
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetCursorPos(int x, int y);
+
     public const uint WM_MOUSEWHEEL = 0x020A;
 
     public static IntPtr FindArknightsWindow()
@@ -197,7 +201,7 @@ public static class User32
 
     // Global hotkey APIs
 
-    [DllImport("user32.dll")]
+    [DllImport("user32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
@@ -219,6 +223,20 @@ public static class User32
     public const int  WM_HOTKEY   = 0x0312;
     public const int WM_ENTERSIZEMOVE = 0x0231;
     public const int WM_EXITSIZEMOVE = 0x0232;
+    public const int WM_WINDOWPOSCHANGED = 0x0047;
+
+    // Window regions: the visible (and clickable) part of a window, in window coordinates.
+    // After a successful SetWindowRgn the system owns the region; do not delete it.
+
+    [DllImport("gdi32.dll")]
+    public static extern IntPtr CreateRectRgn(int left, int top, int right, int bottom);
+
+    [DllImport("gdi32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool DeleteObject(IntPtr hObject);
+
+    [DllImport("user32.dll")]
+    public static extern int SetWindowRgn(IntPtr hWnd, IntPtr hRgn, [MarshalAs(UnmanagedType.Bool)] bool redraw);
 
     /// <summary>
     /// Sends WM_MOUSEWHEEL to the game window to scroll it vertically.

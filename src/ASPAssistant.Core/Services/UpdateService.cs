@@ -31,7 +31,7 @@ public partial class UpdateService
     public const string FeedOverrideVariable = "ASPA_UPDATE_FEED";
 
     public const string DefaultFeedUrl =
-        "https://api.github.com/repos/bingyunhe/asp-assistant-arknights/releases/latest";
+        "https://api.github.com/repos/bingyunhe/hongxue-stronghold-companion/releases/latest";
 
     private const string PackageSuffix = "-win-x64.zip";
     private const string ChecksumsAssetName = "SHA256SUMS.txt";
@@ -40,7 +40,7 @@ public partial class UpdateService
     private static readonly HttpClient _http = new()
     {
         Timeout = TimeSpan.FromSeconds(30),
-        DefaultRequestHeaders = { { "User-Agent", "ASPAssistant-Updater/1.0" } }
+        DefaultRequestHeaders = { { "User-Agent", "HongxueStrongholdCompanion-Updater/1.0" } }
     };
 
     public Version CurrentVersion =>
@@ -345,7 +345,7 @@ public partial class UpdateService
         sb.AppendLine("    if ($silent) { return }");
         sb.AppendLine("    try {");
         sb.AppendLine("        Add-Type -AssemblyName System.Windows.Forms -ErrorAction SilentlyContinue");
-        sb.AppendLine("        [System.Windows.Forms.MessageBox]::Show($message, 'ASP Assistant 更新失败') | Out-Null");
+        sb.AppendLine("        [System.Windows.Forms.MessageBox]::Show($message, '鸿雪·卫戍助手更新失败') | Out-Null");
         sb.AppendLine("    } catch { }");
         sb.AppendLine("}");
         sb.AppendLine();

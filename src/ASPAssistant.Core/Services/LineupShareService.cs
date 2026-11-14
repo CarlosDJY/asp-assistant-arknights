@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-13; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-14; see NOTICE.
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
@@ -24,6 +24,7 @@ public class LineupShareService
     {
         WriteIndented = false,
         PropertyNameCaseInsensitive = true,
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull,
     };
 
     private readonly HttpClient _http;
@@ -51,7 +52,7 @@ public class LineupShareService
         var json = JsonSerializer.Serialize(lineup, JsonOptions);
         var fingerprint = Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(new
         {
-            lineup.Name, lineup.Slots, lineup.EarlySlots, lineup.MidSlots, lineup.SupportSlots, lineup.Strategies, lineup.TargetCovenants, lineup.RecommendedEquipment
+            lineup.Name, lineup.Slots, lineup.EarlySlots, lineup.MidSlots, lineup.SupportSlots, lineup.Strategies, lineup.TargetCovenants, lineup.RecommendedEquipment, lineup.SourceUrl
         }, JsonOptions)));
 
         await _exportGate.WaitAsync(ct);
@@ -146,4 +147,9 @@ public class LineupShareService
         _equipmentRules.Upgrade(lineup);
         return lineup;
     }
+
+    /// <summary>Reads a 森空岛 卫戍协议 guide into a draft lineup; the caller shows it in the editor before saving.</summary>
+    public Task<SklandGuideImportResult> ImportOfficialGuideAsync(string input,
+        IReadOnlyList<Operator> operators, IReadOnlyList<Strategy> strategies, CancellationToken ct = default)
+        => new SklandGuideImporter(_http, operators, strategies).ImportAsync(input, ct);
 }

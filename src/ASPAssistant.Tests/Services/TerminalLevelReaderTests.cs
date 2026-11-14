@@ -9,6 +9,18 @@ namespace ASPAssistant.Tests.Services;
 [Collection("Native OCR")]
 public class TerminalLevelReaderTests(ShopReaderFixture fixture) : IClassFixture<ShopReaderFixture>
 {
+    [Trait("Category", "LocalScreenshot")]
+    [Theory]
+    [InlineData("shop-closure-tier3-expanded-1449.png", 3)]
+    [InlineData("shop-closure-controls-expanded-1449.png", 3)]
+    [InlineData("shop-closure-tier3-collapsed-1449.png", null)]
+    public async Task ClosureTierThreeAtWindowScale(string file, int? expected)
+    {
+        var reader = new TerminalLevelReader(fixture.Engine);
+        (await reader.ReadAsync(File.ReadAllBytes(fixture.Sample(file)), 1449, 815, GameShopTheme.Closure))
+            .Should().Be(expected);
+    }
+
     [Theory]
     [InlineData("shop-terminal-tier1-color.png", 1)]
     [InlineData("shop-terminal-tier2-duplicates.png", 2)]

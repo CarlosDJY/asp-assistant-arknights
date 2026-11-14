@@ -108,7 +108,6 @@ public class ThemeAndHighlightTests
                 var operators = store.LoadOperatorsAsync().GetAwaiter().GetResult();
                 vm.LoadOperators(operators.Where(o => o.RequiredStrategyId.Length == 0).ToList());
                 var view = new OperatorBrowseView { DataContext = vm };
-                view.ClearRunRequested += () => vm.ClearCovenantHighlights();
                 host.Content = view;
                 var toggle = (System.Windows.Controls.Primitives.ToggleButton)view.FindName("FilterToggle");
                 toggle.IsChecked = true;
@@ -222,7 +221,8 @@ public class ThemeAndHighlightTests
                     Save(view, Path.Combine(output, isLight ? "light.png" : "dark.png"));
                     Save(tooltip, Path.Combine(output, isLight ? "light-details.png" : "dark-details.png"));
 
-                    ((Button)view.FindName("ClearHighlightsButton")).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                    // 清除录入 moved to the 对局信息 page (RunBanView); here only the view-model side is checked.
+                    vm.ClearCovenantHighlights();
                     Dispatcher.CurrentDispatcher.Invoke(() => { }, DispatcherPriority.ApplicationIdle);
                     vm.HighlightedCovenants.Should().BeEmpty();
                     item.IsSelected.Should().BeTrue();
@@ -580,9 +580,10 @@ public class ThemeAndHighlightTests
                                 content.Measure(new Size(310, 900));
                                 content.Arrange(new Rect(0, 0, 310, 900));
                                 content.UpdateLayout();
-                                var clearRun = (Button)operatorPage.FindName("ClearHighlightsButton");
-                                clearRun.Content.Should().Be("清除录入");
-                                clearRun.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+                                var runBan = (RunBanView)sidePanel.FindName("RunBanView");
+                                var clearRun = (MenuItem)runBan.FindName("ClearHighlightsButton");
+                                clearRun.Header.Should().Be("清除录入");
+                                clearRun.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
                                 content.UpdateLayout();
                                 only.IsEnabled.Should().BeFalse();
                                 only.IsChecked.Should().BeFalse();

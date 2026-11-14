@@ -27,6 +27,12 @@ public partial class LineupEditorWindow : Window
         _strategies = strategies;
         _operatorByName = vm.AllOperators.GroupBy(o => o.Name).ToDictionary(g => g.Key, g => g.First());
         InitializeComponent();
+        if (!string.IsNullOrEmpty(vm.SourceUrl))
+        {
+            SourcePanel.Visibility = Visibility.Visible;
+            SourceUrlBox.Text = vm.SourceUrl;
+            ImportNoticeText.Text = "来自官方攻略；推荐装备与回合讲解请查看原文。";
+        }
         foreach (var phase in Enum.GetValues<LineupPhase>())
         {
             var button = new Button { Style = (Style)FindResource("PhaseSegment"), DataContext = phase };
@@ -40,6 +46,8 @@ public partial class LineupEditorWindow : Window
         LineupNameBox.Text = _vm.Name;
         RefreshEditor();
     }
+
+    public void ShowImportNotice(string notice) => ImportNoticeText.Text = notice;
 
     private IEnumerable<LineupStrategySlot> ChosenStrategies => _vm.StrategySlots.Where(s => s.StrategyId.Length > 0);
 

@@ -96,6 +96,13 @@ public sealed class BoardProjection
     }
 }
 
+/// <summary>
+/// A special tile (stage_table tileInfo): 活性源石 (attack and attack speed up, HP lost over time — for operators on it
+/// and enemies that pass), 沼泽地段 (operators and passing enemies slowed), 隐匿模块 (units and enemies on it are
+/// invisible), 优化模块 (operators attack faster, passing enemies move faster).
+/// </summary>
+public enum TerrainKind { None, Infection, Mire, Hide, Speedup }
+
 /// <summary>One Garrison Protocol map: deployment cells and the fixed ground routes.</summary>
 public sealed class GarrisonMap
 {
@@ -117,6 +124,8 @@ public sealed class GarrisonMap
     public BoardCellType[,] Cells { get; }
     /// <summary>Ordered ground routes, each from a spawn to the defense point.</summary>
     public IReadOnlyList<IReadOnlyList<BoardCell>> Routes { get; }
+    /// <summary>The map's special tiles (garrison_maps.json terrain).</summary>
+    public IReadOnlyDictionary<BoardCell, TerrainKind> Terrain { get; init; } = new Dictionary<BoardCell, TerrainKind>();
 
     public int RowCount => Cells.GetLength(0);
     public int ColumnCount => Cells.GetLength(1);

@@ -91,6 +91,17 @@
                         </ListBox>
                     </DockPanel>
 
+                    <!-- This round: which routes the plan uses, flying or not, how much stacking counts -->
+                    <DockPanel Margin="0,0,5,8">
+                        <ListBox x:Name="FlyingList" DockPanel.Dock="Right" Margin="6,0,0,0" Style="{StaticResource SegmentedListBox}" ItemContainerStyle="{StaticResource TallSegItem}"
+                                 SelectionChanged="OnFlyingChanged" ToolTip="这回合有没有飞行敌人：有飞行时会安排能打空的干员覆盖飞行路线">
+                            <ListBoxItem Content="有飞行" />
+                            <ListBoxItem Content="无飞行" />
+                        </ListBox>
+                        <!-- Covenant layers (read in battle, click one to correct it); the plan's basis is in the tooltip. -->
+                        <WrapPanel x:Name="LayerRow" VerticalAlignment="Center" Background="Transparent" />
+                    </DockPanel>
+
                     <!-- Mini board -->
                     <Border x:Name="BoardCard" Style="{StaticResource DeployCard}" Padding="6,8,6,7">
                         <StackPanel>
@@ -109,7 +120,8 @@
                                Foreground="{DynamicResource TextSecondaryBrush}" Visibility="Collapsed" />
 
                     <!-- Plan: checks + operators -->
-                    <StackPanel x:Name="PlanPanel">
+                    <StackPanel x:Name="PlanPanel" AllowDrop="True" Background="Transparent"
+                                DragOver="OnFieldAreaDragOver" Drop="OnFieldAreaDrop">
                         <UniformGrid x:Name="OperatorGrid" Columns="2" Margin="0,0,1,4" />
                     </StackPanel>
 
@@ -119,7 +131,8 @@
                     </Border>
 
                     <!-- Bench + pool entry -->
-                    <Border x:Name="BenchCard" Style="{StaticResource DeployCard}" Padding="10,8">
+                    <Border x:Name="BenchCard" Style="{StaticResource DeployCard}" Padding="10,8" AllowDrop="True"
+                            DragOver="OnBenchAreaDragOver" Drop="OnBenchAreaDrop">
                         <StackPanel>
                             <DockPanel>
                                 <Button x:Name="PoolButton" DockPanel.Dock="Right" Tag="accent" Height="26" Padding="8,0,6,0"
@@ -142,6 +155,17 @@
                                            Foreground="{DynamicResource TextSecondaryBrush}" />
                             </DockPanel>
                             <UniformGrid x:Name="BenchRow" Columns="2" Margin="0,6,0,0" />
+                            <!-- 转职: held ones (they follow their operator) and the ones worth buying. -->
+                            <StackPanel x:Name="TransformPanel" Margin="0,4,0,0" Visibility="Collapsed">
+                                <Border Height="1" Margin="0,2,0,6" Background="{DynamicResource LineBrush}" />
+                                <DockPanel Margin="0,0,0,5">
+                                    <TextBlock Text="拖到干员身上挂上 · 点干员身上的转职取下" DockPanel.Dock="Right" FontSize="10" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                                    <TextBlock Text="转职" FontSize="11" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}"
+                                               ToolTip="转职挂在干员身上：下场时跟着一起下场；换给别人要再挂一个新的，或者把原来的干员卖掉" />
+                                </DockPanel>
+                                <WrapPanel x:Name="TransformRow" />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                 </StackPanel>

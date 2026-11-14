@@ -1,4 +1,4 @@
-// Modified for ASP Assistant Arknights on 2026-11-12; see NOTICE.
+// Modified for ASP Assistant Arknights on 2026-11-14; see NOTICE.
 namespace ASPAssistant.Core.Models;
 
 /// <summary>Left/Top 是物理桌面坐标，宽高使用 WPF DIP。</summary>
@@ -16,4 +16,10 @@ public sealed record SidePanelPositionSettings
     public bool FreeMovement { get; init; } = true;
     public SidePanelPlacement? Placement { get; init; }
     public SidePanelOffset? FollowOffsetDip { get; init; }
+
+    /// <summary>
+    /// On by default: while the panel sits against a screen edge it tucks into a thin strip and slides out when
+    /// the cursor rests on that strip. Applies with the game fullscreen or not found; a windowed game is not affected.
+    /// </summary>
+    public bool AutoHideAtEdge { get; init; } = true;
 }

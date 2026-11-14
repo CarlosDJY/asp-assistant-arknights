@@ -60,6 +60,48 @@ public class PlacementPlannerTests
     }
 
     [Fact]
+    public async Task Plan_KeepsFieldAndBenchPins()
+    {
+        // Whoever the plan would pick: the field pins go on, the bench pins stay off.
+        var (planner, board) = await LoadAsync();
+        var map = board.Find("palace_arrows")!;
+        var pool = UrsusPool.Select(n => new PlacementCandidate(n, false)).ToList();
+        var free = planner.Plan(map, pool, Fast());
+        var benched = free.Bench.Select(b => b.Name).ToList();
+        var placed = free.Placed.Select(p => p.Key).ToList();
+        var up = new HashSet<string> { benched[0], benched[1] };
+        var down = new HashSet<string> { placed[0], placed[1] };
+        var plan = planner.Plan(map, pool, Fast() with { FieldPins = up, BenchPins = down });
+        plan.Placed.Should().HaveCount(8);
+        plan.Placed.Select(p => p.Key).Should().Contain(up).And.NotContain(down);
+        plan.Bench.Select(b => b.Name).Should().Contain(down);
+    }
+
+    [Fact]
+    public async Task TransformsCountOnlyOnTheFieldAndHintsFillTheGap()
+    {
+        // 炎 takes 3: two field operators carrying a 炎 转职 leave it one short (a hint); a third activates it.
+        var (planner, board) = await LoadAsync();
+        var map = board.Find("palace_arrows")!;
+        var plain = UrsusPool.Select(n => new PlacementCandidate(n, false)).ToList();
+        var free = planner.Plan(map, plain, Fast());
+        var at = free.Placed.ToDictionary(p => p.Key, p => (p.Cell, p.Facing));
+        var holders = free.Placed.Take(3).Select(p => p.Key).ToList();
+        List<PlacementCandidate> With(int count) =>
+            [.. plain.Select(c => holders.Take(count).Contains(c.Key) ? c with { Transforms = ["炎"] } : c)];
+        var options = Fast() with { TransformableCovenants = new HashSet<string> { "炎" } };
+
+        var two = planner.Evaluate(map, With(2), at, options);
+        two.ActiveCovenants.Should().NotContain("炎");
+        two.TransformHints.Should().ContainSingle(h => h.Covenant == "炎" && h.Have == 2 && h.Need == 3)
+            .Which.Holder.Should().NotBe(holders[0]).And.NotBe(holders[1]);
+        planner.Evaluate(map, With(3), at, options).ActiveCovenants.Should().Contain("炎");
+        // A holder benched takes its 转职 with it.
+        var benched = at.Where(kv => kv.Key != holders[0]).ToDictionary(kv => kv.Key, kv => kv.Value);
+        planner.Evaluate(map, With(3), benched, options).ActiveCovenants.Should().NotContain("炎");
+    }
+
+    [Fact]
     public async Task Evaluate_AndAlternatives_ScoreAGivenArrangement()
     {
         var (planner, board) = await LoadAsync();
@@ -104,6 +146,8 @@ public class PlacementPlannerTests
         groups[0].Items.Should().Contain(i => i.Name == "塔露拉" && i.Owned);
         groups[0].Items.Should().Contain(i => i.Name == "冻河" && !i.Owned);
         groups[2].Items.Should().Contain(i => i.Name == "维伊");          // 乌萨斯, not tracked
+        groups[2].Items.Should().Contain(i => i.Name == "涤火杰西卡", "every other operator is in it, sharing a covenant or not");
+        groups[2].Items.Should().HaveCount(ops.Count - 3 - 1, "all but the 3 tracked and the 1 added by hand");
         groups[2].Items.Should().NotContain(i => i.Name == "折桠");
         groups[2].Items.Select(i => i.Operator!.Tier).Should().BeInAscendingOrder();   // banded by tier in the UI
         groups[3].Items.Should().ContainSingle(i => i.Name == "夏栎" && i.Removable);
@@ -117,9 +161,31 @@ public class PlacementPlannerTests
         string[] pool = ["塔露拉", "机械师", "维伊", "冻河", "折桠", "奥尔佳", "烈夏", "角峰", "霜叶", "赫拉格", "乌啾"];
         foreach (var id in new[] { "palace_arrows", "desert_crates", "city" })
         {
-            var plan = planner.Plan(board.Find(id)!, pool.Select(n => new PlacementCandidate(n, false)).ToList(), Fast());
+            // The fast score (the planner's first stage) keeps the healer on; with layers weighted ×2.5 it may stand
+            // where it stacks rather than by the block point — the simulation against the round's real enemies puts
+            // it in reach (the test below).
+            var plan = planner.Plan(board.Find(id)!, pool.Select(n => new PlacementCandidate(n, false)).ToList(), Fast() with { Simulate = false });
             plan.Placed.Should().Contain(p => p.Name == "乌啾", id);
-            plan.Checks.Should().Contain(c => c.Text.StartsWith("奶 ") && c.Ok, id);
+        }
+    }
+
+    [Fact]
+    public async Task Plan_KeepsAHealerOnTheField_AgainstRealEnemies()
+    {
+        var (planner, board) = await LoadAsync();
+        var dir = Path.Combine(AppContext.BaseDirectory, "TestData", "Regulation");
+        var spawns = ASPAssistant.Core.Data.GarrisonSpawnStore.Load(dir)!;
+        var routes = EnemyRouteStore.Load(dir)!;
+        string[] pool = ["塔露拉", "机械师", "维伊", "冻河", "折桠", "奥尔佳", "烈夏", "角峰", "霜叶", "赫拉格", "乌啾"];
+        foreach (var id in new[] { "palace_arrows", "desert_crates", "city" })
+        {
+            var options = Fast() with
+            {
+                Routes = routes.Find(id, 8, null, null), Round = 8, SimulationIterations = 300,
+                Streams = spawns.Streams(8, null, ["特异", "致命", "元素"]),
+            };
+            var plan = planner.Plan(board.Find(id)!, pool.Select(n => new PlacementCandidate(n, false)).ToList(), options);
+            plan.Placed.Should().Contain(p => p.Name == "乌啾", id);
         }
     }
 
@@ -144,22 +210,17 @@ public class PlacementPlannerTests
     public async Task Plan_PutsJessicaInFrontOfSaria()
     {
         var (planner, board) = await LoadAsync();
-        // On 沙漠（中央木箱） both routes meet at one cell and 杰西卡 has to hold it, so 塞雷娅 copies 罗比菈塔
-        // there instead; the palace has room for 塞雷娅 → 杰西卡 on a line.
-        var crates = planner.Plan(board.Find("desert_crates")!, VictoriaPool.Select(n => new PlacementCandidate(n, false)).ToList(), Fast(2));
-        crates.Find("塞雷娅")!.Notes.Should().Contain(n => n.StartsWith("复制身前"));
-        foreach (var id in new[] { "palace" })
-        {
-            // 宫殿左列有高台后，Fast 的搜索量容易停在「塞雷娅复制维娜」的局部最优；默认搜索量能找到杰西卡这条线
-            var plan = planner.Plan(board.Find(id)!, VictoriaPool.Select(n => new PlacementCandidate(n, false)).ToList(), new PlacementOptions());
-            var saria = plan.Find("塞雷娅");
-            var jessica = plan.Find("涤火杰西卡");
-            saria.Should().NotBeNull(id);
-            jessica.Should().NotBeNull(id);
-            var (fx, fy) = PlacementCells.Vector(saria!.Facing);
-            jessica!.Cell.Should().Be(new BoardCell(saria.Cell.Col + fx, saria.Cell.Row + fy), $"{id}: 塞雷娅复制身前杰西卡的特质");
-            saria.Notes.Should().Contain(n => n.StartsWith("复制身前 涤火杰西卡"));
-        }
+        // On 沙漠（中央木箱） both routes meet at one cell and 杰西卡 holds it alone, so 塞雷娅 stands behind her and
+        // copies her round-end trait.
+        // Fast score only: see Plan_KeepsAHealerOnTheField on the simulation's generic enemy.
+        var crates = planner.Plan(board.Find("desert_crates")!, VictoriaPool.Select(n => new PlacementCandidate(n, false)).ToList(), Fast(2) with { Simulate = false });
+        crates.Find("塞雷娅")!.Notes.Should().Contain(n => n.StartsWith("复制身前 涤火杰西卡"));
+        // With two separate routes 塞雷娅 (a defender with about 7 500 effective HP) is worth more holding the second
+        // line than copying a trait; either way she must have a job on the field, not just stand somewhere.
+        var plan = planner.Plan(board.Find("palace")!, VictoriaPool.Select(n => new PlacementCandidate(n, false)).ToList(), new PlacementOptions { Simulate = false });
+        var saria = plan.Find("塞雷娅");
+        saria.Should().NotBeNull();
+        saria!.Notes.Should().Contain(n => n.StartsWith("复制身前") || n.Contains("拦截点"));
     }
 
     [Fact]

@@ -59,9 +59,22 @@ public class OcrScannerService : IDisposable
     public event Action<BoardMatch?>? BoardChanged;
     public BoardMatch? CurrentBoard => _board.Current;
     public Func<GameShopTheme>? ThemeProvider { get; init; }
+    public GameShopThemeDetector? ThemeDetector { get; init; }
+    public event Action<GameShopTheme>? GameThemeDetected;
+    private volatile bool _automaticGameTheme;
+    public bool AutomaticGameTheme { get => _automaticGameTheme; set => _automaticGameTheme = value; }
+    private GameShopTheme? _themeCandidate;
+    private int _themeConfirmations;
     public TimeSpan TerminalReadInterval { get; init; } = TimeSpan.FromSeconds(4);
     private readonly TerminalLevelTracker _terminalTracker = new();
     private DateTime _nextTerminalRead = DateTime.MinValue;
+
+    /// <summary>Reads the covenants' layers from the battle screen's badge strip (null: not read).</summary>
+    public CovenantLayerReader? LayerReader { get; init; }
+    public TimeSpan LayerReadInterval { get; init; } = TimeSpan.FromSeconds(6);
+    /// <summary>Layers of the covenants in view on the badge strip, whenever a read finds some.</summary>
+    public event Action<IReadOnlyDictionary<string, int>>? CovenantLayersRead;
+    private DateTime _nextLayerRead = DateTime.MinValue;
 
     /// <summary>New run: forget the previous run's terminal level.</summary>
     public void ResetTerminalLevel()
@@ -101,6 +114,7 @@ public class OcrScannerService : IDisposable
     {
         _captureScreen = captureScreen;
         _getConnection = getConnection;
+        _lastConnection = getConnection?.Invoke();
         _ocrStrategy = ocrStrategy;
         _shopReader = shopReader;
         _ocrEngine = ocrEngine;
@@ -149,6 +163,8 @@ public class OcrScannerService : IDisposable
             {
                 _lastConnection = connection;
                 _stabilizer.Reset();
+                _themeCandidate = null;
+                _themeConfirmations = 0;
                 _informationState = new InformationScreenState();
                 _banScreenActive = false;
                 _banScreenAbsentTicks = 0;
@@ -192,10 +208,12 @@ public class OcrScannerService : IDisposable
 
             // MuMu / ADB frames are PNG; the board reader samples raw BMP pixels.
             ObserveBoard(BoardRecognizer is { } board ? board.Recognize(ImageBytes.ToBmp(screenshot)) : null);
+            ReadGameTheme(screenshot);
             var rawItems = await _shopReader.ReadAsync(screenshot, imgWidth, imgHeight, _shopNames);
             if (!ReferenceEquals(connection, _getConnection?.Invoke())) return;
             PublishShopItems(rawItems);
             await ReadTerminalLevelAsync(screenshot, imgWidth, imgHeight);
+            await ReadLayersAsync(screenshot, imgWidth, imgHeight);
             // The board on screen also needs the round (本回合敌人路线), even with the shop folded.
             if (rawItems.Count > 0 || _board.Current is not null) await ReadEconomyAsync(screenshot, imgWidth, imgHeight);
         }
@@ -209,6 +227,28 @@ public class OcrScannerService : IDisposable
         {
             Interlocked.Exchange(ref _scanning, 0);
         }
+    }
+
+    private void ReadGameTheme(byte[] screenshot)
+    {
+        if (!AutomaticGameTheme || ThemeDetector is null)
+        {
+            _themeCandidate = null;
+            _themeConfirmations = 0;
+            return;
+        }
+        var detected = ThemeDetector.Detect(screenshot);
+        if (detected != _themeCandidate)
+        {
+            _themeCandidate = detected;
+            _themeConfirmations = 1;
+        }
+        else if (_themeConfirmations < 2) _themeConfirmations++;
+        if (!AutomaticGameTheme || detected is not { } theme || _themeConfirmations < 2 || theme == _shopReader.Theme) return;
+        _shopReader.Theme = theme;
+        _nextTerminalRead = DateTime.MinValue;
+        AppLogger.Info("Theme", $"Detected game theme {theme}");
+        GameThemeDetected?.Invoke(theme);
     }
 
     private async Task ReadTerminalLevelAsync(byte[] screenshot, int width, int height)
@@ -225,6 +265,15 @@ public class OcrScannerService : IDisposable
             _gameState.TerminalLevel = _terminalTracker.Level ?? 0;
             TerminalLevelChanged?.Invoke(_terminalTracker.Level!.Value);
         }
+    }
+
+    /// <summary>Every few seconds: the badge strip shows during battles (nothing found otherwise).</summary>
+    private async Task ReadLayersAsync(byte[] screenshot, int width, int height)
+    {
+        if (LayerReader is null || DateTime.UtcNow < _nextLayerRead) return;
+        _nextLayerRead = DateTime.UtcNow + LayerReadInterval;
+        var layers = await LayerReader.ReadAsync(screenshot, width, height);
+        if (layers.Count > 0) CovenantLayersRead?.Invoke(layers);
     }
 
     /// <summary>Only while shop cards or the board are visible: the HUD reads cost several OCR calls.</summary>
@@ -268,11 +317,14 @@ public class OcrScannerService : IDisposable
     /// <summary>Successful manual recording also consumes this opening screen.</summary>
     public void MarkInformationRecorded() => _informationState.MarkRecorded();
 
+    public bool TryStartNewRun(bool bansChanged) => _informationState.TryStartNewRun(bansChanged);
+
     private async Task DetectBanScreenAsync(byte[] screenshot, int width, int height, GameConnectionService? connection)
     {
         bool opening = await _informationDetector.IsOpeningScreenAsync(screenshot, width, height);
-        bool gameplay = !opening && _informationState.IsConsumed
-            && await _informationDetector.IsGameplayAsync(screenshot, width, height);
+        bool canRearm = !opening && _informationState.IsConsumed
+            && (await _informationDetector.IsGameplayAsync(screenshot, width, height)
+                || await _informationDetector.IsRunLobbyAsync(screenshot, width, height));
         if (_pauseBanScreenDetection || !ReferenceEquals(connection, _getConnection?.Invoke())) return;
 
         if (opening)
@@ -285,11 +337,13 @@ public class OcrScannerService : IDisposable
             _banScreenActive = false;
             BanScreenLost?.Invoke();
         }
-        if (_informationState.Observe(opening, gameplay))
+        if (_informationState.Observe(opening, canRearm))
         {
             AppLogger.Info("BanScreen", "Validated opening info screen detected");
             BanScreenDetected?.Invoke();
         }
+        if (canRearm && !_informationState.IsConsumed)
+            AppLogger.Info("BanScreen", "Confirmed gameplay or run lobby; next automatic opening armed");
     }
 
     public void Dispose()

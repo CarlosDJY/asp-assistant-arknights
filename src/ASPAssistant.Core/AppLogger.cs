@@ -1,3 +1,4 @@
+// Modified for ASP Assistant Regulation on 2026-11-14; see NOTICE.
 using System.Reflection;
 
 namespace ASPAssistant.Core;
@@ -53,6 +54,13 @@ public static class AppLogger
     public static void Info(string component, string message) =>
         WriteLine("INFO ", component, message);
 
+    /// <summary>
+    /// Info that is written even while no game window is found (state changes that matter without the game,
+    /// e.g. the side panel's edge auto-hide). Keep it to rare, change-only messages.
+    /// </summary>
+    public static void InfoAlways(string component, string message) =>
+        WriteLine("INFO ", component, message, always: true);
+
     public static void Warn(string component, string message) =>
         WriteLine("WARN ", component, message);
 
@@ -79,9 +87,9 @@ public static class AppLogger
         }
     }
 
-    private static void WriteLine(string level, string component, string message)
+    private static void WriteLine(string level, string component, string message, bool always = false)
     {
-        if (level != "ERROR" && !Volatile.Read(ref _isGamePresent)()) return;
+        if (!always && level != "ERROR" && !Volatile.Read(ref _isGamePresent)()) return;
         var line = $"[{DateTime.Now:HH:mm:ss.fff}] [{level}] [{component}] {message}";
         System.Diagnostics.Debug.WriteLine(line);
 

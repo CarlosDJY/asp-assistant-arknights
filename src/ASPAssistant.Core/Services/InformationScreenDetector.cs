@@ -57,8 +57,20 @@ public sealed class InformationScreenDetector(IOcrEngine ocr, IOcrStrategy strat
         var texts = await ocr.RecognizeRegionAsync(screenshot,
             (int)(width * region.XPercent), (int)(height * region.YPercent),
             (int)(width * region.WidthPercent), (int)(height * region.HeightPercent));
-        return texts.Any(t => t.Text.Replace(" ", "").Contains("确认本局信息"))
-            && await IsInformationScreenAsync(screenshot, width, height);
+        if (!texts.Any(t => t.Text.Replace(" ", "").Contains("确认本局信息"))) return false;
+        // Scrolling can hide one covenant header while the fixed opening title stays visible.
+        var additional = await ScanAsync(screenshot, width, height, AdditionalHeaderBand);
+        if (additional.Any(t => BanCovenantReader.NormalizeHeader(t.Text).Contains("附加盟约"))) return true;
+        var core = await ScanAsync(screenshot, width, height, CoreHeaderBand);
+        return core.Any(t => BanCovenantReader.NormalizeHeader(t.Text).Contains("核心盟约"));
+    }
+
+    public async Task<bool> IsRunLobbyAsync(byte[] screenshot, int width, int height)
+    {
+        var texts = await ScanAsync(screenshot, width, height, (.59, .70, .40, .29));
+        var labels = texts.Select(t => t.Text.Replace(" ", "")).ToArray();
+        return labels.Any(t => t.Contains("个人模拟") || t.Contains("联合模拟"))
+            && labels.Any(t => t.Contains("独立模拟") || t.Contains("极速模拟"));
     }
 
     public async Task<bool> IsGameplayAsync(byte[] screenshot, int width, int height)

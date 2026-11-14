@@ -12,6 +12,18 @@ namespace ASPAssistant.Tests.Services;
 
 public class OcrScannerServiceTests
 {
+    [Fact]
+    public async Task FirstAutomaticScanKeepsTheRunAlreadyStartedByManualRecording()
+    {
+        using var connection = new GameConnectionService();
+        using var scanner = CreateScanner(() => _screenshot, new(), () => connection);
+        scanner.TryStartNewRun(false).Should().BeTrue();
+        scanner.MarkInformationRecorded();
+        scanner.SetBanScreenDetectionPaused(true);
+        await scanner.ScanNowAsync();
+        scanner.TryStartNewRun(false).Should().BeFalse("the first scan is still using the same capture connection");
+    }
+
     private readonly byte[] _screenshot;
     private readonly string[] _names = ["角峰", "隐现", "坚守盾牌"];
     private readonly Mock<IOcrEngine> _ocr = new();

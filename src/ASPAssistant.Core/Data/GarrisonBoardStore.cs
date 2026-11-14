@@ -46,8 +46,20 @@ public static class GarrisonBoardStore
                 foreach (var route in rs.EnumerateArray())
                     routes.Add(route.GetProperty("cells").EnumerateArray()
                         .Select(c => new BoardCell(c[0].GetInt32(), c[1].GetInt32())).ToList());
+            var terrain = new Dictionary<BoardCell, TerrainKind>();
+            if (m.TryGetProperty("terrain", out var ts))
+                foreach (var kind in ts.EnumerateObject())
+                {
+                    var k = kind.Name switch
+                    {
+                        "infection" => TerrainKind.Infection, "mire" => TerrainKind.Mire,
+                        "hide" => TerrainKind.Hide, "speedup" => TerrainKind.Speedup, _ => TerrainKind.None,
+                    };
+                    if (k == TerrainKind.None) continue;
+                    foreach (var c in kind.Value.EnumerateArray()) terrain[new BoardCell(c[0].GetInt32(), c[1].GetInt32())] = k;
+                }
             list.Add(new GarrisonMap(m.GetProperty("id").GetString() ?? "", m.GetProperty("name").GetString() ?? "",
-                firstColumn, cells, routes));
+                firstColumn, cells, routes) { Terrain = terrain });
         }
 
         var bench = maps.GetProperty("bench");

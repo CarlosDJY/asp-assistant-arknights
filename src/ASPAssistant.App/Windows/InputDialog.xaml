@@ -37,6 +37,23 @@
                 <TextBox Style="{StaticResource DialogTextBox}" x:Name="InputBox" FontSize="13"
                          AcceptsReturn="False"
                          TextWrapping="NoWrap" />
+                <TextBlock x:Name="GuideLinkText" Visibility="Collapsed" FontSize="12" Margin="0,10,0,0">
+                    <Hyperlink NavigateUri="https://game.skland.com/arknights/stronghold-guide"
+                               Foreground="{DynamicResource AccentSolidBrush}" RequestNavigate="OnGuideNavigate">打开森空岛攻略站 ↗</Hyperlink>
+                </TextBlock>
+                <TextBlock Visibility="{Binding Visibility, ElementName=GuideLinkText}" FontSize="12"
+                           Foreground="{DynamicResource TextSecondaryBrush}" Margin="0,8,0,0"
+                           TextWrapping="Wrap" LineHeight="19">
+                    <Run Text="进入攻略站，选择喜欢的攻略并打开，复制该攻略的网址。" />
+                    <LineBreak />
+                    <Run Text="将网址粘贴到上方输入框，点击“确定”导入；核对阵容无误后，点击“保存”即可使用。" />
+                </TextBlock>
+                <Button x:Name="ExampleGuideButton" Content="复制示例并填入" Click="OnUseExampleGuide"
+                        Visibility="{Binding Visibility, ElementName=GuideLinkText}"
+                        Style="{StaticResource DialogSecondaryButton}" HorizontalAlignment="Left" Margin="0,8,0,0" />
+                <TextBlock x:Name="ExampleGuideStatus" FontSize="12" Margin="0,4,0,0"
+                           Foreground="{DynamicResource TextSecondaryBrush}" TextWrapping="Wrap"
+                           Visibility="{Binding Visibility, ElementName=GuideLinkText}" />
             </StackPanel>
         </DockPanel>
     </Border>

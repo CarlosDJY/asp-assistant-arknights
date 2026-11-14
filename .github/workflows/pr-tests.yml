@@ -22,9 +22,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 2
+      - name: Select the exact tested commit
+        shell: pwsh
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          $mergeTree = git rev-parse 'HEAD^{tree}'
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve merge tree' }
+          $headTree = git rev-parse "$env:PR_HEAD_SHA`^{tree}"
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve PR head tree' }
+          # Keep testing the merge result when the base introduced different content.
+          if ($mergeTree -eq $headTree) {
+            git checkout --detach $env:PR_HEAD_SHA
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot check out equivalent PR head' }
+          }
+      - name: Verify test-reuse decisions
+        shell: pwsh
+        run: ./.github/scripts/Test-ReleaseTestReuse.ps1
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
       - name: Run tests
-        run: dotnet test src/ASPAssistant.Tests/ASPAssistant.Tests.csproj -c Release
+        run: dotnet test src/ASPAssistant.Tests/ASPAssistant.Tests.csproj -c Release --filter "Category!=LocalScreenshot"
+      - name: Record successful test evidence
+        shell: pwsh
+        run: |
+          $sha = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot resolve tested commit' }
+          $folder = Join-Path $env:RUNNER_TEMP 'verified-tests'
+          New-Item -ItemType Directory -Path $folder -Force | Out-Null
+          @{ schema = 1; repository = $env:GITHUB_REPOSITORY; sha = $sha;
+             runId = $env:GITHUB_RUN_ID; runAttempt = [int]$env:GITHUB_RUN_ATTEMPT;
+             suite = 'public-windows-dotnet-v1'; runnerOS = $env:RUNNER_OS } |
+            ConvertTo-Json | Set-Content -LiteralPath (Join-Path $folder 'result.json') -Encoding utf8
+      - name: Upload test evidence
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: verified-tests-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/verified-tests/result.json
+          retention-days: 30
+          if-no-files-found: error

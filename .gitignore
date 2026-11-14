@@ -112,3 +112,37 @@ __pycache__/
 /side-panel-position.json.tmp
 # 本地维护记录，不随仓库/发布包分发
 MODIFICATIONS.md
+
+# Local screenshot regression fixtures (excluded from public CI)
+/src/ASPAssistant.Tests/TestData/4k-scale90/商店冻结.png
+/src/ASPAssistant.Tests/TestData/4k-scale90/商店普通.png
+/src/ASPAssistant.Tests/TestData/4k-scale90/局内信息.png
+/src/ASPAssistant.Tests/TestData/4k-scale90/本局信息.png
+/src/ASPAssistant.Tests/TestData/4k-scale90/金币花完商店冻结.png
+/src/ASPAssistant.Tests/TestData/4k-scale90/金币花完商店普通.png
+/src/ASPAssistant.Tests/TestData/Board/desert_camo_expanded.bmp
+/src/ASPAssistant.Tests/TestData/Board/map_intro.bmp
+/src/ASPAssistant.Tests/TestData/Board/palace_arrows_expanded.bmp
+/src/ASPAssistant.Tests/TestData/Board/snow_collapsed.bmp
+/src/ASPAssistant.Tests/TestData/adb-opening-1280x720.png
+/src/ASPAssistant.Tests/TestData/adb-run-lobby-1280x720.png
+/src/ASPAssistant.Tests/TestData/adb-short-scroll-after-2560x1440.png
+/src/ASPAssistant.Tests/TestData/adb-short-scroll-before-1280x720.png
+/src/ASPAssistant.Tests/TestData/adb-short-scroll-position-1449x815.png
+/src/ASPAssistant.Tests/TestData/adb-two-scroll-before-1280x720.png
+/src/ASPAssistant.Tests/TestData/adb-two-scroll-full-1280x720.png
+/src/ASPAssistant.Tests/TestData/adb-two-scroll-middle-1280x720.png
+/src/ASPAssistant.Tests/TestData/ban-change-a-1280x720.png
+/src/ASPAssistant.Tests/TestData/ban-change-b-1280x720.png
+/src/ASPAssistant.Tests/TestData/ban-change-c-1280x720.png
+/src/ASPAssistant.Tests/TestData/opening-scrolled-1280x720.png
+/src/ASPAssistant.Tests/TestData/shop-closure-controls-collapsed-1449.png
+/src/ASPAssistant.Tests/TestData/shop-closure-controls-expanded-1449.png
+/src/ASPAssistant.Tests/TestData/shop-closure-tier3-collapsed-1449.png
+/src/ASPAssistant.Tests/TestData/shop-closure-tier3-expanded-1449.png
+/src/ASPAssistant.Tests/TestData/solo-left-full-1449x815.png
+/src/ASPAssistant.Tests/TestData/solo-left-partial-1449x815.png
+/src/ASPAssistant.Tests/TestData/solo-overscroll-after-2560x1440.png
+/src/ASPAssistant.Tests/TestData/solo-overscroll-before-1280x720.png
+/src/ASPAssistant.Tests/TestData/solo-right-full-1449x815.png
+/src/ASPAssistant.Tests/TestData/solo-right-partial-1449x815.png

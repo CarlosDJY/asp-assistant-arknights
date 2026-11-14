@@ -18,6 +18,7 @@ public class BoardRecognizerTests
 
     private static byte[] Frame(string name) => File.ReadAllBytes(Path.Combine(FrameDir, name + ".bmp"));
 
+    [Trait("Category", "LocalScreenshot")]
     [Theory]
     [InlineData("snow_collapsed", "snow", BoardCamera.Collapsed)]
     [InlineData("desert_camo_expanded", "desert_camo", BoardCamera.Expanded)]
@@ -33,6 +34,7 @@ public class BoardRecognizerTests
     }
 
     /// <summary>A full lineup stands on 8–9 cells; the map must still be recognised (the overlay depends on it).</summary>
+    [Trait("Category", "LocalScreenshot")]
     [Theory]
     [InlineData("snow_collapsed", "snow", BoardCamera.Collapsed)]
     [InlineData("desert_camo_expanded", "desert_camo", BoardCamera.Expanded)]
@@ -69,6 +71,7 @@ public class BoardRecognizerTests
         }
     }
 
+    [Trait("Category", "LocalScreenshot")]
     [Fact]
     public async Task Recognize_RejectsTheMapIntroCamera()
     {

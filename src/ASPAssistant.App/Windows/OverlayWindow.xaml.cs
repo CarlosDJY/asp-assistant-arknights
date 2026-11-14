@@ -323,18 +323,35 @@ public partial class OverlayWindow : Window
         AppLogger.Info("Overlay", state);
     }
 
-    private void DrawBoard()
+    /// <summary>
+    /// Draws the board layer (cells, routes, placements) for a client area of this size and hands it over detached,
+    /// for rendering onto a screenshot off screen (placement samples). The next redraw takes it back.
+    /// </summary>
+    /// <summary>How opaque the board drawing (routes, placements) is: 0.1–1.</summary>
+    public void SetBoardOpacity(double opacity) => _boardLayer.Opacity = Math.Clamp(opacity, 0.1, 1.0);
+
+    public Canvas SnapshotBoard(double width, double height)
     {
+        DrawBoard(width, height);
+        OverlayCanvas.Children.Remove(_boardLayer);
+        return _boardLayer;
+    }
+
+    private void DrawBoard() => DrawBoard(ActualWidth, ActualHeight);
+
+    private void DrawBoard(double w, double h)
+    {
+        if (VisualTreeHelper.GetParent(_boardLayer) is Panel { } owner && owner != OverlayCanvas)
+            owner.Children.Remove(_boardLayer);
         if (!OverlayCanvas.Children.Contains(_boardLayer))
             OverlayCanvas.Children.Insert(0, _boardLayer);
         _boardLayer.Children.Clear();
-        if (_board is not { } board || ActualWidth <= 0 || ActualHeight <= 0)
+        if (_board is not { } board || w <= 0 || h <= 0)
         {
             LogBoardState(null);
             return;
         }
         var (map, projection) = board;
-        double w = ActualWidth, h = ActualHeight;
         Point At(double col, double row)
         {
             var (x, y) = projection.Project(col, row);

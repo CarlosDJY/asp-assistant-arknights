@@ -252,6 +252,19 @@
                 </DockPanel>
             </Border>
 
+            <!-- 森空岛攻略导入：来源链接与导入说明（手动建的阵容不显示） -->
+            <Border x:Name="SourcePanel" DockPanel.Dock="Top" Visibility="Collapsed" Margin="16,12,16,0" Padding="10"
+                    Background="{DynamicResource CardBackgroundBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="{DynamicResource RowCornerRadius}">
+                <StackPanel>
+                    <TextBlock Text="来源攻略" Style="{StaticResource FilterSectionTitle}" Margin="0,0,0,5" />
+                    <TextBox x:Name="SourceUrlBox" IsReadOnly="True" TextWrapping="Wrap" Style="{StaticResource DialogTextBox}"
+                             ToolTip="可选中文字复制原攻略链接" />
+                    <TextBlock x:Name="ImportNoticeText" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="11"
+                               Foreground="{DynamicResource TextSecondaryBrush}" />
+                </StackPanel>
+            </Border>
+
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

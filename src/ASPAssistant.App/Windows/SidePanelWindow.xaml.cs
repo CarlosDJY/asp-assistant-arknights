@@ -51,6 +51,8 @@ public partial class SidePanelWindow : Window
     private RECT? _lastGameRect;
     public GameShopTheme GameTheme { get; private set; }
     public event Action<GameShopTheme>? GameThemeChanged;
+    public event Action<bool>? AutomaticGameThemeChanged;
+    public bool AutomaticGameTheme => AutomaticThemeToggle.IsChecked == true;
     private UpdateInfo? _pendingUpdate;
     private Task? _downloadTask;
     private bool _isDownloadReady;
@@ -153,6 +155,7 @@ public partial class SidePanelWindow : Window
         MultiLineupTrackingToggle.Unchecked += OnMultipleLineupsChanged;
         FreeSidePanelMovementToggle.Checked += OnFreeSidePanelMovementChanged;
         FreeSidePanelMovementToggle.Unchecked += OnFreeSidePanelMovementChanged;
+        InitEdgeAutoHide();
 
         _toastHideTimer = new DispatcherTimer
         {
@@ -263,6 +266,7 @@ public partial class SidePanelWindow : Window
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
+        if (msg == User32.WM_WINDOWPOSCHANGED) OnEdgeWindowPosChanged();
         if (msg == User32.WM_ENTERSIZEMOVE) _isUserMovingOrSizing = true;
         if (msg == User32.WM_EXITSIZEMOVE)
         {
@@ -769,6 +773,22 @@ public partial class SidePanelWindow : Window
         LayoutUpdated -= ClearRestoringFlag;
     }
 
+    private void OnTitleBarSizeChanged(object sender, SizeChangedEventArgs e) => FitBrandTitle();
+
+    /// <summary>
+    /// 「鸿雪·卫戍助手」 is much wider than the old "ASP": with the update chip or the fullscreen hint showing,
+    /// a narrow panel cannot fit it next to the terminal chip, so the name is hidden (logo and chip stay).
+    /// </summary>
+    private void FitBrandTitle()
+    {
+        if (TitleBarDock.ActualWidth <= 0) return;
+        BrandTitleText.Visibility = Visibility.Visible;
+        TitleBarBrand.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        TitleBarActions.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        bool fits = TitleBarBrand.DesiredSize.Width + TitleBarActions.DesiredSize.Width <= TitleBarDock.ActualWidth;
+        BrandTitleText.Visibility = fits ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void OnTitleBarDrag(object sender, MouseButtonEventArgs e)
     {
         if (_positionSettings.FreeMovement && e.LeftButton == MouseButtonState.Pressed)
@@ -1042,7 +1062,27 @@ public partial class SidePanelWindow : Window
         GameTheme = (GameShopTheme)GameThemeSelector.SelectedIndex;
         GameThemeChanged?.Invoke(GameTheme);
         if (_appearance.FollowModeTheme) ApplyAppearance();
-        await SavePreferenceAsync(() => _settingsManager.SaveGameShopThemeAsync(GameTheme), GameThemeSelector);
+        await SavePreferenceAsync(() => _settingsManager.SaveGameShopThemeAsync(GameTheme), GameThemePanel);
+    }
+
+    public void InitAutomaticGameTheme(bool automatic)
+    {
+        AutomaticThemeToggle.IsChecked = automatic;
+        AutomaticThemeToggle.Checked += OnAutomaticGameThemeChanged;
+        AutomaticThemeToggle.Unchecked += OnAutomaticGameThemeChanged;
+    }
+
+    private async void OnAutomaticGameThemeChanged(object sender, RoutedEventArgs e)
+    {
+        AutomaticGameThemeChanged?.Invoke(AutomaticGameTheme);
+        await SavePreferenceAsync(() => _settingsManager.SaveAutomaticGameThemeAsync(AutomaticGameTheme), AutomaticThemeToggle);
+    }
+
+    /// <summary>Follows the theme recognised in the shop while automatic detection is on.</summary>
+    public void ApplyDetectedGameTheme(GameShopTheme theme)
+    {
+        if (!AutomaticGameTheme) return;
+        GameThemeSelector.SelectedIndex = (int)theme;
     }
 
     /// <summary>Raised when the user turns the in-game board overlay on or off.</summary>
@@ -1053,6 +1093,30 @@ public partial class SidePanelWindow : Window
         BoardOverlayToggle.IsChecked = enabled;
         BoardOverlayToggle.Checked += OnBoardOverlayChanged;
         BoardOverlayToggle.Unchecked += OnBoardOverlayChanged;
+    }
+
+    /// <summary>Raised while the user drags the in-game drawing's opacity (0.1–1).</summary>
+    public event Action<double>? BoardOpacityChanged;
+    private CancellationTokenSource? _opacitySave;
+
+    public void InitBoardOpacity(double opacity)
+    {
+        BoardOpacitySlider.Value = Math.Round(Math.Clamp(opacity, 0.1, 1.0) * 100);
+        BoardOpacityText.Text = $"{BoardOpacitySlider.Value:0}%";
+        BoardOpacitySlider.ValueChanged += OnBoardOpacityChanged;
+    }
+
+    private async void OnBoardOpacityChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        double opacity = e.NewValue / 100;
+        BoardOpacityText.Text = $"{e.NewValue:0}%";
+        BoardOpacityChanged?.Invoke(opacity);
+        // Saved once the slider rests for a moment, not on every step of a drag.
+        _opacitySave?.Cancel();
+        var cts = _opacitySave = new CancellationTokenSource();
+        try { await Task.Delay(400, cts.Token); }
+        catch (TaskCanceledException) { return; }
+        await SavePreferenceAsync(() => _settingsManager.SaveBoardOverlayOpacityAsync(opacity), BoardOpacitySlider);
     }
 
     private (string? Map, bool ShopOpen, string? Routes) _boardStatus;
@@ -1111,7 +1175,7 @@ public partial class SidePanelWindow : Window
 
     private void OnClose(object sender, RoutedEventArgs e)
     {
-        if (!ConfirmDialog.Ask(this, "退出确认", "确定要关闭 ASP Assistant · Arknights 吗？\n关闭后识别、悬浮提示与快捷键都会停止。", "关闭"))
+        if (!ConfirmDialog.Ask(this, "退出确认", "确定要关闭鸿雪·卫戍助手吗？\n关闭后识别、悬浮提示与快捷键都会停止。", "关闭"))
             return;
 
         User32.UnregisterHotKey(new WindowInteropHelper(this).Handle, HotkeyIdManualScan);
@@ -1167,18 +1231,28 @@ public partial class SidePanelWindow : Window
 
             var dlg = new InputDialog(
                 "导入阵容",
-                "粘贴 dpaste.com 短链接 或 阵容 JSON：",
+                "粘贴森空岛攻略链接、dpaste.com 短链接或阵容 JSON：",
                 clipboard.Trim())
             {
                 Owner = this,
+                ShowGuideLink = true,
             };
             if (dlg.ShowDialog() != true) return;
             var input = dlg.InputText.Trim();
             if (string.IsNullOrEmpty(input)) return;
 
+            LineupView.IsEnabled = false;
             try
             {
                 ShowToast("正在导入…");
+                if (SklandGuideImporter.IsOfficialGuideUrl(input))
+                {
+                    // 官方攻略只生成草稿：在编辑器里核对后保存才加入我的阵容。自选干员也在 _lineupOperators 里。
+                    var imported = await _lineupShareService.ImportOfficialGuideAsync(input, _lineupOperators, _allStrategies);
+                    HideToast();
+                    OpenEditor(imported.Lineup, imported.Notice);
+                    return;
+                }
                 var lineup = await _lineupShareService.ImportAsync(input);
                 // Avoid id collision with existing lineups by re-id-ing on import.
                 lineup.Id = Guid.NewGuid().ToString("N");
@@ -1194,6 +1268,7 @@ public partial class SidePanelWindow : Window
                 AppLogger.Warn("Lineup", $"Import failed: {ex.Message}");
                 ShowToast($"导入失败：{ex.Message}");
             }
+            finally { LineupView.IsEnabled = true; }
         };
 
         LineupView.TrackLineupRequested += lineup =>
@@ -1333,11 +1408,12 @@ public partial class SidePanelWindow : Window
         PlannerView.DataContext = PlannerVm;
     }
 
-    private async void OpenEditor(Lineup? source)
+    private async void OpenEditor(Lineup? source, string? importNotice = null)
     {
         var calc = LineupVm.Calculator;
         var editorVm = new LineupEditorViewModel(source, _lineupOperators, _allEquipment, calc);
         var window = new LineupEditorWindow(editorVm, _allStrategies) { Owner = this };
+        if (importNotice is not null) window.ShowImportNotice(importNotice);
         await MinimizableDialog.ShowAsync(window, PanelContent);
         if (window.Result is null) return;
 
@@ -1346,7 +1422,7 @@ public partial class SidePanelWindow : Window
             Dispatcher.Invoke(() =>
             {
                 LineupView.RefreshAllBadges();
-                ShowToast(source is null ? "已创建阵容" : "已保存阵容");
+                ShowToast(source is null || importNotice is not null ? "已创建阵容" : "已保存阵容");
             });
         });
     }

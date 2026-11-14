@@ -124,7 +124,7 @@ public class UpdateServiceTests
         script.Should().Contain("Remove-Item -LiteralPath $backupDir");
         // 日志与失败提示
         script.Should().Contain("'C:\\tmp\\update.log'");
-        script.Should().Contain("ASP Assistant 更新失败");
+        script.Should().Contain("鸿雪·卫戍助手更新失败");
         // 无界面模式（自动化验证用）不弹框
         script.Should().Contain("$silent = ($env:ASPA_UPDATE_SILENT -eq '1')");
         // 包不完整时拒绝安装

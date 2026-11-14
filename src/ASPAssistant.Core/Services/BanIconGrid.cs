@@ -58,6 +58,29 @@ public static class BanIconGrid
     /// <summary>Half width of the green sample, as a fraction of the column pitch.</summary>
     private const double SampleHalfPitch = 0.30;
 
+    public static bool HasClippedBottomRow(BanScreenPixels pixels)
+    {
+        var centers = new List<double>();
+        int start = -1;
+        for (var x = 0; x <= (int)(pixels.Width * .70); x++)
+        {
+            var light = 0;
+            for (var y = (int)(pixels.Height * .96); y < pixels.Height; y++)
+                if (pixels.Luma(x, y) > 25) light++;
+            if (light > 2 && start < 0) start = x;
+            if (light > 2 || start < 0) continue;
+            if (x - start > pixels.Width * .0035)
+            {
+                var center = (start + x) / 2.0;
+                if (centers.Count > 0 && center - centers[^1] < pixels.Width * .025)
+                    centers[^1] = (centers[^1] + center) / 2;
+                else centers.Add(center);
+            }
+            start = -1;
+        }
+        return IsRegular(centers, pixels.Width);
+    }
+
     /// <summary>
     /// Detects every icon slot whose vertical centre falls inside [minYPercent, maxYPercent].
     /// Returns an empty list when the image cannot be decoded or no grid is found.

@@ -4,7 +4,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:views="clr-namespace:ASPAssistant.App.Views"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="ASP Assistant · Arknights"
+        Title="鸿雪·卫戍助手"
         Width="310" MinWidth="280" MaxWidth="400"
         WindowStyle="None"
         ResizeMode="CanResizeWithGrip"
@@ -22,8 +22,9 @@
             <Border DockPanel.Dock="Top" Height="36" Background="{DynamicResource TitleBackgroundBrush}"
                     BorderBrush="{DynamicResource TitleDecorBrush}" BorderThickness="{DynamicResource TitleDecorThickness}"
                     MouseLeftButtonDown="OnTitleBarDrag">
-                <DockPanel>
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,2,0">
+                <DockPanel x:Name="TitleBarDock" SizeChanged="OnTitleBarSizeChanged">
+                    <StackPanel x:Name="TitleBarActions" DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,2,0"
+                                SizeChanged="OnTitleBarSizeChanged">
                         <!-- 全屏运行提示：琥珀色图标，点开看说明 -->
                         <Button x:Name="FullscreenHintButton" Visibility="Collapsed" Click="OnFullscreenHintClick" Tag="{StaticResource IconEnemy}"
                                 Margin="0,0,4,0" AutomationProperties.Name="窗口模式提示" ToolTip="推荐在窗口模式下运行">
@@ -83,17 +84,18 @@
                         <Button Click="OnClose" Tag="{StaticResource IconClose}" AutomationProperties.Name="关闭" ToolTip="关闭"
                                 Style="{StaticResource CloseButton}" />
                     </StackPanel>
-                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
+                    <!-- The name gives way first when the update chip or a narrow panel leaves no room (see FitBrandTitle). -->
+                    <StackPanel x:Name="TitleBarBrand" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
                         <Viewbox Width="16" Height="16">
                             <Canvas Width="24" Height="24">
                                 <Path Data="{StaticResource IconLogo}" Stroke="{DynamicResource TitleDecorBrush}" StrokeThickness="2"
                                       StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round" />
                             </Canvas>
                         </Viewbox>
-                        <TextBlock Text="ASP" Foreground="{DynamicResource TitleTextBrush}" FontFamily="{DynamicResource NumberFontFamily}"
-                                   FontWeight="Bold" FontSize="13" VerticalAlignment="Center" Margin="7,0,8,0"
-                                   ToolTip="ASP Assistant · Arknights" />
-                        <Border x:Name="StatusChip" Height="22" CornerRadius="11" Padding="8,0" VerticalAlignment="Center"
+                        <TextBlock x:Name="BrandTitleText" Text="鸿雪·卫戍助手" Foreground="{DynamicResource TitleTextBrush}"
+                                   FontWeight="Bold" FontSize="12" VerticalAlignment="Center" Margin="7,0,6,0"
+                                   ToolTip="鸿雪·卫戍助手" />
+                        <Border x:Name="StatusChip" Height="22" CornerRadius="11" Padding="6,0" VerticalAlignment="Center"
                                 Background="{DynamicResource TitleChipBrush}" BorderBrush="{DynamicResource TitleChipBorderBrush}"
                                 BorderThickness="1" ToolTip="终端等级：从商店左侧的升级卡自动识别，可在追踪页手动指定">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
@@ -230,8 +232,34 @@
                         </Border>
                         <ScrollViewer x:Name="SettingsScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                             <StackPanel Margin="10,0,10,14">
-                                <TextBlock Text="模式主题" Style="{StaticResource SettingsCaption}" />
-                                <ListBox x:Name="GameThemeSelector" Style="{StaticResource ThemeOptionList}">
+                                <StackPanel x:Name="GameThemePanel">
+                                <DockPanel>
+                                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center" Foreground="{DynamicResource TextSecondaryBrush}">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Text" Value="手动" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsChecked, ElementName=AutomaticThemeToggle}" Value="True">
+                                                            <Setter Property="Text" Value="自动" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                        <CheckBox x:Name="AutomaticThemeToggle" Style="{StaticResource SwitchToggle}" VerticalAlignment="Center"
+                                                  AutomationProperties.Name="模式主题自动识别" />
+                                    </StackPanel>
+                                    <TextBlock Text="模式主题" Style="{StaticResource SettingsCaption}" />
+                                </DockPanel>
+                                <ListBox x:Name="GameThemeSelector" IsEnabled="{Binding IsChecked, ElementName=AutomaticThemeToggle, Converter={StaticResource FilterNotConverter}}">
+                                    <ListBox.Style>
+                                        <Style TargetType="ListBox" BasedOn="{StaticResource ThemeOptionList}">
+                                            <Style.Triggers>
+                                                <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45" /></Trigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ListBox.Style>
                                     <ListBoxItem>
                                         <DockPanel>
                                             <Border DockPanel.Dock="Left" Width="40" Height="30" CornerRadius="5" Margin="0,0,10,0"
@@ -281,8 +309,9 @@
                                         </DockPanel>
                                     </ListBoxItem>
                                 </ListBox>
-                                <TextBlock Text="选游戏里正在用的模式主题，商店名称识别更准。" FontSize="11" TextWrapping="Wrap" Margin="2,0,0,6"
+                                <TextBlock Text="选择游戏里的主题，或开启自动识别；未识别时保留当前主题。" FontSize="11" TextWrapping="Wrap" Margin="2,0,0,6"
                                            Foreground="{DynamicResource TextSecondaryBrush}" />
+                                </StackPanel>
 
                                 <Border Style="{StaticResource SettingsCard}">
                                     <StackPanel>
@@ -353,6 +382,16 @@
                                                 <TextBlock x:Name="BoardStatusText" Text="休整期在棋盘上画出本回合敌人怎么走" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             </StackPanel>
                                         </DockPanel>
+                                        <!-- Opacity of the in-game board drawing (routes and placements). -->
+                                        <DockPanel Margin="0,8,0,0">
+                                            <TextBlock Text="不透明度" DockPanel.Dock="Left" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                       Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            <TextBlock x:Name="BoardOpacityText" DockPanel.Dock="Right" Width="36" TextAlignment="Right" FontSize="11"
+                                                       VerticalAlignment="Center" Foreground="{DynamicResource TextPrimaryBrush}" Text="100%" />
+                                            <Slider x:Name="BoardOpacitySlider" Minimum="10" Maximum="100" SmallChange="5" LargeChange="10"
+                                                    TickFrequency="5" IsSnapToTickEnabled="True" VerticalAlignment="Center" Value="100"
+                                                    Foreground="{DynamicResource AccentSoftBrush}" AutomationProperties.Name="游戏内显示不透明度" />
+                                        </DockPanel>
                                         <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" />
                                         <DockPanel>
                                             <CheckBox x:Name="FreeSidePanelMovementToggle" DockPanel.Dock="Right" Style="{StaticResource SwitchToggle}" VerticalAlignment="Center"
@@ -360,6 +399,15 @@
                                             <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
                                                 <TextBlock Text="侧栏自由移动" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
                                                 <TextBlock Text="不再跟随游戏窗口；关闭时记住当前位置并恢复跟随" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
+                                            </StackPanel>
+                                        </DockPanel>
+                                        <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" />
+                                        <DockPanel>
+                                            <CheckBox x:Name="EdgeAutoHideToggle" DockPanel.Dock="Right" Style="{StaticResource SwitchToggle}" VerticalAlignment="Center"
+                                                      AutomationProperties.Name="贴边自动隐藏" />
+                                            <StackPanel VerticalAlignment="Center" Margin="0,0,8,0">
+                                                <TextBlock Text="贴边自动隐藏" FontSize="12" FontWeight="Bold" Foreground="{DynamicResource TextPrimaryBrush}" />
+                                                <TextBlock Text="侧栏贴在屏幕边上时收成一条细边，鼠标在边上停一下就展开，移开后收回；游戏窗口模式下不收起" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextSecondaryBrush}" />
                                             </StackPanel>
                                         </DockPanel>
                                         <Border Height="1" Margin="-10,10" Background="{DynamicResource LineBrush}" />

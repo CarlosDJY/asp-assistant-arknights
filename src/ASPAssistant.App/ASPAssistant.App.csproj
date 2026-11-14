@@ -1,4 +1,4 @@
-﻿<!-- Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE. -->
+<!-- Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE. -->
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -8,8 +8,8 @@
     <UseWPF>true</UseWPF>
     <!-- Version is overridden by CI via -p:Version=x.y.z during release builds -->
     <Version>1.7.1</Version>
-    <AssemblyTitle>ASP Assistant · Arknights</AssemblyTitle>
-    <Product>ASP Assistant · Arknights</Product>
+    <AssemblyTitle>Hongxue Stronghold Companion</AssemblyTitle>
+    <Product>Hongxue Stronghold Companion</Product>
     <!-- Custom entry point with OS version guard (Program.cs); overrides WPF auto-generated Main -->
     <StartupObject>ASPAssistant.App.Program</StartupObject>
     <ApplicationIcon>..\..\data\icons\aspa_logo.ico</ApplicationIcon>
@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ASPAssistant.Core\ASPAssistant.Core.csproj" />
+    <InternalsVisibleTo Include="ASPAssistant.Tests" />
     <Resource Include="..\..\data\icons\aspa_logo.png" Link="Resources\aspa_logo.png" />
     <!-- Number fonts of the redesign themes (SIL Open Font License, see Resources/Fonts/OFL-*.txt) -->
     <Resource Include="Resources\Fonts\*.ttf" />

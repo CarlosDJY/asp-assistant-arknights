@@ -19,8 +19,11 @@ public sealed record BanCovenantReadResult(
     int AdditionalSlots = 0,
     bool SawCoreHeader = false,
     bool SawAdditionalHeader = false,
-    bool HasIncompleteRows = false)
+    bool HasIncompleteCoreRows = false,
+    bool HasIncompleteAdditionalRows = false,
+    bool NeedsScroll = false)
 {
+    public bool HasIncompleteRows => HasIncompleteCoreRows || HasIncompleteAdditionalRows;
     public static readonly BanCovenantReadResult Empty = new([], [], [], []);
 }
 
@@ -95,7 +98,11 @@ public static class BanCovenantReader
                 additionalCovenantNames, "Additional", greenThreshold);
             return new BanCovenantReadResult(core.Covenants, additional.Covenants, core.Unnamed, additional.Unnamed,
                 core.Slots, additional.Slots, coreHeader is not null, true,
-                core.HasIncompleteRows || additional.HasIncompleteRows);
+                core.HasIncompleteRows, additional.HasIncompleteRows,
+                (core.Rows > 1 || coreHeader is null) && banHeader is null && additional.Covenants.Count < additionalCovenantNames.Count
+                    && (BanIconGrid.HasClippedBottomRow(pixels!)
+                    || additional.HasIncompleteRows
+                    || additional.Unnamed.Any(p => p.Y / imgHeight > .88)));
         }
 
         // A title may be unreadable in the broad OCR pass; retry the existing narrow regions.
@@ -109,12 +116,12 @@ public static class BanCovenantReader
         return new BanCovenantReadResult(fixedCore.Covenants, fixedAdditional.Covenants,
             fixedCore.Unnamed, fixedAdditional.Unnamed, fixedCore.Slots, fixedAdditional.Slots,
             fixedCore.SawHeader, fixedAdditional.SawHeader,
-            fixedCore.HasIncompleteRows || fixedAdditional.HasIncompleteRows);
+            fixedCore.HasIncompleteRows, fixedAdditional.HasIncompleteRows);
     }
 
     private sealed record SectionRead(
         IReadOnlyList<CovenantBanState> Covenants, IReadOnlyList<BanIconPosition> Unnamed,
-        int Slots = 0, bool SawHeader = false, bool HasIncompleteRows = false);
+        int Slots = 0, bool SawHeader = false, bool HasIncompleteRows = false, int Rows = 0);
 
     private static async Task<SectionRead> ReadSectionAsync(
         IOcrEngine ocr, byte[] screenshot, BanScreenPixels? pixels, int imgWidth, int imgHeight,
@@ -162,7 +169,7 @@ public static class BanCovenantReader
             || gridBottom * imgHeight - rows[^1].Bottom > rowHeight * 1.8
             || rows.Zip(rows.Skip(1), (a, b) => b.Top - a.Bottom).Any(gap => gap > rowHeight * 1.8);
         return BindToSlots(candidates, slots, group, greenThreshold)
-            with { Slots = slots.Count, HasIncompleteRows = incomplete };
+            with { Slots = slots.Count, HasIncompleteRows = incomplete, Rows = rows.Count };
     }
 
     /// <summary>

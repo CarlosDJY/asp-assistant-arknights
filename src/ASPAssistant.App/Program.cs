@@ -24,8 +24,8 @@ public static class Program
         {
             MessageBoxW(
                 nint.Zero,
-                "ASP Assistant 已经在运行。\n\n同时运行两个实例会让 ban 位识别重复触发、互相抢滚动和截图，请先关闭已运行的窗口。",
-                "ASPAssistant 已在运行 —",
+                "鸿雪·卫戍助手已经在运行。\n\n同时运行两个实例会让 ban 位识别重复触发、互相抢滚动和截图，请先关闭已运行的窗口。",
+                "鸿雪·卫戍助手已在运行",
                 MB_OK | MB_ICONWARNING);
             return;
         }
@@ -38,10 +38,10 @@ public static class Program
             var v = Environment.OSVersion.Version;
             MessageBoxW(
                 nint.Zero,
-                $"ASPAssistant 需要 Windows 10 1607（版本 14393）或更高版本才能运行。\n\n" +
+                $"鸿雪·卫戍助手需要 Windows 10 1607（版本 14393）或更高版本才能运行。\n\n" +
                 $"当前系统版本：{v.Major}.{v.Minor}.{v.Build}\n\n" +
                 $"请将 Windows 升级至 1607 或更高版本后重试。",
-                "系统版本不兼容 — ASPAssistant",
+                "系统版本不兼容 — 鸿雪·卫戍助手",
                 MB_OK | MB_ICONERROR);
             return;
         }

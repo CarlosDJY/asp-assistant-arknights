@@ -29,7 +29,7 @@ public class UpdateDownloadTests
             }
         }
         var zipBytes = zipStream.ToArray();
-        const string asset = "ASPAssistant-v99.0.0-win-x64.zip";
+        const string asset = "hongxue-stronghold-companion-v99.0.0-win-x64.zip";
         var hash = wrongHash ? new string('0', 64) : Convert.ToHexString(SHA256.HashData(zipBytes)).ToLowerInvariant();
         using var server = new TcpListener(IPAddress.Loopback, 0);
         server.Start();

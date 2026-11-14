@@ -1,4 +1,5 @@
-ASP Assistant · Arknights
+Hongxue Stronghold Companion / 鸿雪·卫戍助手
+Formerly ASP Assistant · Arknights.
 
 This project is a modified derivative of ASP Assistant:
 https://github.com/Moonfair/ASP_Assistant
@@ -20,7 +21,7 @@ This derivative is not an official release from the upstream author.
 
 Lineup planning, covenant effect data and related UI/Ban integration were
 contributed by Jiayu Ding (CarlosDJY) in pull request #1:
-https://github.com/bingyunhe/asp-assistant-arknights/pull/1
+https://github.com/bingyunhe/hongxue-stronghold-companion/pull/1
 Original contribution commit: 2498a019db155903419f2109c8651d73ebb4da6d
 The original commit is retained; subsequent integration fixes have separate commits.
 
@@ -46,6 +47,6 @@ Data and image source references are retained in data/fetch_spdatabase.py.
 This project is not affiliated with or endorsed by Hypergryph / 鹰角网络.
 
 Solo-layout and scrolled covenant recognition adapt lemon-n-orange's contribution in PR #7:
-https://github.com/bingyunhe/asp-assistant-arknights/pull/7
+https://github.com/bingyunhe/hongxue-stronghold-companion/pull/7
 Original contribution commit: d4c5434662bf9599c4abd1535b571ca521a99f63
 The local adaptation retains the existing UI-scale, OCR and strategy-piece fixes.

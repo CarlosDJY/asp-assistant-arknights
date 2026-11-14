@@ -69,6 +69,8 @@ public class JsonDataStore
                 r.BaseRange = r.Base is { } b && ranges.TryGetValue(b, out var br) ? br : null;
                 r.SkillRange = r.Skill is { } k && ranges.TryGetValue(k, out var sr) ? sr : null;
             }
+            foreach (var st in new[] { profile.NormalStats, profile.EliteStats })
+                if (st?.Summon is { Range: { } sid } summon && ranges.TryGetValue(sid, out var shape)) summon.RangeShape = shape;
         }
 
         foreach (var op in operators)

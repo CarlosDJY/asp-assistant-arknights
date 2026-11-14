@@ -18,6 +18,42 @@ MAP_IDS = {
 }
 
 
+# Paths the generator got wrong (it takes the shortest walk; the game's enemies go another way), checked in game:
+# map id → [(points as generated, points as walked)], cell centres (col + .5, row + .5).
+ROUTE_FIXES = {
+    # 沙漠（双仙人掌）上路: along the top row to column 0, then down — not through column 3.
+    "desert_cactus": [([(4.5, 0.5), (3.5, 1.5), (3.5, 3.5)], [(0.5, 0.5), (0.5, 3.5)])],
+    # 宫殿上路: along the top row to column 1, then down — not through column 3.
+    "palace": [([(4.5, 0.5), (3.5, 1.5), (3.5, 3.5)], [(1.5, 0.5), (1.5, 3.5)])],
+    # 雪原（隐匿格）上路: along the top row to column 0, then down — not through column 2.
+    "snow": [([(3.5, 0.5), (2.5, 1.5), (2.5, 3.5)], [(0.5, 0.5), (0.5, 3.5)])],
+}
+
+
+def fix_routes(maps: dict) -> int:
+    """Applies ROUTE_FIXES to every walking segment in place (dropping repeated points); returns how many changed."""
+    changed = 0
+    for map_id, fixes in ROUTE_FIXES.items():
+        for level in maps.get(map_id, {}).get("levels", {}).values():
+            for route in level["routes"]:
+                if route["motion"] != "walk":
+                    continue
+                for i, seg in enumerate(route["segments"]):
+                    pts = [(p["col"], p["row"]) for p in seg]
+                    for old, new in fixes:
+                        k = 0
+                        while k + len(old) <= len(pts):
+                            if pts[k:k + len(old)] == old:
+                                pts[k:k + len(old)] = new
+                                k += len(new)
+                                changed += 1
+                            else:
+                                k += 1
+                    pts = [p for j, p in enumerate(pts) if j == 0 or p != pts[j - 1]]
+                    route["segments"][i] = [{"col": c, "row": r} for c, r in pts]
+    return changed
+
+
 def main(src, activity):
     data = json.load(open(src, encoding="utf-8"))
     act = json.load(open(activity, encoding="utf-8"))
@@ -32,6 +68,7 @@ def main(src, activity):
         "bossIds": data["bossIds"],
         "maps": {MAP_IDS[k]: v for k, v in data["maps"].items()},
     }
+    fix_routes(out["maps"])
     missing = set(data["maps"]) - set(MAP_IDS)
     if missing:
         raise SystemExit(f"unmapped maps: {sorted(missing)}")

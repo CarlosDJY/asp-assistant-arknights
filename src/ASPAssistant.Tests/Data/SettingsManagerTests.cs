@@ -34,6 +34,18 @@ public class SettingsManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task BoardOverlayOpacityDefaultsToOpaqueAndIsClamped()
+    {
+        (await _manager.LoadBoardOverlayOpacityAsync()).Should().Be(1.0);
+        await _manager.SaveBoardOverlayOpacityAsync(0.45);
+        (await _manager.LoadBoardOverlayOpacityAsync()).Should().Be(0.45);
+        await _manager.SaveBoardOverlayOpacityAsync(0);
+        (await _manager.LoadBoardOverlayOpacityAsync()).Should().Be(0.1);
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "board-overlay-opacity.json"), "{ not json");
+        (await _manager.LoadBoardOverlayOpacityAsync()).Should().Be(1.0);
+    }
+
+    [Fact]
     public async Task FullscreenHintOffIsRememberedAndCanBeCleared()
     {
         (await _manager.LoadFullscreenHintOffAsync()).Should().BeFalse();

@@ -1,0 +1,418 @@
+{
+  "code": 0,
+  "message": "OK",
+  "data": {
+    "guide": {
+      "guide": {
+        "guideId": "2120392178422509756",
+        "title": "2本伊比利亚能兜底能打boss流派",
+        "strategyIds": [
+          "band_bonus"
+        ],
+        "seasonId": "act3autochess",
+        "versionId": "V3_1",
+        "tabs": [
+          {
+            "tabType": 1,
+            "startRound": 0,
+            "endRound": 0,
+            "recChars": [
+              {
+                "charId": "char_129_bluep",
+                "skillId": "skchr_bluep_1",
+                "moduleId": "uniequip_002_bluep",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_4163_rosesa",
+                "skillId": "skchr_rosesa_1",
+                "moduleId": "uniequip_002_rosesa",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_4027_heyak",
+                "skillId": "skchr_heyak_1",
+                "moduleId": "uniequip_002_heyak",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_293_thorns",
+                "skillId": "skchr_thorns_3",
+                "moduleId": "uniequip_002_thorns",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_332_archet",
+                "skillId": "skchr_archet_3",
+                "moduleId": "uniequip_002_archet",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_4042_lumen",
+                "skillId": "skchr_lumen_3",
+                "moduleId": "uniequip_003_lumen",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_4232_hbound",
+                "skillId": "skchr_hbound_2",
+                "moduleId": "uniequip_002_hbound",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_4066_highmo",
+                "skillId": "skchr_highmo_1",
+                "moduleId": "uniequip_002_highmo",
+                "mergeLevel": 1
+              }
+            ],
+            "recItems": [
+              {
+                "itemId": "chess_item_1_01_e_a"
+              },
+              {
+                "itemId": "chess_item_5_08_e_a"
+              },
+              {
+                "itemId": "chess_item_2_09_e_a"
+              },
+              {
+                "itemId": "chess_item_6_03_e_a"
+              },
+              {
+                "itemId": "chess_item_1_05_e_a"
+              },
+              {
+                "itemId": "chess_item_3_14_e_a"
+              },
+              {
+                "itemId": "chess_item_4_09_e_a"
+              },
+              {
+                "itemId": "chess_item_2_08_e_a"
+              },
+              {
+                "itemId": "chess_item_2_06_e_a"
+              },
+              {
+                "itemId": "chess_item_4_01_e_a"
+              },
+              {
+                "itemId": "chess_item_5_04_e_a"
+              },
+              {
+                "itemId": "chess_item_5_09_e_a"
+              },
+              {
+                "itemId": "chess_item_5_03_e_a"
+              },
+              {
+                "itemId": "chess_item_5_06_e_a"
+              },
+              {
+                "itemId": "chess_item_3_02_e_a"
+              },
+              {
+                "itemId": "chess_item_3_07_e_a"
+              },
+              {
+                "itemId": "chess_item_2_07_e_a"
+              },
+              {
+                "itemId": "chess_item_1_03_e_a"
+              },
+              {
+                "itemId": "chess_item_2_05_e_a"
+              },
+              {
+                "itemId": "chess_item_1_04_e_a"
+              }
+            ]
+          },
+          {
+            "tabType": 2,
+            "startRound": 1,
+            "endRound": 7,
+            "recChars": [
+              {
+                "charId": "char_4041_chnut",
+                "skillId": "skchr_chnut_1",
+                "moduleId": "uniequip_002_chnut",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_367_swllow",
+                "skillId": "skchr_swllow_1",
+                "moduleId": "uniequip_002_swllow",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_469_indigo",
+                "skillId": "skchr_indigo_1",
+                "moduleId": "uniequip_002_indigo",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_129_bluep",
+                "skillId": "skchr_bluep_1",
+                "moduleId": "uniequip_002_bluep",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_1027_greyy2",
+                "skillId": "skchr_greyy2_2",
+                "moduleId": "uniequip_002_greyy2",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_4166_varkis",
+                "skillId": "skchr_varkis_1",
+                "moduleId": "uniequip_002_varkis",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_4207_branch",
+                "skillId": "skchr_branch_1",
+                "moduleId": "uniequip_002_branch",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_195_glassb",
+                "skillId": "skchr_glassb_1",
+                "moduleId": "uniequip_002_glassb",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_4163_rosesa",
+                "skillId": "skchr_rosesa_1",
+                "moduleId": "uniequip_002_rosesa",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_4232_hbound",
+                "skillId": "skchr_hbound_2",
+                "moduleId": "uniequip_002_hbound",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_4066_highmo",
+                "skillId": "skchr_highmo_1",
+                "moduleId": "uniequip_002_highmo",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_332_archet",
+                "skillId": "skchr_archet_3",
+                "moduleId": "uniequip_002_archet",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_355_ethan",
+                "skillId": "skchr_ethan_2",
+                "moduleId": "uniequip_002_ethan",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_4054_malist",
+                "skillId": "skcom_quickattack[3]",
+                "moduleId": "uniequip_002_malist",
+                "mergeLevel": 0
+              }
+            ],
+            "recItems": [
+              {
+                "itemId": "chess_item_1_03_e_a"
+              },
+              {
+                "itemId": "chess_item_1_04_e_a"
+              },
+              {
+                "itemId": "chess_item_2_05_e_a"
+              },
+              {
+                "itemId": "chess_item_2_07_e_a"
+              },
+              {
+                "itemId": "chess_item_2_06_e_a"
+              },
+              {
+                "itemId": "chess_item_2_08_e_a"
+              }
+            ]
+          },
+          {
+            "tabType": 2,
+            "startRound": 8,
+            "endRound": 13,
+            "recChars": [
+              {
+                "charId": "char_4163_rosesa",
+                "skillId": "skchr_rosesa_1",
+                "moduleId": "uniequip_002_rosesa",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_4232_hbound",
+                "skillId": "skchr_hbound_2",
+                "moduleId": "uniequip_002_hbound",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_4066_highmo",
+                "skillId": "skchr_highmo_1",
+                "moduleId": "uniequip_002_highmo",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_332_archet",
+                "skillId": "skchr_archet_3",
+                "moduleId": "uniequip_002_archet",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_355_ethan",
+                "skillId": "skchr_ethan_2",
+                "moduleId": "uniequip_002_ethan",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_4027_heyak",
+                "skillId": "skchr_heyak_1",
+                "moduleId": "uniequip_002_heyak",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_400_weedy",
+                "skillId": "skchr_weedy_3",
+                "moduleId": "uniequip_002_weedy",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_179_cgbird",
+                "skillId": "skchr_cgbird_3",
+                "moduleId": "uniequip_002_cgbird",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_293_thorns",
+                "skillId": "skchr_thorns_3",
+                "moduleId": "uniequip_002_thorns",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_4009_irene",
+                "skillId": "skchr_irene_2",
+                "moduleId": "uniequip_003_irene",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_1039_thorn2",
+                "skillId": "skchr_thorn2_2",
+                "moduleId": "uniequip_002_thorn2",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_249_mlyss",
+                "skillId": "skchr_mlyss_3",
+                "moduleId": "uniequip_004_mlyss",
+                "mergeLevel": 0
+              },
+              {
+                "charId": "char_485_pallas",
+                "skillId": "skchr_pallas_3",
+                "moduleId": "uniequip_002_pallas",
+                "mergeLevel": 1
+              },
+              {
+                "charId": "char_129_bluep",
+                "skillId": "skchr_bluep_1",
+                "moduleId": "uniequip_002_bluep",
+                "mergeLevel": 1
+              }
+            ],
+            "recItems": [
+              {
+                "itemId": "chess_item_1_03_e_a"
+              },
+              {
+                "itemId": "chess_item_1_04_e_a"
+              },
+              {
+                "itemId": "chess_item_2_05_e_a"
+              },
+              {
+                "itemId": "chess_item_2_06_e_a"
+              },
+              {
+                "itemId": "chess_item_2_07_e_a"
+              },
+              {
+                "itemId": "chess_item_4_01_e_a"
+              },
+              {
+                "itemId": "chess_item_3_02_e_a"
+              },
+              {
+                "itemId": "chess_item_2_09_e_a"
+              },
+              {
+                "itemId": "chess_item_3_07_e_a"
+              },
+              {
+                "itemId": "chess_item_2_08_e_a"
+              }
+            ]
+          }
+        ]
+      },
+      "invalid": 0
+    },
+    "seasonResourceMap": {
+      "act3autochess": {
+        "versionResourceMap": {
+          "V3_1": {
+            "chars": {
+              "char_4027_heyak": {
+                "name": "霍尔海雅",
+                "shopLevel": 4
+              },
+              "char_129_bluep": {
+                "name": "蓝毒",
+                "shopLevel": 2
+              },
+              "char_4163_rosesa": {
+                "name": "瑰盐",
+                "shopLevel": 2
+              },
+              "char_4232_hbound": {
+                "name": "旅骨",
+                "shopLevel": 3
+              },
+              "char_4042_lumen": {
+                "name": "流明",
+                "shopLevel": 4
+              },
+              "char_332_archet": {
+                "name": "空弦",
+                "shopLevel": 3
+              },
+              "char_293_thorns": {
+                "name": "棘刺",
+                "shopLevel": 5
+              },
+              "char_4066_highmo": {
+                "name": "海沫",
+                "shopLevel": 3
+              }
+            },
+            "strategies": {
+              "band_bonus": {
+                "name": "二重奏"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

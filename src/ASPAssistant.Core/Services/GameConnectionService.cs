@@ -16,6 +16,8 @@ public sealed class GameConnectionService : IDisposable
     private uint _windowProcessId;
     private bool _disposed;
     private string _status = "PC 窗口截图";
+    private int _screenWidth;
+    private int _screenHeight;
 
     public GameConnectionSettings Settings { get; }
     public bool IsAdb => Settings.Source == GameCaptureSource.Adb;
@@ -75,7 +77,7 @@ public sealed class GameConnectionService : IDisposable
             ? WindowGeometry.FitAspectRatio(rect, 16, 9) : null;
     }
 
-    /// <summary>Only screenshots are requested from the ADB controller.</summary>
+    /// <summary>Captures the selected ADB device; its dimensions also bound information-panel scrolling.</summary>
     public byte[]? CaptureAdbScreen(int maxWidth)
     {
         lock (_captureLock)
@@ -108,6 +110,8 @@ public sealed class GameConnectionService : IDisposable
                     throw new IOException("ADB 未返回有效画面");
                 var width = image.Width;
                 var height = image.Height;
+                _screenWidth = width;
+                _screenHeight = height;
                 if (!WindowGeometry.IsSupportedGameAspectRatio(width, height))
                 {
                     _status = $"当前画面 {width}×{height}，请设置为横屏 16∶9";
@@ -140,6 +144,16 @@ public sealed class GameConnectionService : IDisposable
             _disposed = true;
             _controller?.Dispose();
             _controller = null;
+        }
+    }
+
+    public bool ScrollInformationPanelDown()
+    {
+        lock (_captureLock)
+        {
+            if (_disposed || _controller is null) return false;
+            return _controller.Swipe((int)(_screenWidth * .35), (int)(_screenHeight * .72),
+                (int)(_screenWidth * .35), (int)(_screenHeight * .64), 200).Wait() == MaaJobStatus.Succeeded;
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
+// Modified for ASP Assistant Regulation on 2026-11-09; see NOTICE.
 using ASPAssistant.Core.GameModes;
 using ASPAssistant.Core.Models;
 
@@ -40,6 +40,11 @@ public sealed class BanScreenAnalyzer
     /// </summary>
     public event Action<BanScreenResult>? AnalysisCompleted;
     public event Action<string>? AnalysisFailed;
+    /// <summary>Awaits progress preparation for a validated opening or a changed complete Ban set.</summary>
+    public Func<bool, Task>? PrepareNewRunAsync { get; set; }
+    public Func<Task<byte[]?>>? ScrollInformationPanelAsync { get; set; }
+    public event Action<string>? ScrollRequired;
+    private bool _scrollReminderShown;
 
     /// <summary>
     /// Raised when complete enemy information is available, before covenant publication.
@@ -105,6 +110,7 @@ public sealed class BanScreenAnalyzer
         }
 
         AnalysisBusyChanged?.Invoke(true);
+        string? scrollMessage = null;
         try
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
@@ -118,17 +124,19 @@ public sealed class BanScreenAnalyzer
                 return;
             }
 
+            var (rawWidth, rawHeight) = GetPngDimensions(shot);
             var shotHash = HashShot(shot);
             if (_lastResult is not null && shotHash == _lastShotHash)
             {
                 AppLogger.Info("BanAnalyzer", "Identical screenshot, reusing the previous analysis");
+                if (PrepareNewRunAsync is { } cachedPrepare && await _informationDetector.IsOpeningScreenAsync(shot, rawWidth, rawHeight))
+                    await cachedPrepare(false);
                 AutoBanListComputed?.Invoke(_lastAutoBans ?? []);
                 if (_lastEnemy is not null) EnemyDetected?.Invoke(_lastEnemy);
                 AnalysisCompleted?.Invoke(_lastResult);
                 return;
             }
 
-            var (rawWidth, rawHeight) = GetPngDimensions(shot);
             AppLogger.SaveArtifact("ban-attempt", ImageBytes.ToPng(shot), ".png");
             AppLogger.Info("BanAnalyzer", $"Screenshot ready: {rawWidth}x{rawHeight}");
 
@@ -139,10 +147,58 @@ public sealed class BanScreenAnalyzer
                 AppConsole.WriteLine($"[BanAnalyzer] 截图 {rawWidth}×{rawHeight} → 放大到 {imgWidth}×{imgHeight}");
             AppConsole.WriteLine($"[BanAnalyzer] 截图完成 ({imgWidth}×{imgHeight})");
 
-            var enemy = await _enemyRecognizer.RecognizeAsync(shot, imgWidth, imgHeight);
-            var read = await BanCovenantReader.ReadAsync(
-                _ocr, _ocrStrategy, shot, imgWidth, imgHeight,
-                _coreCovenantNames, _additionalCovenantNames);
+            BanCovenantReadResult read;
+            BanCovenantReadResult? completeCore = null;
+            for (var scrolls = 0; ; scrolls++)
+            {
+                read = await BanCovenantReader.ReadAsync(_ocr, _ocrStrategy, shot, imgWidth, imgHeight,
+                    _coreCovenantNames, _additionalCovenantNames);
+                if (completeCore is null && read.SawCoreHeader && !read.HasIncompleteCoreRows
+                    && read.UnnamedCore.Count == 0 && read.Core.Count >= 6
+                    && (read.CoreSlots == 0 || read.Core.Count == read.CoreSlots)
+                    && read.Core.Select(c => c.Name).Distinct().Count() == read.Core.Count)
+                    completeCore = read;
+                if (completeCore is not null)
+                {
+                    if (read.Core.Any(c => completeCore.Core.Any(previous => previous.Name == c.Name && previous.IsBanned != c.IsBanned))
+                        || read.Additional.Any(c => completeCore.Additional.Any(previous => previous.Name == c.Name && previous.IsBanned != c.IsBanned)))
+                    {
+                        scrollMessage = null;
+                        AnalysisFailed?.Invoke("滚动期间盟约选择发生变化，未替换现有结果；请保持选择不变后重新录入。");
+                        return;
+                    }
+                    read = read with
+                    {
+                        Core = completeCore.Core,
+                        CoreSlots = completeCore.CoreSlots,
+                        UnnamedCore = completeCore.UnnamedCore,
+                        SawCoreHeader = true,
+                        HasIncompleteCoreRows = false
+                    };
+                }
+                AppLogger.Info("BanAnalyzer", $"Panel read after {scrolls} scroll(s): core={read.Core.Count}, additional={read.Additional.Count}, incompleteAdditional={read.HasIncompleteAdditionalRows}, needsScroll={read.NeedsScroll}");
+                if (!read.NeedsScroll) break;
+                scrollMessage = "附加盟约未完整显示。请向下滚动左侧盟约面板，确保最后一行图标和名称完整可见后，再点击“重新录入”。";
+                if (scrolls == 3 || ScrollInformationPanelAsync is not { } scroll
+                    || !await _informationDetector.IsOpeningScreenAsync(shot, imgWidth, imgHeight))
+                {
+                    AppLogger.Warn("BanAnalyzer", scrollMessage);
+                    AnalysisFailed?.Invoke(scrollMessage);
+                    return;
+                }
+                var next = await scroll();
+                if (next is null)
+                {
+                    AppLogger.Warn("BanAnalyzer", "Information panel scroll or subsequent screenshot failed");
+                    AnalysisFailed?.Invoke(scrollMessage);
+                    return;
+                }
+                shotHash = HashShot(next);
+                var (nextWidth, nextHeight) = GetPngDimensions(next);
+                (shot, imgWidth, imgHeight) = ScreenshotNormalizer.EnsureAnalysable(next, nextWidth, nextHeight);
+                AppLogger.SaveArtifact("ban-scroll", ImageBytes.ToPng(shot), ".png");
+            }
+            scrollMessage = null;
 
             // 标题判定已经包含在上面那次 OCR 里（省掉一次独立的检测调用）；
             // 只有标题缺失时才用检测器区分“不是信息页”和“信息页被滚动”。
@@ -159,7 +215,7 @@ public sealed class BanScreenAnalyzer
             // 至少读到一项，且没有出现“有图标却没有名字”的槽位。
             // 检测到图标网格时，完整性 = 每个槽都读到了名字；没检测到网格（异常画面）时，
             // 退回数量下限，避免“只读到 1 个”也被当成完整结果发布出去。
-            var hasCore = read.CoreSlots > 0 ? read.Core.Count == read.CoreSlots : read.Core.Count >= 6;
+            var hasCore = read.Core.Count >= 6 && (read.CoreSlots == 0 || read.Core.Count == read.CoreSlots);
             var hasAdditional = read.AdditionalSlots > 0
                 ? read.Additional.Count == read.AdditionalSlots
                 : read.Additional.Count >= 4;
@@ -174,11 +230,22 @@ public sealed class BanScreenAnalyzer
                     : $"本次信息未完整读出（核心 {read.Core.Count}、附加 {read.Additional.Count}、未命名 {unnamed}），未替换现有结果；请保持页面完整可见后重试。");
                 return;
             }
+            var enemy = await _enemyRecognizer.RecognizeAsync(shot, imgWidth, imgHeight);
             var hasEnemy = enemy is not null && enemy.BossName.Length > 0 && enemy.EnemyTypes.Count > 0;
             var enemyFaction = hasEnemy ? enemy!.BossName : null;
 
             sw.Stop();
             var result = new BanScreenResult(read.Core, read.Additional, enemyFaction);
+            if (PrepareNewRunAsync is { } prepare)
+            {
+                var bansChanged = _lastResult is not null
+                    && (!result.CoreCovenants.Where(c => c.IsBanned).Select(c => c.Name).ToHashSet(StringComparer.Ordinal)
+                            .SetEquals(_lastResult.CoreCovenants.Where(c => c.IsBanned).Select(c => c.Name))
+                        || !result.AdditionalCovenants.Where(c => c.IsBanned).Select(c => c.Name).ToHashSet(StringComparer.Ordinal)
+                            .SetEquals(_lastResult.AdditionalCovenants.Where(c => c.IsBanned).Select(c => c.Name)));
+                if (bansChanged || await _informationDetector.IsOpeningScreenAsync(shot, imgWidth, imgHeight))
+                    await prepare(bansChanged);
+            }
             var autoBans = ComputeAutoBans(result);
             LogRecognitionSummary(result, autoBans);
             AutoBanListComputed?.Invoke(autoBans);
@@ -190,9 +257,10 @@ public sealed class BanScreenAnalyzer
             _lastResult = result;
             _lastAutoBans = autoBans;
             _lastEnemy = hasEnemy ? enemy : null;
+            _scrollReminderShown = false;
             AnalysisCompleted?.Invoke(result);
             await ShowTimedGameOverlayMessageAsync(hasEnemy
-                ? "识别成功！ASP Assistant 祝您卫戍愉快！"
+                ? "识别成功！鸿雪·卫戍助手祝您卫戍愉快！"
                 : "盟约已录入，敌人信息可在敌人页重试", 2000);
         }
         catch (Exception ex)
@@ -204,6 +272,11 @@ public sealed class BanScreenAnalyzer
         {
             AnalysisBusyChanged?.Invoke(false);
             Interlocked.Exchange(ref _running, 0);
+            if (scrollMessage is not null && !_scrollReminderShown)
+            {
+                _scrollReminderShown = true;
+                ScrollRequired?.Invoke(scrollMessage);
+            }
         }
     }
 
